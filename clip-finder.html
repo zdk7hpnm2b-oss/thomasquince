@@ -112,6 +112,20 @@ code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius:
 .chip.clear { color: var(--muted); }
 .moment.done { opacity: .55; }
 .moment.done .time { text-decoration: line-through; }
+.creators { display: grid; gap: 10px; }
+.creator { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.creator img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--line); }
+.creator .meta { gap: 2px; }
+.creator .name { font-weight: 600; overflow-wrap: anywhere; }
+.rank { font-family: var(--font-display); font-weight: 700; color: var(--muted); }
+.kit { grid-column: 1 / -1; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; font-size: .88rem; }
+.kit h4 { margin: 0; font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.kit ul { margin: 0; padding-left: 1.2em; display: grid; gap: 3px; }
+.kit pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.chapters { display: grid; gap: 4px; font-size: .88rem; }
+.chapters a { font-variant-numeric: tabular-nums; font-weight: 600; margin-right: 8px; }
+#money ol { display: grid; gap: 8px; }
+@media (max-width: 560px) { .creator { grid-template-columns: 44px 1fr; } .creator > .row { grid-column: 1 / -1; } }
 .src { font-size: .8rem; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
 
 @media (max-width: 560px) {
@@ -157,6 +171,17 @@ code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius:
       <div class="grid">
         <label for="q">Mots-clés
           <input id="q" type="text" value="GTA 6">
+        </label>
+        <label for="ctype">Type de contenu
+          <select id="ctype">
+            <option value="">Tout</option>
+            <option value="__live">Lives en cours</option>
+            <option value="réaction">Réactions</option>
+            <option value="fail drôle">Fails et moments drôles</option>
+            <option value="poursuite police">Poursuites et police</option>
+            <option value="secret easter egg">Secrets et easter eggs</option>
+            <option value="découverte map">Découverte de la map</option>
+          </select>
         </label>
         <label for="period">Publiées depuis
           <select id="period">
@@ -207,6 +232,12 @@ code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius:
 
   <p id="quota" class="hint"></p>
 
+  <section id="creatorPanel" class="panel" hidden aria-labelledby="creator-title">
+    <h2 id="creator-title">Meilleurs créateurs à clipper</h2>
+    <p class="hint">Classés d'après cette recherche : vues par heure, quantité de vidéos longues (plus de matière à clipper) et surperformance (vues de la meilleure vidéo comparées au nombre d'abonnés). Coût : 1 unité.</p>
+    <div id="creatorList" class="creators"></div>
+  </section>
+
   <section id="topPanel" class="panel" hidden aria-labelledby="top-title">
     <div class="row" style="justify-content:space-between">
       <h2 id="top-title">Top des temps forts</h2>
@@ -219,6 +250,20 @@ code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius:
   <div id="status" class="status" role="status">Ajoute ta clé, puis lance une recherche. Les vidéos apparaîtront ici avec un score de potentiel et un bouton pour trouver leurs temps forts.</div>
 
   <section id="results" class="results" aria-live="polite"></section>
+
+  <details class="panel" id="money">
+    <summary>Comment gagner le plus d'argent avec tes clips</summary>
+    <ol>
+      <li><b>Passe par des campagnes de clipping payées à la vue</b> (Whop Content Rewards, Discord des créateurs). C'est l'argent le plus rapide et c'est autorisé. Choisis les campagnes avec le meilleur tarif pour 1 000 vues et un créateur qui fait déjà beaucoup de vues.</li>
+      <li><b>Choisis tes créateurs avec le panneau « Meilleurs créateurs »</b> : un créateur qui surperforme et qui publie beaucoup de vidéos longues te donne plus de clips viraux.</li>
+      <li><b>Accroche dans les 2 premières secondes</b> : commence directement par le moment fort, avec un texte d'accroche en haut de l'écran. Utilise le « Kit de clip » de chaque moment.</li>
+      <li><b>Deux formats</b> : de 20 à 35 s pour la viralité, plus de 61 s pour être rémunéré par le programme Creator Rewards de TikTok (contenu original et transformé obligatoire : sous-titres, texte, montage).</li>
+      <li><b>Volume et régularité</b> : 2 à 4 clips par jour, publiés aussi sur YouTube Shorts et Instagram Reels. Les meilleurs créneaux sont souvent de 12 h à 14 h et de 18 h à 22 h.</li>
+      <li><b>Vitesse</b> : un moment fort clippé dans les premières heures après le live fait beaucoup plus de vues. Relance « Top des temps forts » plusieurs fois par jour.</li>
+      <li><b>Analyse</b> : regarde dans TikTok Studio quels clips gardent les gens jusqu'au bout et refais le même type de moment.</li>
+      <li><b>Crédite toujours le créateur</b> (c'est déjà dans la légende générée) : c'est obligatoire dans les campagnes et ça protège ton compte.</li>
+    </ol>
+  </details>
 
   <p class="hint">Rappel : cet outil ne télécharge rien. Il t'aide à choisir quoi clipper. Clippe seulement les créateurs qui t'ont donné leur accord ou qui ont une campagne de clipping, et crédite-les toujours.</p>
 </div>
@@ -298,6 +343,39 @@ function findMoments(comments, maxSec, gap = 20) {
     const end = Math.min(maxSec || Infinity, Math.max(g.last + 25, start + 30));
     return { start, end, at: g.first, mentions: authors.size, weight, quote: best.c };
   }).sort((a, b) => b.weight - a.weight);
+}
+
+// Chapitres : lignes de la description qui commencent par un horodatage (« 12:30 La poursuite »).
+function parseChapters(desc, maxSec) {
+  const out = [];
+  for (const line of (desc || "").split(/\r?\n/)) {
+    const m = /^\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*[-–—:|]?\s*(.+)$/.exec(line);
+    if (!m) continue;
+    const t = extractTimestamps(m[1], maxSec)[0];
+    if (t === undefined) continue;
+    out.push({ t, label: m[2].trim().slice(0, 90) });
+  }
+  return out.length >= 2 ? out : [];
+}
+
+const HOOKS = [
+  [/police|flic|poursuite|wanted|étoile|recherch/i, ["La police de GTA 6 est complètement folle 🚔", "Il pensait les semer… erreur 😭", "5 étoiles en 10 secondes 💀"]],
+  [/crash|accident|explos|voiture|avion|moto/i, ["Le pire accident de GTA 6 💥", "Il ne s'attendait PAS à ça 😭", "La physique de GTA 6 est irréelle"]],
+  [/bug|glitch|beug/i, ["Ce bug de GTA 6 est incroyable 😂", "Rockstar va devoir corriger ça…", "Personne n'avait vu ce glitch"]],
+  [/secret|easter|cach|myst/i, ["Le secret de GTA 6 que personne n'a vu 👀", "Rockstar a caché ÇA dans GTA 6", "Regarde bien en arrière-plan…"]],
+  [/map|ville|vice|leonida|plage|miami/i, ["La map de GTA 6 est gigantesque 🤯", "Vice City n'a jamais été aussi belle", "Il découvre la map de GTA 6"]],
+  [/cri|hurl|peur|choc|wtf|quoi/i, ["Sa réaction est légendaire 😱", "Il a hurlé en direct 😭", "Personne n'était prêt pour ça"]],
+  [/mdr|ptdr|😂|🤣|💀|mort|rire|drôle|jpp/i, ["Le moment le plus drôle de son live 😂", "J'ai pas pu m'arrêter de rire 💀", "Il ne s'attendait PAS à ça 😭"]],
+];
+function clipKit(v, m) {
+  const text = `${m.quote.text} ${m.label || ""} ${v.title}`;
+  const hooks = [];
+  for (const [re, list] of HOOKS) if (re.test(text)) hooks.push(...list);
+  hooks.push(`${v.channel} sur GTA 6 : ce moment 😳`, "Attends la fin…", "Le meilleur moment de GTA 6 jusqu'ici");
+  const unique = [...new Set(hooks)].slice(0, 4);
+  const tag = v.channel.normalize("NFD").replace(/[^A-Za-z0-9]/g, "");
+  const caption = `${unique[0]}\n🎮 Clip de ${v.channel} — vidéo complète sur sa chaîne YouTube.\n#GTA6 #GTAVI #${tag} #gaming #gta #clip #pourtoi #fyp`;
+  return { hooks: unique, caption };
 }
 
 // Score de potentiel 0–100 : rang en vitesse (vues/heure) à 60 %, rang en engagement à 40 %.
@@ -394,7 +472,9 @@ async function searchVideos() {
   const after = new Date(Math.floor((Date.now() - days * 86400000) / 3600e3) * 3600e3).toISOString();
   const fr = $("frOnly").checked;
   const base = {
-    part: "id", type: "video", maxResults: 25, q: $("q").value.trim(),
+    part: "id", type: "video", maxResults: 50,
+    q: ($("q").value.trim() + " " + ($("ctype").value.startsWith("__") ? "" : $("ctype").value)).trim(),
+    eventType: $("ctype").value === "__live" ? "live" : "",
     order: $("sort").value === "date" ? "date" : "viewCount",
     publishedAfter: after, videoDuration: $("duration").value,
     relevanceLanguage: fr ? "fr" : "", regionCode: fr ? "FR" : "",
@@ -406,7 +486,7 @@ async function searchVideos() {
     for (const h of handles) {
       const channelId = await resolveChannel(h);
       if (!channelId) { missing.push(h); continue; }
-      const data = await yt("search", { ...base, channelId, maxResults: 15, relevanceLanguage: "", regionCode: "" });
+      const data = await yt("search", { ...base, channelId, maxResults: 25, relevanceLanguage: "", regionCode: "" });
       data.items?.forEach((i) => ids.add(i.id.videoId));
     }
   } else {
@@ -429,6 +509,7 @@ async function searchVideos() {
       const hours = Math.max(1, (Date.now() - new Date(it.snippet.publishedAt)) / 3600000);
       videos.push({
         id: it.id, title: it.snippet.title, channel: it.snippet.channelTitle,
+        channelId: it.snippet.channelId, description: it.snippet.description || "",
         thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || "",
         live: it.snippet.liveBroadcastContent === "live",
         duration: parseIsoDuration(it.contentDetails.duration),
@@ -524,6 +605,16 @@ async function loadMoments(v, box, btn) {
       box.append(el("h3", { style: "font-size:.95rem" }, `${moments.length} temps forts repérés dans ${comments.length} commentaires`));
       for (const m of moments) box.append(renderMoment(v, m));
     }
+    const chapters = parseChapters(v.description, v.duration);
+    if (chapters.length) {
+      const list = el("div", { class: "chapters" }, el("h3", { style: "font-size:.95rem" }, `Chapitres de la vidéo (${chapters.length})`));
+      for (const c of chapters.slice(0, 25)) {
+        list.append(el("div", {},
+          el("a", { href: `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}&t=${c.t}s`, target: "_blank", rel: "noopener" }, fmtTime(c.t)),
+          c.label));
+      }
+      box.append(list);
+    }
   } catch (e) {
     box.replaceChildren(el("p", { class: "empty" }, e.message));
   } finally {
@@ -554,6 +645,7 @@ function renderMoment(v, m, showSource = false) {
   });
   const isDone = clippedSet().has(doneId);
   const doneBtn = el("button", { class: "ghost small", type: "button" }, isDone ? "Déjà clippé ✓" : "Marquer comme clippé");
+  const kitBtn = el("button", { class: "small", type: "button" }, "Kit de clip");
   const quote = m.quote.text.length > 220 ? m.quote.text.slice(0, 220) + "…" : m.quote.text;
   const row = el("div", { class: "moment" + (isDone ? " done" : "") },
     el("a", { class: "time", href: link, target: "_blank", rel: "noopener" },
@@ -563,7 +655,32 @@ function renderMoment(v, m, showSource = false) {
       el("p", { class: "quote" }, `« ${quote} »`),
       el("p", { class: "quote-meta" },
         `Cité par ${m.mentions} personne${m.mentions > 1 ? "s" : ""} · ${fmtNum(m.quote.likes)} j'aime sur le commentaire`),
-      el("div", { class: "row" }, copyBtn, doneBtn)));
+      el("div", { class: "row" }, kitBtn, copyBtn, doneBtn)));
+  let kitEl = null;
+  kitBtn.addEventListener("click", () => {
+    if (kitEl) { kitEl.hidden = !kitEl.hidden; return; }
+    const kit = clipKit(v, m);
+    const all = `${kit.caption}\n\nSource : https://www.youtube.com/watch?v=${v.id}  ${fmtTime(m.start)} → ${fmtTime(m.end)}`;
+    const copyAll = el("button", { class: "ghost small", type: "button" }, "Copier la légende");
+    copyAll.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(kit.caption); copyAll.textContent = "Copié"; }
+      catch { copyAll.textContent = "Sélectionne le texte ci-dessus"; }
+      setTimeout(() => (copyAll.textContent = "Copier la légende"), 2500);
+    });
+    kitEl = el("div", { class: "kit" },
+      el("h4", {}, "Accroches (texte en haut de l'écran)"),
+      el("ul", {}, ...kit.hooks.map((h) => el("li", {}, h))),
+      el("h4", {}, "Légende TikTok"),
+      el("pre", {}, all),
+      el("h4", {}, "Montage"),
+      el("ul", {},
+        el("li", {}, `Commence ta vidéo 2 à 3 s avant ${fmtTime(m.at)} : le moment fort doit arriver tout de suite.`),
+        el("li", {}, "20 à 35 s pour la viralité, ou plus de 61 s pour Creator Rewards (raconte le contexte avant)."),
+        el("li", {}, "Format 9:16 : jeu en haut, facecam en bas, sous-titres animés au centre."),
+        el("li", {}, "Termine sur la réaction, sans fin longue : ça pousse à revoir la vidéo.")),
+      el("div", { class: "row" }, copyAll));
+    row.append(kitEl);
+  });
   doneBtn.addEventListener("click", () => {
     const on = toggleClipped(doneId);
     row.classList.toggle("done", on);
@@ -573,6 +690,64 @@ function renderMoment(v, m, showSource = false) {
 }
 
 let lastVideos = [];
+
+async function rankCreators(videos) {
+  const byCh = new Map();
+  for (const v of videos) {
+    if (!v.channelId) continue;
+    const c = byCh.get(v.channelId) || { id: v.channelId, name: v.channel, videos: [], };
+    c.videos.push(v);
+    byCh.set(v.channelId, c);
+  }
+  const ids = [...byCh.keys()].slice(0, 50);
+  if (!ids.length) return [];
+  const data = await yt("channels", { part: "snippet,statistics", id: ids.join(",") });
+  for (const it of data.items || []) {
+    const c = byCh.get(it.id);
+    c.subs = it.statistics.hiddenSubscriberCount ? 0 : +it.statistics.subscriberCount || 0;
+    c.handle = it.snippet.customUrl || "";
+    c.thumb = it.snippet.thumbnails?.default?.url || "";
+  }
+  const list = [...byCh.values()].map((c) => {
+    const best = c.videos.reduce((a, b) => (b.views > a.views ? b : a));
+    const velocity = c.videos.reduce((s, v) => s + v.velocity, 0);
+    const longCount = c.videos.filter((v) => v.duration >= 1200 || v.live).length;
+    const overperf = c.subs ? best.views / c.subs : 0;
+    const score = Math.log10(1 + velocity) * (1 + Math.min(longCount, 5) * 0.15) * (1 + Math.min(overperf, 2) * 0.25);
+    return { ...c, best, velocity, longCount, overperf, score };
+  });
+  return list.sort((a, b) => b.score - a.score).slice(0, 10);
+}
+
+function renderCreators(list) {
+  const box = $("creatorList");
+  box.replaceChildren(...list.map((c, i) => {
+    const follow = el("button", { class: "ghost small", type: "button" }, "Suivre");
+    follow.addEventListener("click", () => {
+      const h = c.handle || c.id;
+      const cur = $("channels").value.split(",").map((x) => x.trim()).filter(Boolean);
+      if (!cur.some((x) => x.toLowerCase() === h.toLowerCase())) cur.push(h);
+      $("channels").value = cur.join(", ");
+      syncChips();
+      follow.textContent = "Ajouté ✓";
+    });
+    const tags = [];
+    if (c.overperf >= 0.5) tags.push(el("span", { class: "pill hot" }, "Surperforme"));
+    if (c.longCount >= 2) tags.push(el("span", { class: "pill good" }, `${c.longCount} vidéos longues`));
+    return el("div", { class: "creator" },
+      el("img", { src: c.thumb, alt: "", loading: "lazy" }),
+      el("div", { class: "meta" },
+        el("div", { class: "name" }, `${i + 1}. ${c.name}`),
+        el("div", { class: "stats" },
+          el("span", {}, el("b", {}, c.subs ? fmtNum(c.subs) : "?"), " abonnés"),
+          el("span", {}, el("b", {}, String(c.videos.length)), " vidéo" + (c.videos.length > 1 ? "s" : "") + " trouvée" + (c.videos.length > 1 ? "s" : "")),
+          el("span", {}, el("b", {}, fmtNum(c.velocity)), " vues/h")),
+        tags.length ? el("div", { class: "row" }, ...tags) : null),
+      el("div", { class: "row" },
+        el("a", { href: `https://www.youtube.com/channel/${encodeURIComponent(c.id)}`, target: "_blank", rel: "noopener" }, "Voir la chaîne"),
+        follow));
+  }));
+}
 
 async function analyseTop() {
   const btn = $("topBtn"), list = $("topList");
@@ -645,6 +820,11 @@ $("searchForm").addEventListener("submit", async (e) => {
     else setStatus(`${videos.length} vidéos trouvées. Clique sur « Trouver les temps forts » pour analyser une vidéo.` + miss);
     $("results").replaceChildren(...videos.map(renderVideo));
     lastVideos = videos;
+    $("creatorPanel").hidden = true;
+    if (videos.length) {
+      rankCreators(videos).then((list) => { if (list.length) { renderCreators(list); $("creatorPanel").hidden = false; } })
+        .catch(() => {});
+    }
     $("topPanel").hidden = !videos.length;
     $("topList").hidden = true;
     $("topBtn").textContent = "Analyser les 5 meilleures vidéos";
