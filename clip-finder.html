@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clip Finder GTA 6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout : une colonne d'outil — réglages en haut, résultats en cartes, temps forts dépliés sous chaque vidéo. */
+:root {
+  --bg: #f6f3f7;
+  --surface: #ffffff;
+  --fg: #1d1724;
+  --muted: #6c6276;
+  --line: #e4dde9;
+  --accent: #e0306b;        /* rose coucher de soleil */
+  --accent-fg: #ffffff;
+  --accent-soft: #fde4ee;
+  --cool: #0f8f8a;          /* turquoise océan */
+  --cool-soft: #d9f3f1;
+  --warn: #b45f06;
+  --warn-soft: #fdf0dc;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141019; --surface: #1e1826; --fg: #f1ecf5; --muted: #a79cb3; --line: #342b3f;
+    --accent: #ff5c8d; --accent-fg: #1a0a10; --accent-soft: #3d1626;
+    --cool: #3ccfc6; --cool-soft: #12302f; --warn: #f0a24a; --warn-soft: #3a2810;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141019; --surface: #1e1826; --fg: #f1ecf5; --muted: #a79cb3; --line: #342b3f;
+  --accent: #ff5c8d; --accent-fg: #1a0a10; --accent-soft: #3d1626;
+  --cool: #3ccfc6; --cool-soft: #12302f; --warn: #f0a24a; --warn-soft: #3a2810;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 64px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: 1.9rem; }
+h1 span { color: var(--accent); }
+h2 { font-size: 1.15rem; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 62ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; }
+label { font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); display: grid; gap: 6px; }
+input, select, button { font: inherit; }
+input, select {
+  width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); text-transform: none; letter-spacing: 0; font-weight: 400;
+}
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button {
+  cursor: pointer; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600;
+  background: var(--accent); color: var(--accent-fg);
+}
+button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+button.small { padding: 6px 11px; font-size: .85rem; }
+button:disabled { opacity: .55; cursor: progress; }
+.hint { font-size: .85rem; color: var(--muted); }
+.status { font-size: .9rem; padding: 10px 12px; border-radius: 8px; background: var(--cool-soft); color: var(--fg); }
+.status.error { background: var(--warn-soft); }
+details summary { cursor: pointer; font-weight: 600; }
+details ol { margin: 10px 0 0; padding-left: 1.3em; display: grid; gap: 4px; }
+a { color: var(--cool); }
+code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+
+.results { display: grid; gap: 14px; }
+.video { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 12px; }
+.video-top { display: grid; grid-template-columns: 200px 1fr; gap: 14px; }
+.thumb { position: relative; display: block; }
+.thumb img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; display: block; background: var(--line); }
+.thumb .dur { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.78); color: #fff; font-size: .75rem; padding: 1px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.meta { min-width: 0; display: grid; gap: 6px; align-content: start; }
+.meta h3 { font-size: 1.02rem; overflow-wrap: anywhere; }
+.meta h3 a { color: var(--fg); text-decoration: none; }
+.meta h3 a:hover { text-decoration: underline; }
+.channel { color: var(--muted); font-size: .88rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .85rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+.stats b { color: var(--fg); font-weight: 600; }
+.pill { display: inline-block; font-size: .75rem; font-weight: 700; letter-spacing: .03em; padding: 2px 9px; border-radius: 99px; }
+.pill.hot { background: var(--accent-soft); color: var(--accent); }
+.pill.good { background: var(--cool-soft); color: var(--cool); }
+.pill.low { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+
+.moments { border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 10px; }
+.moment { display: grid; grid-template-columns: 5.2em 1fr; gap: 4px 14px; align-items: start; }
+.time { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; text-decoration: none; }
+.time small { display: block; font-family: var(--font-body); font-weight: 500; color: var(--muted); font-size: .75rem; }
+.moment-body { min-width: 0; display: grid; gap: 4px; }
+.quote { font-size: .9rem; overflow-wrap: anywhere; }
+.quote-meta { font-size: .78rem; color: var(--muted); }
+.empty { color: var(--muted); font-size: .9rem; }
+
+@media (max-width: 560px) {
+  .video-top { grid-template-columns: 1fr; }
+  h1 { font-size: 1.55rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header style="display:grid;gap:8px">
+    <h1>Clip Finder <span>GTA 6</span></h1>
+    <p class="lede">Trouve les vidéos YouTube qui décollent en ce moment, puis repère leurs temps forts grâce aux horodatages laissés par les spectateurs dans les commentaires.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="key-title">
+    <h2 id="key-title">1. Ta clé YouTube</h2>
+    <label for="apiKey">Clé API YouTube Data v3
+      <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…">
+    </label>
+    <div class="row">
+      <button id="saveKey" class="ghost small" type="button">Enregistrer sur cet appareil</button>
+      <span id="keyState" class="hint"></span>
+    </div>
+    <details>
+      <summary>Comment obtenir une clé gratuite (5 minutes)</summary>
+      <ol>
+        <li>Va sur <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> et connecte-toi avec un compte Google.</li>
+        <li>Crée un projet (par exemple « clip-finder »).</li>
+        <li>Menu « API et services » → « Bibliothèque » → cherche <b>YouTube Data API v3</b> → « Activer ».</li>
+        <li>« API et services » → « Identifiants » → « Créer des identifiants » → « Clé API ».</li>
+        <li>Clique sur la clé → « Restreindre la clé » → choisis seulement YouTube Data API v3. Copie-la ici.</li>
+      </ol>
+      <p class="hint" style="margin-top:8px">C'est gratuit : 10 000 unités par jour. Une recherche coûte environ 100 unités, l'analyse des commentaires d'une vidéo 1 à 2 unités. Ne partage jamais ta clé.</p>
+    </details>
+  </section>
+
+  <section class="panel" aria-labelledby="search-title">
+    <h2 id="search-title">2. Chercher des vidéos</h2>
+    <form id="searchForm" style="display:grid;gap:14px">
+      <div class="grid">
+        <label for="q">Mots-clés
+          <input id="q" type="text" value="GTA 6">
+        </label>
+        <label for="period">Publiées depuis
+          <select id="period">
+            <option value="1">24 heures</option>
+            <option value="3">3 jours</option>
+            <option value="7" selected>7 jours</option>
+            <option value="30">30 jours</option>
+            <option value="365">1 an</option>
+          </select>
+        </label>
+        <label for="duration">Durée
+          <select id="duration">
+            <option value="any">Toutes</option>
+            <option value="long" selected>Longues (+20 min, streams)</option>
+            <option value="medium">Moyennes (4–20 min)</option>
+          </select>
+        </label>
+        <label for="sort">Classer par
+          <select id="sort">
+            <option value="score" selected>Potentiel de clip</option>
+            <option value="velocity">Vues par heure</option>
+            <option value="views">Vues totales</option>
+            <option value="date">Plus récentes</option>
+          </select>
+        </label>
+      </div>
+      <label for="channels">Chaînes à suivre (facultatif, séparées par des virgules)
+        <input id="channels" type="text" placeholder="@JulienChieze, @G3_AdrienOff">
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500;font-size:.9rem;color:var(--fg)" for="frOnly">
+        <input id="frOnly" type="checkbox" checked style="width:auto"> Priorité aux vidéos en français
+      </label>
+      <div class="row">
+        <button id="searchBtn" type="submit">Trouver des vidéos</button>
+        <span class="hint">Les chaînes sont cherchées une par une (100 unités chacune).</span>
+      </div>
+    </form>
+  </section>
+
+  <div id="status" class="status" role="status">Ajoute ta clé, puis lance une recherche. Les vidéos apparaîtront ici avec un score de potentiel et un bouton pour trouver leurs temps forts.</div>
+
+  <section id="results" class="results" aria-live="polite"></section>
+
+  <p class="hint">Rappel : cet outil ne télécharge rien. Il t'aide à choisir quoi clipper. Clippe seulement les créateurs qui t'ont donné leur accord ou qui ont une campagne de clipping, et crédite-les toujours.</p>
+</div>
+
+<script>
+"use strict";
+const API = "https://www.googleapis.com/youtube/v3/";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+};
+
+/* ---------- Logique pure (testable) ---------- */
+
+function parseIsoDuration(iso) {
+  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || "");
+  if (!m) return 0;
+  return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+}
+
+function fmtTime(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+function fmtNum(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(".", ",") + " M";
+  if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(".", ",") + " k";
+  return String(Math.round(n));
+}
+
+function fmtAgo(hours) {
+  if (hours < 1) return "il y a moins d'1 h";
+  if (hours < 48) return `il y a ${Math.round(hours)} h`;
+  return `il y a ${Math.round(hours / 24)} j`;
+}
+
+// Extrait les horodatages d'un commentaire (« 12:34 », « 1:02:03 »), bornés à la durée de la vidéo.
+function extractTimestamps(text, maxSec) {
+  const out = [];
+  const re = /(?<![\d:])(?:(\d{1,2}):)?(\d{1,2}):(\d{2})(?![\d:])/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const h = m[1] ? +m[1] : 0, mi = +m[2], s = +m[3];
+    if (s >= 60 || (m[1] && mi >= 60)) continue;
+    const t = h * 3600 + mi * 60 + s;
+    if (maxSec && t > maxSec) continue;
+    if (!out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+// Regroupe les horodatages proches (moins de 20 s d'écart) en « temps forts », classés par poids.
+function findMoments(comments, maxSec, gap = 20) {
+  const hits = [];
+  for (const c of comments) {
+    const times = extractTimestamps(c.text, maxSec);
+    const w = 1 + Math.log2(1 + (c.likes || 0));
+    for (const t of times) hits.push({ t, w, c });
+  }
+  hits.sort((a, b) => a.t - b.t);
+  const groups = [];
+  for (const h of hits) {
+    const g = groups[groups.length - 1];
+    if (g && h.t - g.first <= gap) { g.items.push(h); g.last = h.t; }
+    else groups.push({ first: h.t, last: h.t, items: [h] });
+  }
+  return groups.map((g) => {
+    const authors = new Set(g.items.map((i) => i.c.author));
+    const best = g.items.reduce((a, b) => (b.c.likes > a.c.likes ? b : a));
+    const weight = g.items.reduce((s, i) => s + i.w, 0);
+    const start = Math.max(0, g.first - 5);
+    const end = Math.min(maxSec || Infinity, Math.max(g.last + 25, start + 30));
+    return { start, end, at: g.first, mentions: authors.size, weight, quote: best.c };
+  }).sort((a, b) => b.weight - a.weight);
+}
+
+// Score de potentiel 0–100 : rang en vitesse (vues/heure) à 60 %, rang en engagement à 40 %.
+function scoreVideos(videos) {
+  const rank = (key) => {
+    const sorted = [...videos].sort((a, b) => a[key] - b[key]);
+    const n = Math.max(1, sorted.length - 1);
+    const r = new Map(sorted.map((v, i) => [v.id, i / n]));
+    return (v) => (sorted.length === 1 ? 1 : r.get(v.id));
+  };
+  const rv = rank("velocity"), re = rank("engagement");
+  for (const v of videos) v.score = Math.round(100 * (0.6 * rv(v) + 0.4 * re(v)));
+  return videos;
+}
+
+/* ---------- Appels YouTube ---------- */
+
+async function yt(endpoint, params) {
+  const key = $("apiKey").value.trim();
+  if (!key) throw new Error("Ajoute ta clé API YouTube dans la section 1.");
+  const url = new URL(API + endpoint);
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, v);
+  url.searchParams.set("key", key);
+  let res;
+  try { res = await fetch(url); }
+  catch { throw new Error("Impossible de joindre YouTube. Vérifie ta connexion internet."); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const reason = data?.error?.errors?.[0]?.reason || "";
+    if (reason === "quotaExceeded") throw new Error("Quota du jour dépassé. Il se réinitialise à 9 h (heure de Paris).");
+    if (reason === "commentsDisabled") throw Object.assign(new Error("Les commentaires sont désactivés sur cette vidéo."), { soft: true });
+    if (reason === "keyInvalid" || res.status === 400 && /key/i.test(data?.error?.message || "")) throw new Error("Clé API invalide. Vérifie-la dans la section 1.");
+    if (reason === "accessNotConfigured") throw new Error("La YouTube Data API v3 n'est pas activée sur ton projet Google Cloud.");
+    throw new Error(data?.error?.message || `Erreur YouTube (${res.status}).`);
+  }
+  return data;
+}
+
+async function resolveChannel(handle) {
+  handle = handle.trim();
+  if (!handle) return null;
+  if (/^UC[\w-]{22}$/.test(handle)) return handle;
+  const m = /youtube\.com\/(@[\w.-]+|channel\/(UC[\w-]{22}))/.exec(handle);
+  if (m) { if (m[2]) return m[2]; handle = m[1]; }
+  if (!handle.startsWith("@")) handle = "@" + handle.replace(/\s+/g, "");
+  const data = await yt("channels", { part: "id", forHandle: handle });
+  return data.items?.[0]?.id || null;
+}
+
+async function searchVideos() {
+  const days = +$("period").value;
+  const after = new Date(Date.now() - days * 86400000).toISOString();
+  const fr = $("frOnly").checked;
+  const base = {
+    part: "id", type: "video", maxResults: 25, q: $("q").value.trim(),
+    order: $("sort").value === "date" ? "date" : "viewCount",
+    publishedAfter: after, videoDuration: $("duration").value,
+    relevanceLanguage: fr ? "fr" : "", regionCode: fr ? "FR" : "",
+  };
+  const handles = $("channels").value.split(",").map((s) => s.trim()).filter(Boolean);
+  const ids = new Set();
+  const missing = [];
+  if (handles.length) {
+    for (const h of handles) {
+      const channelId = await resolveChannel(h);
+      if (!channelId) { missing.push(h); continue; }
+      const data = await yt("search", { ...base, channelId, maxResults: 15, relevanceLanguage: "", regionCode: "" });
+      data.items?.forEach((i) => ids.add(i.id.videoId));
+    }
+  } else {
+    const data = await yt("search", base);
+    data.items?.forEach((i) => ids.add(i.id.videoId));
+  }
+  if (!ids.size) return { videos: [], missing };
+
+  const list = [...ids];
+  const videos = [];
+  for (let i = 0; i < list.length; i += 50) {
+    const data = await yt("videos", { part: "snippet,statistics,contentDetails", id: list.slice(i, i + 50).join(",") });
+    for (const it of data.items || []) {
+      if (it.snippet.liveBroadcastContent === "upcoming") continue;
+      const views = +it.statistics.viewCount || 0;
+      const likes = +it.statistics.likeCount || 0;
+      const comments = +it.statistics.commentCount || 0;
+      const hours = Math.max(1, (Date.now() - new Date(it.snippet.publishedAt)) / 3600000);
+      videos.push({
+        id: it.id, title: it.snippet.title, channel: it.snippet.channelTitle,
+        thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || "",
+        live: it.snippet.liveBroadcastContent === "live",
+        duration: parseIsoDuration(it.contentDetails.duration),
+        views, likes, comments, hours, velocity: views / hours,
+        engagement: views ? (likes + 3 * comments) / views : 0,
+      });
+    }
+  }
+  scoreVideos(videos);
+  const by = { score: "score", velocity: "velocity", views: "views" }[$("sort").value];
+  videos.sort(by ? (a, b) => b[by] - a[by] : (a, b) => a.hours - b.hours);
+  return { videos, missing };
+}
+
+async function fetchComments(videoId) {
+  const out = [];
+  let pageToken = "";
+  for (let page = 0; page < 3; page++) {
+    const data = await yt("commentThreads", {
+      part: "snippet", videoId, order: "relevance", maxResults: 100, textFormat: "plainText", pageToken,
+    });
+    for (const it of data.items || []) {
+      const s = it.snippet.topLevelComment.snippet;
+      out.push({ text: s.textDisplay || "", likes: +s.likeCount || 0, author: s.authorDisplayName || "?" });
+    }
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
+  }
+  return out;
+}
+
+/* ---------- Affichage ---------- */
+
+function el(tag, attrs = {}, ...children) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) n.append(c);
+  return n;
+}
+
+function setStatus(msg, isError = false) {
+  const s = $("status");
+  s.textContent = msg;
+  s.classList.toggle("error", isError);
+  s.hidden = !msg;
+}
+
+function scorePill(score) {
+  if (score >= 70) return el("span", { class: "pill hot" }, `Potentiel fort · ${score}`);
+  if (score >= 40) return el("span", { class: "pill good" }, `Potentiel moyen · ${score}`);
+  return el("span", { class: "pill low" }, `Potentiel faible · ${score}`);
+}
+
+function renderVideo(v) {
+  const watch = `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`;
+  const box = el("div", { class: "moments", hidden: "" });
+  const btn = el("button", { class: "small", type: "button" }, "Trouver les temps forts");
+  btn.addEventListener("click", () => loadMoments(v, box, btn));
+  return el("article", { class: "video" },
+    el("div", { class: "video-top" },
+      el("a", { class: "thumb", href: watch, target: "_blank", rel: "noopener" },
+        el("img", { src: v.thumb, alt: "", loading: "lazy" }),
+        el("span", { class: "dur" }, v.live ? "EN DIRECT" : fmtTime(v.duration))),
+      el("div", { class: "meta" },
+        el("h3", {}, el("a", { href: watch, target: "_blank", rel: "noopener" }, v.title)),
+        el("div", { class: "channel" }, `${v.channel} · ${fmtAgo(v.hours)}`),
+        el("div", { class: "stats" },
+          el("span", {}, el("b", {}, fmtNum(v.views)), " vues"),
+          el("span", {}, el("b", {}, fmtNum(v.velocity)), " vues/h"),
+          el("span", {}, el("b", {}, fmtNum(v.likes)), " j'aime"),
+          el("span", {}, el("b", {}, fmtNum(v.comments)), " commentaires")),
+        el("div", { class: "row" }, scorePill(v.score), btn))),
+    box);
+}
+
+async function loadMoments(v, box, btn) {
+  btn.disabled = true;
+  btn.textContent = "Lecture des commentaires…";
+  box.hidden = false;
+  box.replaceChildren(el("p", { class: "empty" }, "Analyse des commentaires en cours…"));
+  try {
+    const comments = await fetchComments(v.id);
+    const moments = findMoments(comments, v.duration).slice(0, 8);
+    box.replaceChildren();
+    if (!moments.length) {
+      box.append(el("p", { class: "empty" },
+        `Aucun horodatage trouvé dans ${comments.length} commentaires. Regarde plutôt la courbe « Moments les plus revus » sur la barre de lecture YouTube.`));
+    } else {
+      box.append(el("h3", { style: "font-size:.95rem" }, `${moments.length} temps forts repérés dans ${comments.length} commentaires`));
+      for (const m of moments) box.append(renderMoment(v, m));
+    }
+  } catch (e) {
+    box.replaceChildren(el("p", { class: "empty" }, e.message));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Relancer l'analyse";
+  }
+}
+
+function renderMoment(v, m) {
+  const link = `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}&t=${m.start}s`;
+  const copyText = `https://www.youtube.com/watch?v=${v.id}  ${fmtTime(m.start)} → ${fmtTime(m.end)}`;
+  const copyBtn = el("button", { class: "ghost small", type: "button" }, "Copier le lien + horaires");
+  copyBtn.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(copyText); copyBtn.textContent = "Copié"; }
+    catch { copyBtn.textContent = copyText; }
+    setTimeout(() => (copyBtn.textContent = "Copier le lien + horaires"), 2500);
+  });
+  const quote = m.quote.text.length > 220 ? m.quote.text.slice(0, 220) + "…" : m.quote.text;
+  return el("div", { class: "moment" },
+    el("a", { class: "time", href: link, target: "_blank", rel: "noopener" },
+      fmtTime(m.start), el("small", {}, `→ ${fmtTime(m.end)}`)),
+    el("div", { class: "moment-body" },
+      el("p", { class: "quote" }, `« ${quote} »`),
+      el("p", { class: "quote-meta" },
+        `Cité par ${m.mentions} personne${m.mentions > 1 ? "s" : ""} · ${fmtNum(m.quote.likes)} j'aime sur le commentaire`),
+      el("div", { class: "row" }, copyBtn)));
+}
+
+/* ---------- Démarrage ---------- */
+
+const saved = store.get("ytKey");
+if (saved) { $("apiKey").value = saved; $("keyState").textContent = "Clé enregistrée sur cet appareil."; }
+$("saveKey").addEventListener("click", () => {
+  const ok = store.set("ytKey", $("apiKey").value.trim());
+  $("keyState").textContent = ok ? "Clé enregistrée sur cet appareil." : "Impossible d'enregistrer (navigation privée ?). La clé reste utilisable jusqu'à la fermeture de la page.";
+});
+
+$("searchForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("searchBtn");
+  btn.disabled = true;
+  setStatus("Recherche en cours…");
+  $("results").replaceChildren();
+  try {
+    const { videos, missing } = await searchVideos();
+    const miss = missing.length ? ` Chaîne(s) introuvable(s) : ${missing.join(", ")}.` : "";
+    if (!videos.length) setStatus("Aucune vidéo trouvée. Élargis la période ou change les mots-clés." + miss, !!missing.length);
+    else setStatus(`${videos.length} vidéos trouvées. Clique sur « Trouver les temps forts » pour analyser une vidéo.` + miss);
+    $("results").replaceChildren(...videos.map(renderVideo));
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+window.ClipFinder = { parseIsoDuration, fmtTime, extractTimestamps, findMoments, scoreVideos };
+</script>
+</body>
+</html>
