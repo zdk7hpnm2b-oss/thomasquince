@@ -228,7 +228,7 @@ code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius:
         <label for="auto" style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500;font-size:.9rem;color:var(--fg)">Actualiser automatiquement
           <select id="auto" style="width:auto">
             <option value="0">Non</option>
-            <option value="30">Toutes les 30 min</option>
+            <option value="30" selected>Toutes les 30 min</option>
             <option value="60">Toutes les heures</option>
           </select>
         </label>
@@ -856,14 +856,16 @@ async function runSearch(auto = false) {
 function scheduleAuto() {
   clearInterval(autoTimer);
   const min = +$("auto").value;
-  store.set("auto", String(min));
+  store.set("autoMin", String(min));
   if (min) autoTimer = setInterval(() => { if (lastVideos.length || seenIds) runSearch(true); }, min * 60e3);
 }
 
 $("searchForm").addEventListener("submit", (e) => { e.preventDefault(); runSearch(false); });
 $("auto").addEventListener("change", scheduleAuto);
-try { const a = store.get("auto"); if (a) $("auto").value = a; } catch {}
+try { const a = store.get("autoMin"); if (a) $("auto").value = a; } catch {}
 scheduleAuto();
+// Lance la recherche dès l'ouverture si la clé est déjà enregistrée : plus besoin de cliquer.
+if ($("apiKey").value.trim()) setTimeout(() => runSearch(false), 300);
 
 window.ClipFinder = { parseIsoDuration, fmtTime, extractTimestamps, findMoments, scoreVideos };
 </script>
