@@ -69,9 +69,18 @@ def fmt_dur(sec):
 
 def yt(endpoint, **params):
     key = os.environ.get("YOUTUBE_API_KEY", "proxy-injected")
+    if key == "proxy-injected" and not os.environ.get("CCR_AGENT_PROXY_ENABLED"):
+        raise ApiError("YouTube pas encore connecté : il manque YOUTUBE_API_KEY dans les réglages de l'environnement.")
     url = "https://www.googleapis.com/youtube/v3/" + endpoint + "?" + urllib.parse.urlencode(
         {k: v for k, v in params.items() if v not in (None, "")})
-    return http_get(url, {"X-goog-api-key": key})
+    try:
+        return http_get(url, {"X-goog-api-key": key})
+    except ApiError as e:
+        if "API key not valid" in str(e) or "API_KEY_INVALID" in str(e):
+            raise ApiError("Clé YouTube absente ou invalide : ajoute YOUTUBE_API_KEY dans les réglages de l'environnement « thomasquince ».") from None
+        if "quotaExceeded" in str(e):
+            raise ApiError("Quota YouTube du jour dépassé : la veille reprend après 9 h (heure de Paris).") from None
+        raise
 
 
 def youtube_trends(hours, lang):
@@ -80,7 +89,7 @@ def youtube_trends(hours, lang):
     ids, live_ids = [], set()
     # 1) vidéos publiées récemment, triées par vues ; 2) lives en cours. ~200 unités de quota au total.
     for extra in ({"order": "viewCount", "publishedAfter": after}, {"order": "viewCount", "eventType": "live"}):
-        data = yt("search", part="id", type="video", q=KEYWORDS, maxResults=25,
+        data = yt("search", part="id", type="video", q=KEYWORDS, maxResults=50,
                   relevanceLanguage=lang, regionCode=region, **extra)
         for it in data.get("items", []):
             vid = it["id"]["videoId"]
@@ -90,13 +99,19 @@ def youtube_trends(hours, lang):
                 live_ids.add(vid)
     if not ids:
         return []
-    data = yt("videos", part="snippet,statistics,contentDetails,liveStreamingDetails", id=",".join(ids[:50]))
+    data = {"items": []}
+    for i in range(0, min(len(ids), 100), 50):
+        part = yt("videos", part="snippet,statistics,contentDetails,liveStreamingDetails", id=",".join(ids[i:i + 50]))
+        data["items"] += part.get("items", [])
     now = dt.datetime.now(dt.timezone.utc)
     out = []
     for it in data.get("items", []):
         sn, st = it["snippet"], it.get("statistics", {})
         if sn.get("liveBroadcastContent") == "upcoming":
             continue
+        dur = parse_iso_duration(it.get("contentDetails", {}).get("duration"))
+        if sn.get("liveBroadcastContent") != "live" and 0 < dur <= 70:
+            continue  # Shorts : rien à clipper
         published = dt.datetime.fromisoformat(sn["publishedAt"].replace("Z", "+00:00"))
         age_h = max(1.0, (now - published).total_seconds() / 3600)
         views = int(st.get("viewCount", 0))
@@ -106,6 +121,8 @@ def youtube_trends(hours, lang):
         watching = int(it.get("liveStreamingDetails", {}).get("concurrentViewers", 0) or 0)
         out.append({
             "id": it["id"], "title": sn["title"], "channel": sn["channelTitle"],
+            "channelId": sn.get("channelId", ""),
+            "thumb": (sn.get("thumbnails", {}).get("medium") or sn.get("thumbnails", {}).get("default") or {}).get("url", ""),
             "url": f"https://www.youtube.com/watch?v={it['id']}",
             "age_h": age_h, "views": views, "likes": likes, "comments": comments,
             "velocity": views / age_h, "live": live, "watching": watching,
@@ -120,13 +137,115 @@ def youtube_trends(hours, lang):
     return out
 
 
+# ---------------- Temps forts (horodatages dans les commentaires) ----------------
+
+TS_RE = __import__("re").compile(r"(?<![\d:])(?:(\d{1,2}):)?(\d{1,2}):(\d{2})(?![\d:])")
+FUNNY_RE = __import__("re").compile(
+    r"mdr|ptdr|jpp|😂|🤣|💀|😭|mort de rire|incroyable|l[ée]gendaire|meilleur moment|wtf|culte|j'ai pleur|jsuis mort|je suis mort",
+    __import__("re").I)
+
+
+def extract_timestamps(text, max_sec):
+    out = []
+    for m in TS_RE.finditer(text):
+        h = int(m.group(1)) if m.group(1) else 0
+        mi, se = int(m.group(2)), int(m.group(3))
+        if se >= 60 or (m.group(1) and mi >= 60):
+            continue
+        t = h * 3600 + mi * 60 + se
+        if max_sec and t > max_sec:
+            continue
+        if t not in out:
+            out.append(t)
+    return out
+
+
+def find_moments(comments, max_sec, gap=20):
+    hits = []
+    for c in comments:
+        w = (1 + math.log2(1 + c["likes"])) * (1.5 if FUNNY_RE.search(c["text"]) else 1)
+        for t in extract_timestamps(c["text"], max_sec):
+            hits.append((t, w, c))
+    hits.sort(key=lambda h: h[0])
+    groups = []
+    for h in hits:
+        if groups and h[0] - groups[-1]["first"] <= gap:
+            groups[-1]["items"].append(h)
+            groups[-1]["last"] = h[0]
+        else:
+            groups.append({"first": h[0], "last": h[0], "items": [h]})
+    out = []
+    for g in groups:
+        best = max(g["items"], key=lambda i: i[2]["likes"])[2]
+        start = max(0, g["first"] - 5)
+        end = max(g["last"] + 25, start + 30)
+        if max_sec:
+            end = min(end, max_sec)
+        out.append({"start": start, "end": end, "at": g["first"],
+                    "mentions": len({i[2]["author"] for i in g["items"]}),
+                    "weight": round(sum(i[1] for i in g["items"]), 2),
+                    "quote": best["text"][:240], "likes": best["likes"]})
+    return sorted(out, key=lambda m: m["weight"], reverse=True)
+
+
+def youtube_moments(videos, top=5):
+    """Lit jusqu'à 200 commentaires des `top` meilleures vidéos (hors lives) et renvoie les meilleurs moments."""
+    allm = []
+    for v in [v for v in videos if not v["live"] and v["comments"] > 0][:top]:
+        comments, token = [], ""
+        for _ in range(2):
+            try:
+                data = yt("commentThreads", part="snippet", videoId=v["id"], order="relevance",
+                          maxResults=100, textFormat="plainText", pageToken=token)
+            except ApiError:
+                break  # commentaires désactivés, etc.
+            for it in data.get("items", []):
+                sn = it["snippet"]["topLevelComment"]["snippet"]
+                comments.append({"text": sn.get("textDisplay", ""), "likes": int(sn.get("likeCount", 0)),
+                                 "author": sn.get("authorDisplayName", "?")})
+            token = data.get("nextPageToken")
+            if not token:
+                break
+        for m in find_moments(comments, v["duration"])[:3]:
+            allm.append({**m, "videoId": v["id"], "title": v["title"], "channel": v["channel"]})
+    allm.sort(key=lambda m: m["weight"], reverse=True)
+    return allm[:12]
+
+
 # ---------------- Twitch ----------------
+
+_twitch_token = None
+
+
+def twitch_token(client_id):
+    """Jeton d'application Twitch : TWITCH_APP_TOKEN s'il existe, sinon obtenu avec TWITCH_CLIENT_SECRET."""
+    global _twitch_token
+    if _twitch_token:
+        return _twitch_token
+    if os.environ.get("TWITCH_APP_TOKEN"):
+        _twitch_token = os.environ["TWITCH_APP_TOKEN"]
+        return _twitch_token
+    secret = os.environ.get("TWITCH_CLIENT_SECRET")
+    if not secret:
+        return "proxy-injected"
+    body = urllib.parse.urlencode({"client_id": client_id, "client_secret": secret,
+                                   "grant_type": "client_credentials"}).encode()
+    req = urllib.request.Request("https://id.twitch.tv/oauth2/token", data=body, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            _twitch_token = json.load(r)["access_token"]
+    except urllib.error.HTTPError as e:
+        raise ApiError(f"Twitch refuse l'ID client ou le secret client (HTTP {e.code}). Vérifie-les dans les réglages.") from None
+    except urllib.error.URLError as e:
+        raise ApiError(f"Hôte injoignable (id.twitch.tv) : {e.reason}") from None
+    return _twitch_token
+
 
 def tw(endpoint, **params):
     client_id = os.environ.get("TWITCH_CLIENT_ID")
     if not client_id:
-        raise ApiError("TWITCH_CLIENT_ID manquant (variable d'environnement).")
-    token = os.environ.get("TWITCH_APP_TOKEN", "proxy-injected")
+        raise ApiError("Twitch pas encore connecté : il manque TWITCH_CLIENT_ID et TWITCH_CLIENT_SECRET dans les réglages de l'environnement.")
+    token = twitch_token(client_id)
     q = urllib.parse.urlencode([(k, x) for k, v in params.items() if v not in (None, "")
                                 for x in (v if isinstance(v, list) else [v])])
     return http_get(f"https://api.twitch.tv/helix/{endpoint}?{q}",
@@ -154,7 +273,7 @@ def twitch_trends(hours, lang):
     if lang:
         clips = [c for c in clips if (c.get("language") or "").startswith(lang)]
     clips.sort(key=lambda c: c.get("view_count", 0), reverse=True)
-    return {"game": game_name, "streams": streams, "clips": clips[:10]}
+    return {"game": game_name, "streams": streams, "clips": clips[:12]}
 
 
 # ---------------- Rapport ----------------
@@ -211,17 +330,41 @@ def main():
     ap.add_argument("--hours", type=int, default=24)
     ap.add_argument("--lang", default="fr")
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--json", help="écrit aussi les données brutes dans ce fichier JSON (pour la page Claude)")
     a = ap.parse_args()
 
-    yt_items, yt_err, twd, tw_err = [], None, None, None
+    yt_items, yt_err, twd, tw_err, moments = [], None, None, None, []
     try:
         yt_items = youtube_trends(a.hours, a.lang)
+        moments = youtube_moments(yt_items)
     except ApiError as e:
         yt_err = str(e)
     try:
         twd = twitch_trends(a.hours, a.lang)
     except ApiError as e:
         tw_err = str(e)
+
+    if a.json:
+        def clean_clip(c):
+            return {k: c.get(k) for k in ("title", "broadcaster_name", "view_count", "url", "thumbnail_url",
+                                           "vod_offset", "video_id", "created_at", "duration")}
+        def clean_stream(st):
+            return {k: st.get(k) for k in ("user_name", "user_login", "viewer_count", "title", "started_at",
+                                            "thumbnail_url")}
+        payload = {
+            "updatedAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "windowHours": a.hours, "lang": a.lang,
+            "youtube": [{k: round(v[k], 1) if isinstance(v[k], float) else v[k]
+                         for k in ("id", "title", "channel", "channelId", "url", "thumb", "age_h", "views", "likes",
+                                   "comments", "velocity", "live", "watching", "duration", "score")}
+                        for v in yt_items[:25]],
+            "moments": moments,
+            "twitch": {"game": (twd or {}).get("game"),
+                       "streams": [clean_stream(x) for x in (twd or {}).get("streams", [])[:15]],
+                       "clips": [clean_clip(x) for x in (twd or {}).get("clips", [])[:12]]},
+            "errors": {"youtube": yt_err, "twitch": tw_err},
+        }
+        Path(a.json).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
     report = build_report(yt_items, yt_err, twd, tw_err, a.hours, a.lang)
     print(report)
