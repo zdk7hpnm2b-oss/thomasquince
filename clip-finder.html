@@ -225,6 +225,13 @@ code { font-size: .85em; background: var(--bg); padding: 1px 5px; border-radius:
       </label>
       <div class="row">
         <button id="searchBtn" type="submit">Trouver des vidéos</button>
+        <label for="auto" style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:500;font-size:.9rem;color:var(--fg)">Actualiser automatiquement
+          <select id="auto" style="width:auto">
+            <option value="0">Non</option>
+            <option value="30">Toutes les 30 min</option>
+            <option value="60">Toutes les heures</option>
+          </select>
+        </label>
         <span class="hint">Les chaînes sont cherchées une par une (100 unités chacune).</span>
       </div>
     </form>
@@ -397,6 +404,7 @@ function scoreVideos(videos) {
 const COST = { search: 100, videos: 1, channels: 1, commentThreads: 1 };
 const CACHE_TTL = { search: 30 * 60e3, channels: 30 * 86400e3, videos: 10 * 60e3, commentThreads: 30 * 60e3 };
 const memCache = new Map();
+let forceFresh = false;
 const quotaDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 function quotaUsed() {
   try { const q = JSON.parse(store.get("quota") || "{}"); return q.day === quotaDay() ? q.used : 0; } catch { return 0; }
@@ -435,7 +443,7 @@ async function yt(endpoint, params) {
   const url = new URL(API + endpoint);
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, v);
   const cacheKey = endpoint + url.search;
-  const cached = cacheGet(cacheKey, CACHE_TTL[endpoint] || 0);
+  const cached = forceFresh && endpoint !== "channels" ? null : cacheGet(cacheKey, CACHE_TTL[endpoint] || 0);
   if (cached) return cached;
   url.searchParams.set("key", key);
   let res;
@@ -585,7 +593,7 @@ function renderVideo(v) {
           el("span", {}, el("b", {}, fmtNum(v.velocity)), " vues/h"),
           el("span", {}, el("b", {}, fmtNum(v.likes)), " j'aime"),
           el("span", {}, el("b", {}, fmtNum(v.comments)), " commentaires")),
-        el("div", { class: "row" }, scorePill(v.score), btn))),
+        el("div", { class: "row" }, scorePill(v.score), v.isNew ? el("span", { class: "pill hot" }, "Nouveau") : null, btn))),
     box);
 }
 
@@ -807,17 +815,26 @@ $("saveKey").addEventListener("click", () => {
   $("keyState").textContent = ok ? "Clé enregistrée sur cet appareil." : "Impossible d'enregistrer (navigation privée ?). La clé reste utilisable jusqu'à la fermeture de la page.";
 });
 
-$("searchForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+let seenIds = null;
+let autoTimer = null;
+
+async function runSearch(auto = false) {
   const btn = $("searchBtn");
   btn.disabled = true;
-  setStatus("Recherche en cours…");
-  $("results").replaceChildren();
+  setStatus(auto ? "Actualisation automatique en cours…" : "Recherche en cours…");
+  if (!auto) { $("results").replaceChildren(); seenIds = null; }
+  forceFresh = auto;
   try {
     const { videos, missing } = await searchVideos();
+    let fresh = 0;
+    for (const v of videos) { v.isNew = !!seenIds && !seenIds.has(v.id); if (v.isNew) fresh++; }
+    seenIds = new Set([...(seenIds || []), ...videos.map((v) => v.id)]);
+    if (auto && fresh) videos.sort((a, b) => b.isNew - a.isNew);
     const miss = missing.length ? ` Chaîne(s) introuvable(s) : ${missing.join(", ")}.` : "";
+    const time = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     if (!videos.length) setStatus("Aucune vidéo trouvée. Élargis la période ou change les mots-clés." + miss, !!missing.length);
-    else setStatus(`${videos.length} vidéos trouvées. Clique sur « Trouver les temps forts » pour analyser une vidéo.` + miss);
+    else if (auto) setStatus(`Actualisé à ${time} · ${fresh ? `${fresh} nouvelle${fresh > 1 ? "s" : ""} vidéo${fresh > 1 ? "s" : ""} (en haut, badge « Nouveau »)` : "pas de nouvelle vidéo"} · chiffres de vues mis à jour.` + miss);
+    else setStatus(`${videos.length} vidéos trouvées (${time}). Clique sur « Trouver les temps forts » pour analyser une vidéo.` + miss);
     $("results").replaceChildren(...videos.map(renderVideo));
     lastVideos = videos;
     $("creatorPanel").hidden = true;
@@ -831,9 +848,22 @@ $("searchForm").addEventListener("submit", async (e) => {
   } catch (err) {
     setStatus(err.message, true);
   } finally {
+    forceFresh = false;
     btn.disabled = false;
   }
-});
+}
+
+function scheduleAuto() {
+  clearInterval(autoTimer);
+  const min = +$("auto").value;
+  store.set("auto", String(min));
+  if (min) autoTimer = setInterval(() => { if (lastVideos.length || seenIds) runSearch(true); }, min * 60e3);
+}
+
+$("searchForm").addEventListener("submit", (e) => { e.preventDefault(); runSearch(false); });
+$("auto").addEventListener("change", scheduleAuto);
+try { const a = store.get("auto"); if (a) $("auto").value = a; } catch {}
+scheduleAuto();
 
 window.ClipFinder = { parseIsoDuration, fmtTime, extractTimestamps, findMoments, scoreVideos };
 </script>
