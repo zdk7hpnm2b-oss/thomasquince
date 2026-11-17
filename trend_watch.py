@@ -325,13 +325,34 @@ def build_report(yt_items, yt_err, twd, tw_err, hours, lang):
     return "\n".join(L) + "\n"
 
 
+def load_keys(folder):
+    """Lit les clés saisies dans la page Radar (document data/users/<id>/keys exporté en JSON)."""
+    for f in Path(folder).rglob("keys.json"):
+        try:
+            doc = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for wrapper in ("data", "fields", "document"):
+            if isinstance(doc.get(wrapper), dict):
+                doc = doc[wrapper]
+        if doc.get("youtubeKey") and not os.environ.get("YOUTUBE_API_KEY"):
+            os.environ["YOUTUBE_API_KEY"] = doc["youtubeKey"]
+        if doc.get("twitchSecret") and not os.environ.get("TWITCH_CLIENT_SECRET"):
+            os.environ["TWITCH_CLIENT_SECRET"] = doc["twitchSecret"]
+        return True
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hours", type=int, default=24)
     ap.add_argument("--lang", default="fr")
     ap.add_argument("--no-save", action="store_true")
+    ap.add_argument("--keys-dir", help="dossier où ArtifactData a enregistré le document keys.json (clés saisies dans la page Radar)")
     ap.add_argument("--json", help="écrit aussi les données brutes dans ce fichier JSON (pour la page Claude)")
     a = ap.parse_args()
+    if a.keys_dir:
+        load_keys(a.keys_dir)
 
     yt_items, yt_err, twd, tw_err, moments = [], None, None, None, []
     try:
