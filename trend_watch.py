@@ -77,7 +77,7 @@ def yt(endpoint, **params):
         return http_get(url, {"X-goog-api-key": key})
     except ApiError as e:
         if "API key not valid" in str(e) or "API_KEY_INVALID" in str(e):
-            raise ApiError("Clé YouTube absente ou invalide : ajoute YOUTUBE_API_KEY dans les réglages de l'environnement « thomasquince ».") from None
+            raise ApiError("Clé YouTube absente ou invalide : colle-la dans « Connecter YouTube et Twitch » en haut de la page.") from None
         if "quotaExceeded" in str(e):
             raise ApiError("Quota YouTube du jour dépassé : la veille reprend après 9 h (heure de Paris).") from None
         raise
@@ -227,7 +227,7 @@ def twitch_token(client_id):
         return _twitch_token
     secret = os.environ.get("TWITCH_CLIENT_SECRET")
     if not secret:
-        return "proxy-injected"
+        raise ApiError("Secret client Twitch manquant : colle-le dans « Connecter YouTube et Twitch » en haut de la page.")
     body = urllib.parse.urlencode({"client_id": client_id, "client_secret": secret,
                                    "grant_type": "client_credentials"}).encode()
     req = urllib.request.Request("https://id.twitch.tv/oauth2/token", data=body, method="POST")
@@ -235,7 +235,7 @@ def twitch_token(client_id):
         with urllib.request.urlopen(req, timeout=30) as r:
             _twitch_token = json.load(r)["access_token"]
     except urllib.error.HTTPError as e:
-        raise ApiError(f"Twitch refuse l'ID client ou le secret client (HTTP {e.code}). Vérifie-les dans les réglages.") from None
+        raise ApiError(f"Twitch refuse le secret client (HTTP {e.code}) : recopie-le dans « Connecter YouTube et Twitch » en haut de la page.") from None
     except urllib.error.URLError as e:
         raise ApiError(f"Hôte injoignable (id.twitch.tv) : {e.reason}") from None
     return _twitch_token
