@@ -310,6 +310,15 @@ def twitch_trends(hours, lang):
     if not game_id:
         return {"game": None, "streams": [], "clips": []}
     streams = tw("streams", game_id=game_id, language=lang, first=20).get("data", [])
+    # Rediffusion (VOD) du live en cours : c'est ce lien qu'Opus Clip sait découper.
+    for st in streams[:15]:
+        try:
+            vids = tw("videos", user_id=st["user_id"], type="archive", first=1).get("data", [])
+        except ApiError:
+            vids = []
+        if vids:
+            st["vod_url"] = vids[0].get("url")
+            st["vod_duration"] = vids[0].get("duration")
     started = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
     global _clips_cache
     if _clips_cache is None:
@@ -402,7 +411,7 @@ def region_payload(yt_items, moments, twd, yt_err, tw_err, lang):
 
     def clean_stream(st):
         return {k: st.get(k) for k in ("user_name", "user_login", "viewer_count", "title", "started_at",
-                                        "thumbnail_url")}
+                                        "thumbnail_url", "vod_url", "vod_duration")}
     return {
         "lang": lang,
         "youtube": [{k: round(v[k], 1) if isinstance(v[k], float) else v[k]
