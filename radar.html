@@ -88,6 +88,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .notice { background: var(--warn-soft); border-radius: 10px; padding: 12px 14px; font-size: .9rem; overflow-wrap: anywhere; }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); display: grid; gap: 6px; }
 .empty h2 { color: var(--fg); font-size: 1.1rem; }
+.howto { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.howto summary { cursor: pointer; font-weight: 700; font-family: var(--font-display); }
+.howto ol { margin: 10px 0 0; padding-left: 1.3em; display: grid; gap: 6px; font-size: .9rem; }
+.opusrow button.alt { background: var(--surface); color: var(--fg); border-color: var(--line); }
 .keys { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
 .keys summary { cursor: pointer; font-weight: 700; font-family: var(--font-display); font-size: 1.05rem; }
 .keys label { display: grid; gap: 5px; font-size: .8rem; font-weight: 600; letter-spacing: .03em; color: var(--muted); }
@@ -102,9 +106,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 <div class="wrap">
   <header style="display:grid;gap:8px">
     <h1>Radar Clips <span>GTA 6</span></h1>
-    <p class="lede">Les vidéos YouTube et les streams Twitch GTA 6 qui décollent, avec les moments à clipper. Une veille dans le cloud met cette page à jour toutes les heures, même quand ton ordinateur est éteint.</p>
+    <p class="lede">Les streams Twitch et vidéos YouTube GTA 6 qui décollent, avec les moments à clipper et tout ce qu'il faut pour les publier gratuitement. Mise à jour automatique toutes les heures.</p>
     <div class="state" id="state"><span><span class="dot old"></span>Connexion aux données…</span></div>
   </header>
+
+  <details class="howto" id="howto">
+    <summary>Ta méthode gratuite en 4 étapes</summary>
+    <ol>
+      <li><b>Choisis un moment</b> ici (Clips Twitch ou Temps forts), ou crée-le toi-même pendant un live avec le bouton « Clip » de Twitch.</li>
+      <li><b>① Copier le lien</b> puis <b>② StreamLadder</b> : colle le lien, choisis la disposition webcam + jeu, exporte en MP4 (version gratuite).</li>
+      <li><b>③ CapCut</b> : importe le MP4, ajoute l'accroche en haut et les « Légendes auto », coupe le début pour démarrer sur l'action.</li>
+      <li><b>📝 Copier la description</b>, publie sur TikTok, puis « Marquer comme clippé ». 🇫🇷 → @vicecitoyen · 🇺🇸 → @neonandwasted</li>
+    </ol>
+  </details>
 
   <div id="notice" class="notice" hidden></div>
 
@@ -161,18 +175,19 @@ try { region = localStorage.getItem("radarRegion") || "fr"; } catch {}
 // Données de la région choisie (compatibilité avec l'ancien format sans régions = FR).
 const cur = () => (DATA && DATA.regions ? DATA.regions[region] : region === "fr" ? DATA : null) || { youtube: [], moments: [], twitch: {}, errors: {} };
 const EN = () => region === "us";
-const OPUS = "https://clip.opus.pro/";
-function opusRow(link, range, note) {
-  const label = "✂️ Copier pour Opus Clip";
-  const b = el("button", { type: "button" }, label);
-  b.addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(link); b.textContent = "Copié ✓ colle-le dans Opus Clip"; }
-    catch { b.textContent = link; }
-    setTimeout(() => (b.textContent = label), 3500);
-  });
-  return el("div", { class: "opusrow" }, b,
-    el("a", { class: "go", href: OPUS, target: "_blank", rel: "noopener" }, "▶ Ouvrir Opus Clip"),
-    range ? el("span", { class: "foot" }, `Période à régler dans Opus Clip : ${range}`) : null,
+const SL = "https://streamladder.com/";
+const CAPCUT = "https://www.capcut.com/";
+// Méthode gratuite : lien -> StreamLadder (vertical) -> CapCut (montage) -> TikTok, avec la description prête.
+function freeRow(link, kitArgs, range, note) {
+  const copyBtn = el("button", { type: "button" }, "① Copier le lien");
+  copyBtn.addEventListener("click", () => copy(link, copyBtn, "① Copier le lien"));
+  const descBtn = el("button", { type: "button", class: "alt" }, "📝 Copier la description");
+  descBtn.addEventListener("click", () => copy(captionFor(kitArgs), descBtn, "📝 Copier la description"));
+  return el("div", { class: "opusrow" }, copyBtn,
+    el("a", { class: "go", href: SL, target: "_blank", rel: "noopener" }, "② StreamLadder (vertical)"),
+    el("a", { class: "go", href: CAPCUT, target: "_blank", rel: "noopener" }, "③ CapCut (montage)"),
+    descBtn,
+    range ? el("span", { class: "foot" }, `Passage à garder : ${range}`) : null,
     note ? el("span", { class: "foot" }, note) : null);
 }
 function goLink(href, label, cls = "") {
@@ -241,6 +256,21 @@ const HOOKS_EN = [
   [/scream|scared|shock|wtf|what/i, ["His reaction is legendary 😱", "He screamed live on stream 😭", "Nobody was ready for this"]],
   [/lol|lmao|😂|🤣|💀|dead|laugh|funny/i, ["Funniest moment of his stream 😂", "I couldn't stop laughing 💀", "He did NOT expect that 😭"]],
 ];
+function hooksFor(text, creator) {
+  const en = EN();
+  const hooks = [];
+  for (const [re, list] of (en ? HOOKS_EN : HOOKS)) if (re.test(text)) hooks.push(...list);
+  if (en) hooks.push(`${creator} in GTA 6: this moment 😳`, "Wait for the end…", "Best GTA 6 moment so far");
+  else hooks.push(`${creator} sur GTA 6 : ce moment 😳`, "Attends la fin…", "Le meilleur moment de GTA 6 jusqu'ici");
+  return [...new Set(hooks)].slice(0, 4);
+}
+function captionFor({ text, creator }) {
+  const hook = hooksFor(text || "", creator)[0];
+  const tag = String(creator).normalize("NFD").replace(/[^A-Za-z0-9]/g, "");
+  return EN()
+    ? `${hook}\n🎮 Clip from ${creator} — full stream on their channel.\n#GTA6 #GTAVI #${tag} #gaming #gta #clips #fyp #foryou`
+    : `${hook}\n🎮 Clip de ${creator} — contenu complet sur sa chaîne.\n#GTA6 #GTAVI #${tag} #gaming #gta #clip #pourtoi #fyp`;
+}
 function kitFor({ text, creator, source, startAt }) {
   const en = EN();
   const hooks = [];
@@ -261,7 +291,8 @@ function kitFor({ text, creator, source, startAt }) {
     el("ul", {},
       startAt != null ? el("li", {}, `Commence 2 à 3 s avant ${fmtTime(startAt)} : le moment fort arrive tout de suite.`) : null,
       el("li", {}, "20 à 35 s pour la viralité, ou plus de 61 s pour Creator Rewards (raconte le contexte avant)."),
-      el("li", {}, "Format 9:16 : jeu en haut, facecam en bas, sous-titres animés au centre."),
+      el("li", {}, "Format 9:16 : si l'image est coupée, dans CapCut choisis « Ajuster » + fond flou pour garder tout le jeu."),
+      el("li", {}, "CapCut : « Légendes auto » pour les sous-titres, et l'accroche en haut pendant les 3 premières secondes."),
       el("li", {}, "Termine sur la réaction, sans fin longue : ça pousse à revoir la vidéo.")));
   const b = el("button", { type: "button" }, "Copier la légende");
   b.addEventListener("click", () => copy(caption, b, "Copier la légende"));
@@ -303,7 +334,7 @@ function renderMoments(d) {
         el("p", { class: "sub" }, `${m.channel} · cité par ${m.mentions} personne${m.mentions > 1 ? "s" : ""} · ${fmtNum(m.likes)} j'aime`),
         el("p", { class: "quote" }, `« ${m.quote} »`),
         el("div", { class: "links" }, goLink(url, `Ouvrir la vidéo à ${fmtTime(m.start)}`)),
-        opusRow(`https://www.youtube.com/watch?v=${m.videoId}`, `${fmtTime(m.start)} → ${fmtTime(m.end)}`)));
+        freeRow(`https://www.youtube.com/watch?v=${m.videoId}&t=${m.start}s`, { text: `${m.quote} ${m.title}`, creator: m.channel }, `${fmtTime(m.start)} → ${fmtTime(m.end)}`)));
     item.querySelector(".body").append(actions(item, `yt:${m.videoId}:${m.at}`,
       { text: `${m.quote} ${m.title}`, creator: m.channel, source: txt, startAt: m.at }, [copyBtn]));
     return item;
@@ -323,7 +354,7 @@ function renderYouTube(d) {
         el("p", { class: "title" }, el("a", { href: v.url, target: "_blank", rel: "noopener" }, `${i + 1}. ${v.title}`)),
         el("p", { class: "sub" }, `${v.channel} · ${stat} · ${fmtNum(v.likes)} j'aime · ${fmtNum(v.comments)} commentaires`),
         el("div", { class: "links" }, goLink(v.url, v.live ? "Regarder le live sur YouTube" : "Regarder la vidéo sur YouTube")),
-        opusRow(v.url, null, v.live ? "Live en cours : Opus Clip pourra le découper une fois le live terminé (même lien)." : "Opus Clip trouvera seul les meilleurs moments de la vidéo.")));
+        freeRow(v.url, { text: v.title, creator: v.channel }, null, v.live ? "Live en cours : repère le moment fort, puis utilise la rediffusion une fois le live terminé." : null)));
     item.querySelector(".body").append(actions(item, `ytv:${v.id}`, { text: v.title, creator: v.channel, source: v.url }));
     return item;
   });
@@ -343,9 +374,7 @@ function renderStreams(d) {
         el("div", { class: "row" }, el("span", { class: "pill tw" }, "Twitch"), el("span", { class: "pill live" }, "En direct")),
         el("div", { class: "links" }, goLink(url, "Regarder le live sur Twitch", "tw"), goLink(url + "/clips?filter=clips&range=24hr", "Voir ses clips du jour", "tw"),
           s.vod_url ? goLink(s.vod_url, "Ouvrir la rediffusion", "tw") : null),
-        s.vod_url
-          ? opusRow(s.vod_url, null, "Lien de la rediffusion du live (elle s'allonge pendant le stream). Choisis la période du moment fort dans Opus Clip.")
-          : el("p", { class: "sub" }, "Pas de lien de rediffusion trouvé pour ce live : ouvre ses vidéos sur Twitch pour récupérer le lien à coller dans Opus Clip.")));
+        freeRow(url, { text: s.title, creator: s.user_name }, null, "Pendant le live : ouvre-le et appuie sur « Clip » (Alt+X) au moment fort, puis colle le lien du clip dans StreamLadder.")));
     return item;
   });
 }
@@ -362,8 +391,8 @@ function renderClips(d) {
         el("p", { class: "sub" }, `${c.broadcaster_name}${c.duration ? ` · ${Math.round(c.duration)} s` : ""}${c.created_at ? ` · ${ago(c.created_at)}` : ""}`),
         el("div", { class: "links" }, goLink(c.url, "Voir le clip", "tw"), vod ? goLink(vod, `Ouvrir la rediffusion à ${fmtTime(c.vod_offset)}`, "tw") : null),
         vod
-          ? opusRow(`https://www.twitch.tv/videos/${c.video_id}`, `${fmtTime(Math.max(0, c.vod_offset - 10))} → ${fmtTime(c.vod_offset + (c.duration || 30) + 15)}`, "Lien de la rediffusion : tu auras le moment avec un peu de contexte avant et après.")
-          : opusRow(c.url, null, "Lien du clip Twitch.")));
+          ? freeRow(c.url, { text: c.title || "", creator: c.broadcaster_name }, null, "Lien du clip Twitch : colle-le tel quel dans StreamLadder.")
+          : freeRow(c.url, { text: c.title || "", creator: c.broadcaster_name }, null, "Lien du clip Twitch : colle-le tel quel dans StreamLadder.")));
     item.querySelector(".body").append(actions(item, `twc:${c.url}`,
       { text: c.title || "", creator: c.broadcaster_name, source: vod || c.url, startAt: c.vod_offset }));
     return item;
