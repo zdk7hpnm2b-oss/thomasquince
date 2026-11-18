@@ -75,6 +75,13 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 .kit h4 { margin: 0; font-size: .74rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .kit ul { margin: 0; padding-left: 1.2em; display: grid; gap: 3px; }
 .kit pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.go { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: .88rem; text-decoration: none; color: var(--cool); padding: 4px 0; }
+.go:hover { text-decoration: underline; }
+.go.tw { color: var(--twitch); }
+.links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.regions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.regions button { padding: 10px; font-size: .95rem; border-width: 2px; }
+.regions button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .notice { background: var(--warn-soft); border-radius: 10px; padding: 12px 14px; font-size: .9rem; overflow-wrap: anywhere; }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); display: grid; gap: 6px; }
 .empty h2 { color: var(--fg); font-size: 1.1rem; }
@@ -117,6 +124,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
     </ol>
   </details>
 
+  <div class="regions" role="group" aria-label="Compte">
+    <button type="button" id="reg-fr" aria-pressed="true">🇫🇷 Compte FR</button>
+    <button type="button" id="reg-us" aria-pressed="false">🇺🇸 Compte US</button>
+  </div>
+
   <section class="summary" id="summary" aria-label="Résumé"></section>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
@@ -141,6 +153,14 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outlin
 const $ = (id) => document.getElementById(id);
 let DATA = null;
 let tab = "moments";
+let region = "fr";
+try { region = localStorage.getItem("radarRegion") || "fr"; } catch {}
+// Données de la région choisie (compatibilité avec l'ancien format sans régions = FR).
+const cur = () => (DATA && DATA.regions ? DATA.regions[region] : region === "fr" ? DATA : null) || { youtube: [], moments: [], twitch: {}, errors: {} };
+const EN = () => region === "us";
+function goLink(href, label, cls = "") {
+  return el("a", { class: "go " + cls, href, target: "_blank", rel: "noopener" }, "▶ " + label);
+}
 try { tab = localStorage.getItem("radarTab") || "moments"; } catch {}
 
 /* ---------- utilitaires ---------- */
@@ -195,15 +215,28 @@ const HOOKS = [
   [/cri|hurl|peur|choc|wtf|quoi/i, ["Sa réaction est légendaire 😱", "Il a hurlé en direct 😭", "Personne n'était prêt pour ça"]],
   [/mdr|ptdr|😂|🤣|💀|mort|rire|drôle|jpp/i, ["Le moment le plus drôle de son live 😂", "J'ai pas pu m'arrêter de rire 💀", "Il ne s'attendait PAS à ça 😭"]],
 ];
+const HOOKS_EN = [
+  [/police|cop|chase|wanted|star|pursuit/i, ["GTA 6 cops are absolutely insane 🚔", "He thought he lost them… 😭", "5 stars in 10 seconds 💀"]],
+  [/crash|accident|explo|car|plane|bike/i, ["The worst crash in GTA 6 💥", "He did NOT see that coming 😭", "GTA 6 physics are unreal"]],
+  [/bug|glitch/i, ["This GTA 6 glitch is wild 😂", "Rockstar needs to patch this…", "Nobody noticed this glitch"]],
+  [/secret|easter|hidden|myst/i, ["The GTA 6 secret nobody saw 👀", "Rockstar hid THIS in GTA 6", "Look at the background…"]],
+  [/map|city|vice|leonida|beach|miami/i, ["The GTA 6 map is HUGE 🤯", "Vice City has never looked this good", "First time exploring GTA 6"]],
+  [/scream|scared|shock|wtf|what/i, ["His reaction is legendary 😱", "He screamed live on stream 😭", "Nobody was ready for this"]],
+  [/lol|lmao|😂|🤣|💀|dead|laugh|funny/i, ["Funniest moment of his stream 😂", "I couldn't stop laughing 💀", "He did NOT expect that 😭"]],
+];
 function kitFor({ text, creator, source, startAt }) {
+  const en = EN();
   const hooks = [];
-  for (const [re, list] of HOOKS) if (re.test(text)) hooks.push(...list);
-  hooks.push(`${creator} sur GTA 6 : ce moment 😳`, "Attends la fin…", "Le meilleur moment de GTA 6 jusqu'ici");
+  for (const [re, list] of (en ? HOOKS_EN : HOOKS)) if (re.test(text)) hooks.push(...list);
+  if (en) hooks.push(`${creator} in GTA 6: this moment 😳`, "Wait for the end…", "Best GTA 6 moment so far");
+  else hooks.push(`${creator} sur GTA 6 : ce moment 😳`, "Attends la fin…", "Le meilleur moment de GTA 6 jusqu'ici");
   const uniq = [...new Set(hooks)].slice(0, 4);
   const tag = String(creator).normalize("NFD").replace(/[^A-Za-z0-9]/g, "");
-  const caption = `${uniq[0]}\n🎮 Clip de ${creator} — contenu complet sur sa chaîne.\n#GTA6 #GTAVI #${tag} #gaming #gta #clip #pourtoi #fyp`;
+  const caption = en
+    ? `${uniq[0]}\n🎮 Clip from ${creator} — full stream on their channel.\n#GTA6 #GTAVI #${tag} #gaming #gta #clips #fyp #foryou`
+    : `${uniq[0]}\n🎮 Clip de ${creator} — contenu complet sur sa chaîne.\n#GTA6 #GTAVI #${tag} #gaming #gta #clip #pourtoi #fyp`;
   const box = el("div", { class: "kit" },
-    el("h4", {}, "Accroches (texte en haut de l'écran)"),
+    el("h4", {}, en ? "Accroches en anglais (texte en haut de l'écran)" : "Accroches (texte en haut de l'écran)"),
     el("ul", {}, ...uniq.map((h) => el("li", {}, h))),
     el("h4", {}, "Légende TikTok"),
     el("pre", {}, caption + (source ? `\n\nSource : ${source}` : "")),
@@ -251,7 +284,8 @@ function renderMoments(d) {
       el("div", { class: "body" },
         el("p", { class: "title" }, el("a", { href: url, target: "_blank", rel: "noopener" }, m.title)),
         el("p", { class: "sub" }, `${m.channel} · cité par ${m.mentions} personne${m.mentions > 1 ? "s" : ""} · ${fmtNum(m.likes)} j'aime`),
-        el("p", { class: "quote" }, `« ${m.quote} »`)));
+        el("p", { class: "quote" }, `« ${m.quote} »`),
+        el("div", { class: "links" }, goLink(url, `Ouvrir la vidéo à ${fmtTime(m.start)}`))));
     item.querySelector(".body").append(actions(item, `yt:${m.videoId}:${m.at}`,
       { text: `${m.quote} ${m.title}`, creator: m.channel, source: txt, startAt: m.at }, [copyBtn]));
     return item;
@@ -269,7 +303,8 @@ function renderYouTube(d) {
       el("a", { class: "lead", href: v.url, target: "_blank", rel: "noopener" }, v.live ? "LIVE" : `${fmtNum(v.velocity)}`, el("small", {}, v.live ? "YouTube" : "vues / heure")),
       el("div", { class: "body" },
         el("p", { class: "title" }, el("a", { href: v.url, target: "_blank", rel: "noopener" }, `${i + 1}. ${v.title}`)),
-        el("p", { class: "sub" }, `${v.channel} · ${stat} · ${fmtNum(v.likes)} j'aime · ${fmtNum(v.comments)} commentaires`)));
+        el("p", { class: "sub" }, `${v.channel} · ${stat} · ${fmtNum(v.likes)} j'aime · ${fmtNum(v.comments)} commentaires`),
+        el("div", { class: "links" }, goLink(v.url, v.live ? "Regarder le live sur YouTube" : "Regarder la vidéo sur YouTube"))));
     item.querySelector(".body").append(actions(item, `ytv:${v.id}`, { text: v.title, creator: v.channel, source: v.url }));
     return item;
   });
@@ -286,7 +321,8 @@ function renderStreams(d) {
       el("div", { class: "body" },
         el("p", { class: "title" }, el("a", { href: url, target: "_blank", rel: "noopener" }, `${i + 1}. ${s.user_name}`)),
         el("p", { class: "sub" }, `${s.title}${s.started_at ? ` · en live depuis ${ago(s.started_at).replace("il y a ", "")}` : ""}`),
-        el("div", { class: "row" }, el("span", { class: "pill tw" }, "Twitch"), el("span", { class: "pill live" }, "En direct"))));
+        el("div", { class: "row" }, el("span", { class: "pill tw" }, "Twitch"), el("span", { class: "pill live" }, "En direct")),
+        el("div", { class: "links" }, goLink(url, "Regarder le live sur Twitch", "tw"), goLink(url + "/clips?filter=clips&range=24hr", "Voir ses clips du jour", "tw"))));
     return item;
   });
 }
@@ -301,7 +337,7 @@ function renderClips(d) {
       el("div", { class: "body" },
         el("p", { class: "title" }, el("a", { href: c.url, target: "_blank", rel: "noopener" }, c.title || "Clip")),
         el("p", { class: "sub" }, `${c.broadcaster_name}${c.duration ? ` · ${Math.round(c.duration)} s` : ""}${c.created_at ? ` · ${ago(c.created_at)}` : ""}`),
-        vod ? el("p", { class: "sub" }, "Moment dans la rediffusion : ", el("a", { href: vod, target: "_blank", rel: "noopener" }, fmtTime(c.vod_offset))) : null));
+        el("div", { class: "links" }, goLink(c.url, "Voir le clip", "tw"), vod ? goLink(vod, `Ouvrir la rediffusion à ${fmtTime(c.vod_offset)}`, "tw") : null)));
     item.querySelector(".body").append(actions(item, `twc:${c.url}`,
       { text: c.title || "", creator: c.broadcaster_name, source: vod || c.url, startAt: c.vod_offset }));
     return item;
@@ -314,15 +350,18 @@ function render() {
   for (const t of ["moments", "youtube", "streams", "clips"]) $("tab-" + t).setAttribute("aria-selected", String(t === tab));
   document.querySelectorAll(".tile").forEach((x) => x.classList.toggle("on", x.dataset.tab === tab));
   if (!DATA) return;
+  for (const r of ["fr", "us"]) $("reg-" + r).setAttribute("aria-pressed", String(r === region));
   const fn = { moments: renderMoments, youtube: renderYouTube, streams: renderStreams, clips: renderClips }[tab];
-  $("list").replaceChildren(...fn(DATA));
+  $("list").replaceChildren(...fn(cur()));
 }
 
-function renderHeader(d) {
+function renderHeader(all) {
+  const d = cur();
+  d.updatedAt = all.updatedAt; d.windowHours = all.windowHours;
   const ageMin = (Date.now() - new Date(d.updatedAt)) / 60000;
   $("state").replaceChildren(
     el("span", {}, el("span", { class: "dot" + (ageMin > 150 ? " old" : "") }), `Mis à jour ${ago(d.updatedAt)}`),
-    el("span", { class: "foot" }, `Fenêtre : ${d.windowHours || 24} h · langue : ${d.lang || "toutes"} · prochain passage dans l'heure`));
+    el("span", { class: "foot" }, `Fenêtre : ${d.windowHours || 24} h · ${EN() ? "contenus en anglais (US / international)" : "contenus en français"} · prochain passage dans l'heure`));
   const errs = [];
   if (d.errors?.youtube) errs.push(`YouTube : ${d.errors.youtube}`);
   if (d.errors?.twitch) errs.push(`Twitch : ${d.errors.twitch}`);
@@ -341,6 +380,14 @@ function renderHeader(d) {
     return b;
   }));
 }
+
+function setRegion(r) {
+  region = r;
+  try { localStorage.setItem("radarRegion", r); } catch {}
+  if (DATA) renderHeader(DATA);
+  render();
+}
+for (const r of ["fr", "us"]) $("reg-" + r).addEventListener("click", () => setRegion(r));
 
 function setTab(t) {
   tab = t;

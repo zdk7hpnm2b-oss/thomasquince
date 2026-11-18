@@ -89,23 +89,32 @@ FR_WORDS = __import__("re").compile(
     __import__("re").I)
 
 
+EN_WORDS = __import__("re").compile(
+    r"\b(the|and|my|first|time|playing|is|with|for|this|we|our|you|your|it's|its|day|finally|"
+    r"best|funniest|crazy|insane|world|every|new|stream|launch|reaction|reacts|gameplay)\b",
+    __import__("re").I)
+
+
 def is_lang(snippet, lang):
     """YouTube ne filtre pas strictement par langue : on garde les vidéos déclarées dans la langue,
     ou, sans langue déclarée, celles dont le titre ressemble à du français."""
     declared = (snippet.get("defaultAudioLanguage") or snippet.get("defaultLanguage") or "").lower()
     if declared:
         return declared.startswith(lang)
-    if lang != "fr":
+    words = {"fr": FR_WORDS, "en": EN_WORDS}.get(lang)
+    if not words:
         return True
-    return len(FR_WORDS.findall(snippet.get("title", ""))) >= 1
+    return len(words.findall(snippet.get("title", ""))) >= 1
 
 
-def youtube_trends(hours, lang):
+def youtube_trends(hours, lang, region="", live_search=True):
     after = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    region = "FR" if lang == "fr" else ""
     ids, live_ids = [], set()
-    # 1) vidéos publiées récemment, triées par vues ; 2) lives en cours. ~200 unités de quota au total.
-    for extra in ({"order": "viewCount", "publishedAfter": after}, {"order": "viewCount", "eventType": "live"}):
+    # 1) vidéos publiées récemment, triées par vues ; 2) lives en cours (facultatif). 100 unités par recherche.
+    searches = [{"order": "viewCount", "publishedAfter": after}]
+    if live_search:
+        searches.append({"order": "viewCount", "eventType": "live"})
+    for extra in searches:
         data = yt("search", part="id", type="video", q=KEYWORDS, maxResults=50,
                   relevanceLanguage=lang, regionCode=region, **extra)
         for it in data.get("items", []):
@@ -207,7 +216,7 @@ def find_moments(comments, max_sec, gap=20):
     return sorted(out, key=lambda m: m["weight"], reverse=True)
 
 
-def youtube_moments(videos, top=5):
+def youtube_moments(videos, top=3):
     """Lit jusqu'à 200 commentaires des `top` meilleures vidéos (hors lives) et renvoie les meilleurs moments."""
     allm = []
     for v in [v for v in videos if not v["live"] and v["comments"] > 0][:top]:
@@ -271,7 +280,18 @@ def tw(endpoint, **params):
                     {"Client-Id": client_id, "Authorization": f"Bearer {token}"})
 
 
+_game = None
+
+
 def twitch_game_id():
+    global _game
+    if _game:
+        return _game
+    _game = _twitch_game_id()
+    return _game
+
+
+def _twitch_game_id():
     data = tw("games", name=TWITCH_GAME_NAMES)
     if data.get("data"):
         return data["data"][0]["id"], data["data"][0]["name"]
@@ -282,13 +302,19 @@ def twitch_game_id():
     return None, None
 
 
+_clips_cache = None
+
+
 def twitch_trends(hours, lang):
     game_id, game_name = twitch_game_id()
     if not game_id:
         return {"game": None, "streams": [], "clips": []}
     streams = tw("streams", game_id=game_id, language=lang, first=20).get("data", [])
     started = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    clips = tw("clips", game_id=game_id, started_at=started, first=100).get("data", [])
+    global _clips_cache
+    if _clips_cache is None:
+        _clips_cache = tw("clips", game_id=game_id, started_at=started, first=100).get("data", [])
+    clips = list(_clips_cache)
     if lang:
         clips = [c for c in clips if (c.get("language") or "").startswith(lang)]
     clips.sort(key=lambda c: c.get("view_count", 0), reverse=True)
@@ -362,10 +388,39 @@ def load_keys(folder):
     return False
 
 
+# FR : 2 recherches YouTube (récentes + lives) ; US : 1 recherche. ≈ 310 unités par passage, ≈ 7 500 par jour.
+REGIONS = {
+    "fr": {"label": "France", "lang": "fr", "region": "FR", "live_search": True},
+    "us": {"label": "US / international", "lang": "en", "region": "US", "live_search": False},
+}
+
+
+def region_payload(yt_items, moments, twd, yt_err, tw_err, lang):
+    def clean_clip(c):
+        return {k: c.get(k) for k in ("title", "broadcaster_name", "view_count", "url", "thumbnail_url",
+                                       "vod_offset", "video_id", "created_at", "duration")}
+
+    def clean_stream(st):
+        return {k: st.get(k) for k in ("user_name", "user_login", "viewer_count", "title", "started_at",
+                                        "thumbnail_url")}
+    return {
+        "lang": lang,
+        "youtube": [{k: round(v[k], 1) if isinstance(v[k], float) else v[k]
+                     for k in ("id", "title", "channel", "channelId", "url", "thumb", "age_h", "views", "likes",
+                               "comments", "velocity", "live", "watching", "duration", "score")}
+                    for v in yt_items[:20]],
+        "moments": moments[:10],
+        "twitch": {"game": (twd or {}).get("game"),
+                   "streams": [clean_stream(x) for x in (twd or {}).get("streams", [])[:15]],
+                   "clips": [clean_clip(x) for x in (twd or {}).get("clips", [])[:12]]},
+        "errors": {"youtube": yt_err, "twitch": tw_err},
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hours", type=int, default=24)
-    ap.add_argument("--lang", default="fr")
+    ap.add_argument("--regions", default="fr,us", help="régions à suivre : fr, us")
     ap.add_argument("--no-save", action="store_true")
     ap.add_argument("--keys-dir", help="dossier où ArtifactData a enregistré le document keys.json (clés saisies dans la page Radar)")
     ap.add_argument("--json", help="écrit aussi les données brutes dans ce fichier JSON (pour la page Claude)")
@@ -373,47 +428,36 @@ def main():
     if a.keys_dir:
         load_keys(a.keys_dir)
 
-    yt_items, yt_err, twd, tw_err, moments = [], None, None, None, []
-    try:
-        yt_items = youtube_trends(a.hours, a.lang)
-        moments = youtube_moments(yt_items)
-    except ApiError as e:
-        yt_err = str(e)
-    try:
-        twd = twitch_trends(a.hours, a.lang)
-    except ApiError as e:
-        tw_err = str(e)
+    regions = [r.strip() for r in a.regions.split(",") if r.strip() in REGIONS]
+    payload = {"updatedAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "windowHours": a.hours, "regions": {}}
+    reports, all_failed = [], True
+    for code in regions:
+        cfg = REGIONS[code]
+        yt_items, yt_err, twd, tw_err, moments = [], None, None, None, []
+        try:
+            yt_items = youtube_trends(a.hours, cfg["lang"], cfg["region"], cfg["live_search"])
+            moments = youtube_moments(yt_items)
+        except ApiError as e:
+            yt_err = str(e)
+        try:
+            twd = twitch_trends(a.hours, cfg["lang"])
+        except ApiError as e:
+            tw_err = str(e)
+        all_failed = all_failed and bool(yt_err and tw_err)
+        payload["regions"][code] = region_payload(yt_items, moments, twd, yt_err, tw_err, cfg["lang"])
+        reports.append(f"<!-- {cfg['label']} -->\n" + build_report(yt_items, yt_err, twd, tw_err, a.hours, cfg["lang"]))
 
     if a.json:
-        def clean_clip(c):
-            return {k: c.get(k) for k in ("title", "broadcaster_name", "view_count", "url", "thumbnail_url",
-                                           "vod_offset", "video_id", "created_at", "duration")}
-        def clean_stream(st):
-            return {k: st.get(k) for k in ("user_name", "user_login", "viewer_count", "title", "started_at",
-                                            "thumbnail_url")}
-        payload = {
-            "updatedAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "windowHours": a.hours, "lang": a.lang,
-            "youtube": [{k: round(v[k], 1) if isinstance(v[k], float) else v[k]
-                         for k in ("id", "title", "channel", "channelId", "url", "thumb", "age_h", "views", "likes",
-                                   "comments", "velocity", "live", "watching", "duration", "score")}
-                        for v in yt_items[:25]],
-            "moments": moments,
-            "twitch": {"game": (twd or {}).get("game"),
-                       "streams": [clean_stream(x) for x in (twd or {}).get("streams", [])[:15]],
-                       "clips": [clean_clip(x) for x in (twd or {}).get("clips", [])[:12]]},
-            "errors": {"youtube": yt_err, "twitch": tw_err},
-        }
         Path(a.json).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-
-    report = build_report(yt_items, yt_err, twd, tw_err, a.hours, a.lang)
+    report = "\n".join(reports)
     print(report)
     if not a.no_save:
         REPORT_DIR.mkdir(exist_ok=True)
         (REPORT_DIR / "latest.md").write_text(report, encoding="utf-8")
         stamp = dt.datetime.now(dt.timezone(dt.timedelta(hours=1))).strftime("%Y-%m-%d_%Hh%M")
         (REPORT_DIR / f"{stamp}.md").write_text(report, encoding="utf-8")
-    return 0 if not (yt_err and tw_err) else 1
+    return 1 if all_failed else 0
 
 
 if __name__ == "__main__":
