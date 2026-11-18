@@ -137,6 +137,8 @@ def youtube_trends(hours, lang, region="", live_search=True):
             continue
         if lang and not is_lang(sn, lang):
             continue
+        if not __import__("re").search(r"gta|grand theft auto|vice city|leonida", sn.get("title", "") + " " + sn.get("description", "")[:300], __import__("re").I):
+            continue  # hors sujet (actu générale, etc.)
         dur = parse_iso_duration(it.get("contentDetails", {}).get("duration"))
         if sn.get("liveBroadcastContent") != "live" and 0 < dur <= 70:
             continue  # Shorts : rien à clipper
@@ -219,7 +221,8 @@ def find_moments(comments, max_sec, gap=20):
 def youtube_moments(videos, top=3):
     """Lit jusqu'à 200 commentaires des `top` meilleures vidéos (hors lives) et renvoie les meilleurs moments."""
     allm = []
-    for v in [v for v in videos if not v["live"] and v["comments"] > 0][:top]:
+    gta = __import__("re").compile(r"gta|grand theft auto|vice city|leonida", __import__("re").I)
+    for v in [v for v in videos if not v["live"] and v["comments"] > 0 and gta.search(v["title"])][:top]:
         comments, token = [], ""
         for _ in range(2):
             try:
