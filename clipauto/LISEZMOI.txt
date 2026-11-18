@@ -1,0 +1,32 @@
+CLIP AUTO GTA 6 - mode d'emploi
+================================
+
+Ce que ca fait : surveille le chat des plus gros lives GTA 6 (FR + US). Quand le chat explose
+(MDR, KEKW, rires...), Clip Auto cree automatiquement un clip Twitch avec ton compte.
+Tous les clips s'affichent dans "mes_clips.html" (s'ouvre tout seul dans ton navigateur).
+
+1. INSTALLER PYTHON (une seule fois)
+   Ouvre le Microsoft Store, cherche "Python 3.12", clique sur Installer.
+
+2. AUTORISER LA CONNEXION (une seule fois)
+   dev.twitch.tv/console -> Applications -> radar-clips-thomas -> Gerer.
+   Verifie que "URL de redirection OAuth" contient bien : http://localhost
+
+3. LANCER
+   Double-clique sur LANCER.bat.
+   - Premier lancement : colle ton SECRET CLIENT Twitch (il reste sur ton PC, dans config.json).
+   - Une page Twitch s'ouvre : clique sur "Autoriser".
+   - Laisse la fenetre noire ouverte : Clip Auto travaille. Pour arreter : ferme-la.
+
+4. UTILISER LES CLIPS
+   Dans mes_clips.html : "Voir le clip", "Ajuster le passage" (raccourcir, titre),
+   puis "Copier le lien" et colle-le dans StreamLadder pour le mettre en vertical.
+   FR -> @vicecitoyen   |   US -> @neonandwasted
+
+REGLAGES (dans config.json, apres le premier lancement)
+   "langues": ["fr", "en"]     -> enleve "en" pour ne surveiller que les lives francais
+   "lives_par_langue": 6       -> nombre de lives surveilles par langue
+   "chaines_en_plus": ["wankilstudio", "xqc"] -> chaines toujours surveillees quand elles sont en live
+   "sensibilite": 3.0          -> plus haut = moins de clips mais plus forts (essaie 4.0 si trop de clips)
+
+NE PARTAGE JAMAIS config.json : il contient ton secret et ta connexion Twitch.
