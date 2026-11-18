@@ -83,6 +83,23 @@ def yt(endpoint, **params):
         raise
 
 
+FR_WORDS = __import__("re").compile(
+    r"\b(le|la|les|des|du|une|on|je|tu|il|c'est|avec|pour|enfin|découvre|découverte|première|premier|jour|"
+    r"ma|mon|mes|nous|vous|est|sur|dans|qui|quoi|trop|ça|ca|pas|vraiment|meilleur|incroyable|ensemble)\b",
+    __import__("re").I)
+
+
+def is_lang(snippet, lang):
+    """YouTube ne filtre pas strictement par langue : on garde les vidéos déclarées dans la langue,
+    ou, sans langue déclarée, celles dont le titre ressemble à du français."""
+    declared = (snippet.get("defaultAudioLanguage") or snippet.get("defaultLanguage") or "").lower()
+    if declared:
+        return declared.startswith(lang)
+    if lang != "fr":
+        return True
+    return len(FR_WORDS.findall(snippet.get("title", ""))) >= 1
+
+
 def youtube_trends(hours, lang):
     after = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
     region = "FR" if lang == "fr" else ""
@@ -108,6 +125,8 @@ def youtube_trends(hours, lang):
     for it in data.get("items", []):
         sn, st = it["snippet"], it.get("statistics", {})
         if sn.get("liveBroadcastContent") == "upcoming":
+            continue
+        if lang and not is_lang(sn, lang):
             continue
         dur = parse_iso_duration(it.get("contentDetails", {}).get("duration"))
         if sn.get("liveBroadcastContent") != "live" and 0 < dur <= 70:
