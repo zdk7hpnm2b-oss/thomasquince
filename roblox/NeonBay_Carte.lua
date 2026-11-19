@@ -13,7 +13,7 @@
 
 	CE QUI EST CRÉÉ
 	- La plage (Ocean Strip) : point de départ des Malins, écran géant,
-	  cabine de déguisement, palmiers, mer.
+	  cabine de déguisement, palmiers, mer, et Muscle Beach (5 appareils de muscu).
 	- La rue des boutiques (Little Mango) : 3 boutiques avec une caisse
 	  (« Faire le coup », 5 secondes), affiches « Recherché », poste des Gardiens.
 	- Le marais (Gator Swamp) : eau, îlots, roseaux, planque du duo,
@@ -705,6 +705,114 @@ for _ = 1, 120 do
 		Material = Enum.Material.Grass,
 		CanCollide = false,
 	})
+end
+
+---------------------------------------------------------------------------
+-- 4 bis. MUSCLE BEACH (salle de muscu en plein air, sur la plage)
+--    Chaque appareil est un Model avec les attributs ForceRequise et Gain.
+--    Le script MuscleService (ServerScriptService) s'en sert.
+---------------------------------------------------------------------------
+local dMuscle = dossier("MuscleBeach", dPlage)
+
+bloc(dMuscle, {
+	Name = "TapisDeSol",
+	Size = Vector3.new(110, 0.4, 24),
+	CFrame = CFrame.new(-290, 0.5, 68),
+	Color = Color3.fromRGB(60, 60, 70),
+	Material = Enum.Material.Rubber,
+})
+
+-- Arche d'entrée, tournée vers le point de départ des Malins
+for _, dx in ipairs({ -20, 20 }) do
+	bloc(dMuscle, {
+		Name = "PilierArche",
+		Size = Vector3.new(2, 14, 2),
+		CFrame = CFrame.new(-290 + dx, 7, 57),
+		Color = C.rose,
+		Material = Enum.Material.Neon,
+	})
+end
+local arche = bloc(dMuscle, {
+	Name = "Arche",
+	Size = Vector3.new(42, 5, 1),
+	CFrame = CFrame.new(-290, 16, 57),
+	Color = C.noir,
+})
+texteSurFace(arche, Enum.NormalId.Front, "MUSCLE BEACH", C.orange)
+
+local appareils = {
+	{ nom = "Halteres", texte = "Haltères", requise = 0, gain = 1, action = "Soulever", x = -330, couleur = C.cyan },
+	{ nom = "SacDeFrappe", texte = "Sac de frappe", requise = 50, gain = 3, action = "Frapper", x = -310, couleur = Color3.fromRGB(220, 50, 50) },
+	{ nom = "TapisDeCourse", texte = "Tapis de course", requise = 200, gain = 6, action = "Courir", x = -290, couleur = C.menthe },
+	{ nom = "DeveloppeCouche", texte = "Développé couché", requise = 800, gain = 15, action = "Pousser", x = -270, couleur = C.violet },
+	{ nom = "LeMonstre", texte = "LE MONSTRE", requise = 3000, gain = 40, action = "Soulever", x = -250, couleur = C.orange },
+}
+
+for _, a in ipairs(appareils) do
+	local m = modele(a.nom, dMuscle)
+	m:SetAttribute("ForceRequise", a.requise)
+	m:SetAttribute("Gain", a.gain)
+	local base = CFrame.new(a.x, 0.7, 70)
+	local principal
+
+	if a.nom == "Halteres" then
+		principal = bloc(m, { Name = "Banc", Size = Vector3.new(3, 2, 6), CFrame = base * CFrame.new(0, 1, 0), Color = C.noir })
+		for _, dx in ipairs({ -3, 3 }) do
+			bloc(m, { Name = "Barre", Size = Vector3.new(0.4, 0.4, 2), CFrame = base * CFrame.new(dx, 0.4, -4), Color = C.trottoir, Material = Enum.Material.Metal })
+			for _, dz in ipairs({ -1, 1 }) do
+				bloc(m, { Name = "Poids", Shape = Enum.PartType.Ball, Size = Vector3.new(1.2, 1.2, 1.2), CFrame = base * CFrame.new(dx, 0.6, -4 + dz), Color = a.couleur })
+			end
+		end
+	elseif a.nom == "SacDeFrappe" then
+		bloc(m, { Name = "Potence", Size = Vector3.new(0.6, 12, 0.6), CFrame = base * CFrame.new(-3, 6, 0), Color = C.noir, Material = Enum.Material.Metal })
+		bloc(m, { Name = "Bras", Size = Vector3.new(4, 0.6, 0.6), CFrame = base * CFrame.new(-1, 11.7, 0), Color = C.noir, Material = Enum.Material.Metal })
+		principal = bloc(m, {
+			Name = "Sac",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(6, 3, 3),
+			CFrame = base * CFrame.new(0, 7, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = a.couleur,
+			Material = Enum.Material.Fabric,
+		})
+	elseif a.nom == "TapisDeCourse" then
+		principal = bloc(m, { Name = "Tapis", Size = Vector3.new(4, 1, 9), CFrame = base * CFrame.new(0, 0.5, 0), Color = C.noir })
+		bloc(m, { Name = "Rail", Size = Vector3.new(0.4, 4, 0.4), CFrame = base * CFrame.new(-2, 3, -4), Color = a.couleur, Material = Enum.Material.Neon })
+		bloc(m, { Name = "Rail", Size = Vector3.new(0.4, 4, 0.4), CFrame = base * CFrame.new(2, 3, -4), Color = a.couleur, Material = Enum.Material.Neon })
+		bloc(m, { Name = "Console", Size = Vector3.new(4.4, 1.5, 0.6), CFrame = base * CFrame.new(0, 5, -4), Color = C.noir })
+	else
+		-- Développé couché et Le Monstre : banc + barre avec disques
+		local geant = (a.nom == "LeMonstre")
+		local largeurBarre = geant and 14 or 9
+		local disque = geant and 6 or 3
+		principal = bloc(m, { Name = "Banc", Size = Vector3.new(3, 2, 7), CFrame = base * CFrame.new(0, 1, 0), Color = C.noir })
+		for _, dx in ipairs({ -1.5, 1.5 }) do
+			bloc(m, { Name = "Support", Size = Vector3.new(0.4, 5, 0.4), CFrame = base * CFrame.new(dx, 2.5, -3), Color = C.trottoir, Material = Enum.Material.Metal })
+		end
+		bloc(m, {
+			Name = "Barre",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(largeurBarre, 0.5, 0.5),
+			CFrame = base * CFrame.new(0, 5, -3),
+			Color = C.trottoir,
+			Material = Enum.Material.Metal,
+		})
+		for _, dx in ipairs({ -largeurBarre / 2 + 1, largeurBarre / 2 - 1 }) do
+			bloc(m, {
+				Name = "Disque",
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(geant and 1.5 or 0.8, disque, disque),
+				CFrame = base * CFrame.new(dx, 5, -3),
+				Color = a.couleur,
+				Material = geant and Enum.Material.Neon or Enum.Material.SmoothPlastic,
+			})
+		end
+	end
+
+	m.PrimaryPart = principal
+	local prompt = bouton(principal, a.action, a.texte, 0)
+	prompt.Name = "Entrainement"
+	local texteRequis = (a.requise == 0) and "pour tous" or ("dès " .. a.requise .. " de force")
+	etiquette(principal, a.texte .. " : +" .. a.gain .. " (" .. texteRequis .. ")", a.couleur)
 end
 
 ---------------------------------------------------------------------------
