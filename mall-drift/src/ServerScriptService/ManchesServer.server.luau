@@ -3,12 +3,13 @@
 	À placer dans : ServerScriptService   — nom conseillé : ManchesServer
 
 	LE MODE EN LIGNE « POLICE CONTRE FUGITIFS »
-	  1. ATTENTE : il faut au moins Config.Partie.JoueursMin joueurs
+	  1. ATTENTE : il faut au moins Config.Partie.JoueursMin participants
+	     (s'il manque du monde, des BOTS DE TEST complètent : Config.Partie.BotsTest)
 	  2. INTERMISSION : compte à rebours avant la manche
-	  3. TIRAGE AU SORT : la moitié des joueurs devient POLICE, l'autre FUGITIFS
+	  3. TIRAGE AU SORT : la moitié des participants devient POLICE, l'autre FUGITIFS
 	  4. MANCHE : l'entrée du mall se ferme. Les fugitifs partent de la ligne de
 	     départ ; la police part du 1er étage quelques secondes plus tard.
-	     Un policier qui colle un fugitif l'ARRÊTE (le fugitif va au garage).
+	     Un policier qui colle un fugitif l'ARRÊTE.
 	  5. FIN : la police gagne si tous les fugitifs sont arrêtés, sinon les
 	     fugitifs gagnent à la fin du temps. XP pour tout le monde, bonus aux gagnants.
 	Pendant une manche, la police du mall (ordinateur) se met en pause.
@@ -18,6 +19,7 @@ local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local PathfindingService = game:GetService("PathfindingService")
 
 local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
@@ -27,15 +29,23 @@ local RetirerKart = ServerStorage:WaitForChild("RetirerKart") :: BindableFunctio
 local carte = workspace:WaitForChild("GoldenMall")
 local dossierKarts = workspace:WaitForChild("KartsJoueurs")
 
-local P = Config.Partie or {
-	JoueursMin = 2, Intermission = 20, DureeManche = 300, AvanceFugitifs = 8,
-	DistanceArrestation = 7, XPVictoire = 300, XPParticipation = 50, XPArrestation = 100,
-}
+local P = Config.Partie or {}
+local JOUEURS_MIN = P.JoueursMin or 2
+local INTERMISSION = P.Intermission or 20
+local DUREE = P.DureeManche or 300
+local AVANCE = P.AvanceFugitifs or 8
+local DISTANCE_ARRESTATION = P.DistanceArrestation or 7
+local BOTS_TEST = P.BotsTest or 0
+local SOL = 1
+local HAUTEUR_ETAGE = SOL + 25
 
--- Le canal pour prévenir les joueurs (état de la partie, tirage, arrestations, fin)
 local Partie = Instance.new("RemoteEvent")
 Partie.Name = "Partie"
 Partie.Parent = remotes
+
+local dossierBots = Instance.new("Folder")
+dossierBots.Name = "BotsManche"
+dossierBots.Parent = workspace
 
 ---------------------------------------------------------------------
 -- Les équipes (visibles dans le tableau des joueurs)
@@ -53,7 +63,276 @@ local EQUIPE_FUGITIFS = equipe("Fugitifs", BrickColor.new("Bright orange"), fals
 local EQUIPE_VISITEURS = equipe("Visiteurs", BrickColor.new("Institutional white"), true)
 
 ---------------------------------------------------------------------
--- Outils
+-- Un participant = un vrai joueur OU un bot de test
+---------------------------------------------------------------------
+type Participant = {
+	nom: string,
+	joueur: Player?,
+	bot: { [string]: any }?,
+	role: string?,
+	arrete: boolean,
+}
+
+local function present(p: Participant): boolean
+	if p.joueur then
+		return p.joueur.Parent ~= nil
+	end
+	return p.bot ~= nil and p.bot.modele.Parent ~= nil
+end
+
+local function positionDe(p: Participant): Vector3?
+	if p.joueur then
+		local racine = p.joueur.Character and p.joueur.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		return racine and racine.Position or nil
+	end
+	return p.bot and p.bot.racine.Position or nil
+end
+
+-- Un policier ne peut arrêter qu'au volant de son kart
+local function auVolant(p: Participant): boolean
+	if p.bot then
+		return true
+	end
+	local j = p.joueur :: Player
+	local humanoide = j.Character and j.Character:FindFirstChildOfClass("Humanoid")
+	if not humanoide or not humanoide.SeatPart then
+		return false
+	end
+	for _, kart in ipairs(dossierKarts:GetChildren()) do
+		if kart:GetAttribute("Proprietaire") == j.UserId and humanoide.SeatPart:IsDescendantOf(kart) then
+			return true
+		end
+	end
+	return false
+end
+
+---------------------------------------------------------------------
+-- LES BOTS DE TEST (un personnage dans un kart, piloté par l'ordinateur)
+---------------------------------------------------------------------
+local NOMS_BOTS = { "Bot Max", "Bot Léa", "Bot Sam", "Bot Inès", "Bot Tom", "Bot Nina" }
+local ANIM_ASSIS = "rbxassetid://2506281703"
+
+-- Des points dans les allées du rez-de-chaussée (pour se balader / fuir)
+local POINTS_FUITE = {}
+for x = -190, 190, 40 do
+	table.insert(POINTS_FUITE, Vector3.new(x, SOL + 3, -137))
+	table.insert(POINTS_FUITE, Vector3.new(x, SOL + 3, 137))
+	if math.abs(x) > 45 then
+		table.insert(POINTS_FUITE, Vector3.new(x, SOL + 3, 0))
+	end
+end
+for _, x in ipairs({ -173, -99, 99, 173 }) do
+	for _, z in ipairs({ -90, -50, 50, 90 }) do
+		table.insert(POINTS_FUITE, Vector3.new(x, SOL + 3, z))
+	end
+end
+for _, z in ipairs({ -100, -60, 60 }) do
+	table.insert(POINTS_FUITE, Vector3.new(0, SOL + 3, z))
+end
+
+local function souder(a: BasePart, b: BasePart)
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = a
+	w.Part1 = b
+	w.Parent = b
+end
+
+local function creerBot(nom: string, role: string, cf: CFrame)
+	local police = role == "Police"
+	local description = Instance.new("HumanoidDescription")
+	description.HeadColor = Color3.fromRGB(230, 185, 140)
+	description.TorsoColor = if police then Color3.fromRGB(28, 42, 92) else Color3.fromRGB(240, 130, 30)
+	description.LeftArmColor = description.TorsoColor
+	description.RightArmColor = description.TorsoColor
+	description.LeftLegColor = Color3.fromRGB(30, 30, 36)
+	description.RightLegColor = Color3.fromRGB(30, 30, 36)
+	local ok, modele = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not modele then
+		return nil
+	end
+	modele.Name = nom
+	local hum = modele:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local racine = modele:FindFirstChild("HumanoidRootPart") :: BasePart
+	local animate = modele:FindFirstChild("Animate")
+	if animate then
+		animate:Destroy()
+	end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HipHeight = 0.7
+	hum.WalkSpeed = if police then (P.VitesseBotPolice or 40) else (P.VitesseBotFugitif or 36)
+	modele:PivotTo(cf + Vector3.new(0, 2.5, 0))
+
+	-- Le kart sous le bot
+	local base = racine.CFrame * CFrame.new(0, -(0.7 + racine.Size.Y / 2) + 0.45, 0.6)
+	local function piece(n: string, taille: Vector3, decalage: CFrame, couleur: Color3, matiere: Enum.Material?, forme: Enum.PartType?)
+		local p = Instance.new("Part")
+		p.Name = n
+		p.Size = taille
+		p.CFrame = base * decalage
+		p.Color = couleur
+		p.Material = matiere or Enum.Material.SmoothPlastic
+		p.Shape = forme or Enum.PartType.Block
+		p.CanCollide = false
+		p.CanQuery = false
+		p.Massless = true
+		souder(racine, p)
+		p.Parent = modele
+		return p
+	end
+	piece("Chassis", Vector3.new(4, 0.8, 6), CFrame.new(), if police then Color3.fromRGB(240, 242, 248) else Color3.fromRGB(255, 140, 30))
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("Roue", Vector3.new(0.8, 1.6, 1.6), CFrame.new(cote * 2.2, 0.2, -2.3), Color3.fromRGB(20, 20, 20), nil, Enum.PartType.Cylinder)
+		piece("Roue", Vector3.new(0.7, 1.3, 1.3), CFrame.new(cote * 2.1, 0.05, 2.4), Color3.fromRGB(20, 20, 20), nil, Enum.PartType.Cylinder)
+	end
+	if police then
+		piece("BandeBleue", Vector3.new(4.05, 0.3, 5.6), CFrame.new(0, 0.1, 0), Color3.fromRGB(25, 60, 170))
+		piece("MatGyrophare", Vector3.new(0.2, 1.8, 0.2), CFrame.new(0, 1.3, 2.7), Color3.fromRGB(40, 40, 45), Enum.Material.Metal)
+		piece("Gyrophare", Vector3.new(2.2, 0.35, 0.6), CFrame.new(0, 2.25, 2.7), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
+	end
+
+	for _, p in ipairs(modele:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.CollisionGroup = "Gardes" -- ne bloque pas les karts des joueurs
+		end
+	end
+
+	-- Repère au-dessus du bot
+	local repere = Instance.new("BillboardGui")
+	repere.Size = UDim2.new(0, 170, 0, 40)
+	repere.StudsOffset = Vector3.new(0, 4, 0)
+	repere.AlwaysOnTop = true
+	repere.MaxDistance = 220
+	repere.Parent = racine
+	local etiquette = Instance.new("TextLabel")
+	etiquette.Size = UDim2.fromScale(1, 1)
+	etiquette.BackgroundTransparency = 1
+	etiquette.TextScaled = true
+	etiquette.Font = Enum.Font.GothamBlack
+	etiquette.Text = (if police then "🤖🚓 " else "🤖🏃 ") .. nom
+	etiquette.TextColor3 = if police then Color3.fromRGB(90, 150, 255) else Color3.fromRGB(255, 150, 40)
+	local contour = Instance.new("UIStroke")
+	contour.Thickness = 2
+	contour.Parent = etiquette
+	etiquette.Parent = repere
+
+	modele.Parent = dossierBots
+	pcall(function()
+		racine:SetNetworkOwner(nil)
+	end)
+	-- Assis au volant
+	local animateur = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator")
+	animateur.Parent = hum
+	local anim = Instance.new("Animation")
+	anim.AnimationId = ANIM_ASSIS
+	pcall(function()
+		local piste = animateur:LoadAnimation(anim)
+		piste.Looped = true
+		piste:Play()
+	end)
+	return { modele = modele, hum = hum, racine = racine, chemin = nil, indexChemin = 1, prochainCalcul = 0, cible = nil }
+end
+
+local parametresVue = RaycastParams.new()
+parametresVue.FilterType = Enum.RaycastFilterType.Exclude
+parametresVue.RespectCanCollide = true
+
+local function allerVers(bot, destination: Vector3)
+	parametresVue.FilterDescendantsInstances = { dossierBots, dossierKarts }
+	local depart = bot.racine.Position
+	local direct = workspace:Raycast(depart, destination - depart, parametresVue)
+	if direct == nil then
+		bot.chemin = nil
+		bot.hum:MoveTo(destination)
+		return
+	end
+	if bot.chemin == nil or os.clock() > bot.prochainCalcul then
+		bot.prochainCalcul = os.clock() + 0.8
+		local chemin = PathfindingService:CreatePath({ AgentRadius = 2.5, AgentHeight = 5, AgentCanJump = false, WaypointSpacing = 6 })
+		local ok = pcall(function()
+			chemin:ComputeAsync(depart, destination)
+		end)
+		if ok and chemin.Status == Enum.PathStatus.Success then
+			local points = {}
+			for _, w in ipairs(chemin:GetWaypoints()) do
+				table.insert(points, w.Position)
+			end
+			bot.chemin = points
+			bot.indexChemin = math.min(2, #points)
+		else
+			bot.chemin = nil
+			bot.hum:MoveTo(destination)
+			return
+		end
+	end
+	local points = bot.chemin
+	if points and points[bot.indexChemin] then
+		local p = points[bot.indexChemin]
+		if Vector3.new(p.X - depart.X, 0, p.Z - depart.Z).Magnitude < 6 and bot.indexChemin < #points then
+			bot.indexChemin += 1
+		end
+		bot.hum:MoveTo(points[bot.indexChemin])
+	end
+end
+
+-- Le cerveau d'un bot pendant la manche
+local function piloterBot(p: Participant, participants: { Participant })
+	local bot = p.bot
+	if not bot then
+		return
+	end
+	local pointFuite = POINTS_FUITE[math.random(1, #POINTS_FUITE)]
+	while present(p) and not p.arrete and workspace:GetAttribute("MancheEnCours") do
+		task.wait(0.15)
+		local maPosition = bot.racine.Position
+		-- Gyrophare qui clignote
+		local gyro = bot.modele:FindFirstChild("Gyrophare") :: BasePart?
+		if gyro then
+			gyro.Color = if math.floor(os.clock() * 5) % 2 == 0 then Color3.fromRGB(255, 40, 40) else Color3.fromRGB(40, 90, 255)
+		end
+		-- Le participant adverse le plus proche
+		local plusProche, distance = nil, math.huge
+		for _, autre in ipairs(participants) do
+			if autre ~= p and autre.role ~= p.role and present(autre) and not autre.arrete then
+				local pos = positionDe(autre)
+				if pos then
+					local d = (pos - maPosition).Magnitude
+					if d < distance then
+						plusProche, distance = pos, d
+					end
+				end
+			end
+		end
+		if p.role == "Police" then
+			-- Il fonce sur le fugitif le plus proche
+			if plusProche then
+				allerVers(bot, plusProche)
+			end
+		else
+			-- Le fugitif fuit le policier proche, sinon il se balade dans le mall
+			if plusProche and distance < 70 then
+				local fuite = maPosition + (maPosition - plusProche).Unit * 45
+				fuite = Vector3.new(math.clamp(fuite.X, -190, 190), maPosition.Y, math.clamp(fuite.Z, -140, 140))
+				-- on choisit le point des allées le plus proche de la direction de fuite
+				local meilleur, meilleurScore = pointFuite, math.huge
+				for _, pt in ipairs(POINTS_FUITE) do
+					local score = (pt - fuite).Magnitude - (pt - plusProche).Magnitude * 0.5
+					if score < meilleurScore then
+						meilleur, meilleurScore = pt, score
+					end
+				end
+				pointFuite = meilleur
+			elseif (Vector3.new(pointFuite.X - maPosition.X, 0, pointFuite.Z - maPosition.Z)).Magnitude < 8 then
+				pointFuite = POINTS_FUITE[math.random(1, #POINTS_FUITE)]
+			end
+			allerVers(bot, pointFuite)
+		end
+	end
+end
+
+---------------------------------------------------------------------
+-- Outils de la manche
 ---------------------------------------------------------------------
 local function apparitionGarage(): CFrame?
 	local garage = carte:FindFirstChild("GarageVIP")
@@ -77,36 +356,30 @@ local function envoyerATous(info)
 	Partie:FireAllClients(info)
 end
 
--- Position d'un joueur (son kart s'il conduit, sinon son personnage)
-local function positionDe(joueur: Player): Vector3?
-	local racine = joueur.Character and joueur.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	return racine and racine.Position or nil
-end
-
--- Le policier est-il au volant de son kart ?
-local function auVolant(joueur: Player): boolean
-	local humanoide = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
-	if not humanoide or not humanoide.SeatPart then
-		return false
-	end
-	for _, kart in ipairs(dossierKarts:GetChildren()) do
-		if kart:GetAttribute("Proprietaire") == joueur.UserId and humanoide.SeatPart:IsDescendantOf(kart) then
-			return true
-		end
-	end
-	return false
-end
-
 local function remettreAZero(joueur: Player)
 	joueur:SetAttribute("Role", nil)
 	joueur:SetAttribute("Arrete", nil)
 	joueur.Team = EQUIPE_VISITEURS
 end
 
+-- Où faire partir un bot (comme les joueurs : grille de départ ou passerelle)
+local placeBot = 0
+local function departBot(role: string): CFrame
+	placeBot += 1
+	if role == "Police" then
+		local x = ({ -24, 24, -12, 12 })[(placeBot - 1) % 4 + 1]
+		local pos = Vector3.new(x, HAUTEUR_ETAGE + 0.6, 0)
+		return CFrame.lookAt(pos, pos + Vector3.new(if x < 0 then -1 else 1, 0, 0))
+	end
+	local x = ({ -45, 45, -55, 55 })[(placeBot - 1) % 4 + 1]
+	local pos = Vector3.new(x, SOL + 0.6, 135)
+	return CFrame.lookAt(pos, pos + Vector3.new(0, 0, -1))
+end
+
 ---------------------------------------------------------------------
 -- Une manche
 ---------------------------------------------------------------------
-local function jouerManche(participants: { Player })
+local function jouerManche(participants: { Participant })
 	-- 1) Tirage au sort
 	for i = #participants, 2, -1 do
 		local j = math.random(1, i)
@@ -114,106 +387,105 @@ local function jouerManche(participants: { Player })
 	end
 	local nombrePolice = math.max(1, math.floor(#participants / 2))
 	local police, fugitifs = {}, {}
-	for i, joueur in ipairs(participants) do
-		if i <= nombrePolice then
-			table.insert(police, joueur)
-			joueur:SetAttribute("Role", "Police")
-			joueur.Team = EQUIPE_POLICE
-		else
-			table.insert(fugitifs, joueur)
-			joueur:SetAttribute("Role", "Fugitif")
-			joueur.Team = EQUIPE_FUGITIFS
+	for i, p in ipairs(participants) do
+		p.role = if i <= nombrePolice then "Police" else "Fugitif"
+		p.arrete = false
+		table.insert(if p.role == "Police" then police else fugitifs, p)
+		if p.joueur then
+			p.joueur:SetAttribute("Role", p.role)
+			p.joueur:SetAttribute("Arrete", nil)
+			p.joueur.Team = if p.role == "Police" then EQUIPE_POLICE else EQUIPE_FUGITIFS
 		end
-		joueur:SetAttribute("Arrete", nil)
 	end
-	for _, joueur in ipairs(participants) do
-		Partie:FireClient(joueur, {
-			type = "tirage",
-			equipe = joueur:GetAttribute("Role"),
-			nbPolice = #police,
-			nbFugitifs = #fugitifs,
-		})
+	for _, p in ipairs(participants) do
+		if p.joueur then
+			Partie:FireClient(p.joueur, { type = "tirage", equipe = p.role, nbPolice = #police, nbFugitifs = #fugitifs })
+		end
 	end
 	task.wait(4) -- le temps de l'animation du tirage
 
 	-- 2) Départ : l'entrée se ferme, les fugitifs partent, puis la police
 	workspace:SetAttribute("MancheEnCours", true)
 	fermerEntree(true)
-	for _, joueur in ipairs(fugitifs) do
-		if joueur.Parent then
-			RetirerKart:Invoke(joueur)
-			PlacerKart:Invoke(joueur, true)
+	local function lancer(p: Participant)
+		if p.joueur and p.joueur.Parent then
+			RetirerKart:Invoke(p.joueur)
+			PlacerKart:Invoke(p.joueur, true)
+		elseif not p.joueur then
+			p.bot = creerBot(p.nom, p.role :: string, departBot(p.role :: string))
+			if p.bot then
+				task.delay(if p.role == "Police" then 3 else 7, function() -- (le temps des feux)
+					piloterBot(p, participants)
+				end)
+			end
 		end
 	end
-	envoyerATous({ type = "info", texte = ("🏃 Les fugitifs ont %d secondes d'avance !"):format(P.AvanceFugitifs) })
-	task.wait(P.AvanceFugitifs)
-	for _, joueur in ipairs(police) do
-		if joueur.Parent then
-			RetirerKart:Invoke(joueur)
-			PlacerKart:Invoke(joueur, true)
-		end
+	for _, p in ipairs(fugitifs) do
+		lancer(p)
+	end
+	envoyerATous({ type = "info", texte = ("🏃 Les fugitifs ont %d secondes d'avance !"):format(AVANCE) })
+	task.wait(AVANCE)
+	for _, p in ipairs(police) do
+		lancer(p)
 	end
 	envoyerATous({ type = "info", texte = "🚓 La police est lancée !" })
 
 	-- 3) La manche
-	local fin = os.clock() + P.DureeManche + 7 -- (+ le temps du départ de la police)
+	local fin = os.clock() + DUREE + 7
 	local gagnant = nil
 	local prochainEnvoi = 0
 	while not gagnant do
 		task.wait(0.1)
 		local maintenant = os.clock()
 
-		-- Qui est encore là ?
-		local policeEnJeu, fugitifsLibres = {}, {}
-		for _, j in ipairs(police) do
-			if j.Parent then
-				table.insert(policeEnJeu, j)
-			end
-		end
-		for _, j in ipairs(fugitifs) do
-			if j.Parent and not j:GetAttribute("Arrete") then
-				table.insert(fugitifsLibres, j)
-			end
-		end
-
-		-- Arrestations : un policier au volant tout près d'un fugitif
-		for _, flic in ipairs(policeEnJeu) do
-			local posFlic = auVolant(flic) and positionDe(flic)
+		-- Arrestations : un policier au volant tout près d'un fugitif libre
+		for _, flic in ipairs(police) do
+			local posFlic = present(flic) and auVolant(flic) and positionDe(flic)
 			if posFlic then
-				for _, fugitif in ipairs(fugitifsLibres) do
-					local posFugitif = positionDe(fugitif)
-					if posFugitif and not fugitif:GetAttribute("Arrete") and (posFugitif - posFlic).Magnitude < P.DistanceArrestation then
-						fugitif:SetAttribute("Arrete", true)
-						RetirerKart:Invoke(fugitif)
-						local cf = apparitionGarage()
-						if cf and fugitif.Character then
-							task.delay(0.15, function()
-								if fugitif.Character then
-									fugitif.Character:PivotTo(cf)
-								end
-							end)
+				for _, fugitif in ipairs(fugitifs) do
+					local posFugitif = present(fugitif) and not fugitif.arrete and positionDe(fugitif)
+					if posFugitif and (posFugitif - posFlic).Magnitude < DISTANCE_ARRESTATION then
+						fugitif.arrete = true
+						if fugitif.joueur then
+							local j = fugitif.joueur
+							j:SetAttribute("Arrete", true)
+							RetirerKart:Invoke(j)
+							local cf = apparitionGarage()
+							if cf then
+								task.delay(0.15, function()
+									if j.Character then
+										j.Character:PivotTo(cf)
+									end
+								end)
+							end
+							Partie:FireClient(j, { type = "arrete", par = flic.nom })
+						elseif fugitif.bot then
+							fugitif.bot.modele:Destroy()
 						end
-						AjouterXP:Fire(flic, P.XPArrestation)
-						envoyerATous({ type = "arrestation", policier = flic.DisplayName, fugitif = fugitif.DisplayName })
-						Partie:FireClient(fugitif, { type = "arrete", par = flic.DisplayName })
+						if flic.joueur then
+							AjouterXP:Fire(flic.joueur, P.XPArrestation or 100)
+						end
+						envoyerATous({ type = "arrestation", policier = flic.nom, fugitif = fugitif.nom })
 					end
 				end
 			end
 		end
 
-		-- Recompter après les arrestations
-		local restants = 0
-		for _, j in ipairs(fugitifs) do
-			if j.Parent and not j:GetAttribute("Arrete") then
+		local restants, policeEnJeu = 0, 0
+		for _, f in ipairs(fugitifs) do
+			if present(f) and not f.arrete then
 				restants += 1
+			end
+		end
+		for _, f in ipairs(police) do
+			if present(f) then
+				policeEnJeu += 1
 			end
 		end
 
 		if restants == 0 then
 			gagnant = "Police"
-		elseif #policeEnJeu == 0 then
-			gagnant = "Fugitifs"
-		elseif maintenant >= fin then
+		elseif policeEnJeu == 0 or maintenant >= fin then
 			gagnant = "Fugitifs"
 		elseif maintenant >= prochainEnvoi then
 			prochainEnvoi = maintenant + 1
@@ -222,12 +494,12 @@ local function jouerManche(participants: { Player })
 	end
 
 	-- 4) Fin de la manche : résultats et XP
-	envoyerATous({ type = "fin", gagnant = gagnant, xp = P.XPVictoire })
-	for _, joueur in ipairs(participants) do
-		if joueur.Parent then
-			AjouterXP:Fire(joueur, P.XPParticipation)
-			if joueur:GetAttribute("Role") == (if gagnant == "Police" then "Police" else "Fugitif") then
-				AjouterXP:Fire(joueur, P.XPVictoire)
+	envoyerATous({ type = "fin", gagnant = gagnant, xp = P.XPVictoire or 300 })
+	for _, p in ipairs(participants) do
+		if p.joueur and p.joueur.Parent then
+			AjouterXP:Fire(p.joueur, P.XPParticipation or 50)
+			if p.role == (if gagnant == "Police" then "Police" else "Fugitif") then
+				AjouterXP:Fire(p.joueur, P.XPVictoire or 300)
 			end
 		end
 	end
@@ -236,12 +508,14 @@ local function jouerManche(participants: { Player })
 	-- 5) Retour au garage pour tout le monde
 	workspace:SetAttribute("MancheEnCours", false)
 	fermerEntree(false)
-	for _, joueur in ipairs(participants) do
-		if joueur.Parent then
-			RetirerKart:Invoke(joueur)
-			remettreAZero(joueur)
+	dossierBots:ClearAllChildren()
+	for _, p in ipairs(participants) do
+		if p.joueur and p.joueur.Parent then
+			local j = p.joueur
+			RetirerKart:Invoke(j)
+			remettreAZero(j)
 			task.spawn(function()
-				joueur:LoadCharacter() -- réapparition au garage
+				j:LoadCharacter() -- réapparition au garage
 			end)
 		end
 	end
@@ -258,40 +532,55 @@ for _, joueur in ipairs(Players:GetPlayers()) do
 end
 workspace:SetAttribute("MancheEnCours", false)
 
+-- Combien de bots faut-il pour compléter ?
+local function botsNecessaires(): number
+	local n = #Players:GetPlayers()
+	if n == 0 or n >= JOUEURS_MIN then
+		return 0
+	end
+	return math.min(BOTS_TEST, JOUEURS_MIN - n)
+end
+
+local function assezDeMonde(): boolean
+	local n = #Players:GetPlayers()
+	return n > 0 and n + botsNecessaires() >= JOUEURS_MIN
+end
+
 task.spawn(function()
 	while true do
 		-- Attente de joueurs
-		while #Players:GetPlayers() < P.JoueursMin do
-			envoyerATous({ type = "etat", etat = "attente", joueurs = #Players:GetPlayers(), min = P.JoueursMin })
+		while not assezDeMonde() do
+			envoyerATous({ type = "etat", etat = "attente", joueurs = #Players:GetPlayers(), min = JOUEURS_MIN })
 			task.wait(2)
 		end
 		-- Intermission (on peut rouler librement en attendant)
 		local annule = false
-		for t = P.Intermission, 1, -1 do
-			if #Players:GetPlayers() < P.JoueursMin then
+		for t = INTERMISSION, 1, -1 do
+			if not assezDeMonde() then
 				annule = true
 				break
 			end
-			envoyerATous({ type = "etat", etat = "intermission", temps = t })
+			envoyerATous({ type = "etat", etat = "intermission", temps = t, bots = botsNecessaires() })
 			task.wait(1)
 		end
 		if not annule then
-			local participants = {}
+			local participants: { Participant } = {}
 			for _, j in ipairs(Players:GetPlayers()) do
 				if j.Character then
-					table.insert(participants, j)
+					table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
+					RetirerKart:Invoke(j) -- tout le monde quitte son kart libre avant le tirage
 				end
 			end
-			if #participants >= P.JoueursMin then
-				-- Tout le monde quitte son kart libre avant le tirage
-				for _, j in ipairs(participants) do
-					RetirerKart:Invoke(j)
-				end
+			for k = 1, botsNecessaires() do
+				table.insert(participants, { nom = NOMS_BOTS[(k - 1) % #NOMS_BOTS + 1], joueur = nil, bot = nil, role = nil, arrete = false })
+			end
+			if #participants >= JOUEURS_MIN then
 				local ok, erreur = pcall(jouerManche, participants)
 				if not ok then
 					warn("[Manches] " .. tostring(erreur))
 					workspace:SetAttribute("MancheEnCours", false)
 					fermerEntree(false)
+					dossierBots:ClearAllChildren()
 					for _, j in ipairs(Players:GetPlayers()) do
 						remettreAZero(j)
 					end
@@ -301,4 +590,4 @@ task.spawn(function()
 	end
 end)
 
-print("[Golden Mall] Mode en ligne « Police contre Fugitifs » prêt.")
+print(("[Golden Mall] Mode en ligne « Police contre Fugitifs » prêt (bots de test : %d)."):format(BOTS_TEST))

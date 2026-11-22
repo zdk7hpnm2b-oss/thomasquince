@@ -141,6 +141,7 @@ Partie.OnClientEvent:Connect(function(info)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
 			texteBarre.Text = ("🚓 POLICE vs FUGITIFS 🏃 · prochaine manche dans %d s"):format(info.temps or 0)
+				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)
 		elseif info.etat == "manche" then
 			texteBarre.Text = ("⏱ %s   ·   🏃 %d/%d fugitifs libres"):format(formatTemps(info.temps or 0), info.restants or 0, info.total or 0)

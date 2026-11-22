@@ -140,6 +140,13 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 
 ## 👥 Tester le mode en ligne dans Studio
 
+**Seul, avec un bot** : c'est activé par défaut (`Config.Partie.BotsTest = 1`). Lance **Play** : au bout
+de 20 secondes, un bot rejoint la partie et le tirage au sort se fait entre toi et lui. Si le bot est
+policier 🤖🚓, il te poursuit ; s'il est fugitif 🤖🏃, c'est à toi de l'attraper. **Avant de publier le
+jeu pour de vrai, remets `BotsTest = 0`** (sinon les joueurs seuls enchaînent des manches contre un bot).
+
+**À plusieurs :**
+
 Onglet **Test** > zone **Clients et serveurs** : choisis **2 joueurs** (ou plus) puis clique sur
 **Démarrer**. Studio ouvre une fenêtre par joueur : au bout de 20 secondes, le tirage au sort se lance.
 

@@ -192,6 +192,11 @@ Config.Partie = {
 	XPVictoire = 300, -- XP pour chaque joueur de l'équipe gagnante
 	XPParticipation = 50, -- XP pour tous les participants
 	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
+	-- BOTS DE TEST : s'il manque des joueurs, des bots complètent la partie
+	-- (pratique pour tester seul). Mets 0 pour les désactiver.
+	BotsTest = 1,
+	VitesseBotPolice = 40, -- vitesse d'un bot policier (ton kart Basique monte à 50)
+	VitesseBotFugitif = 36, -- vitesse d'un bot fugitif
 }
 
 ---------------------------------------------------------------------
