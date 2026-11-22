@@ -23,7 +23,18 @@ Ce prototype contient :
 
 ---
 
-## 🧩 Installer le jeu dans Roblox Studio (5 minutes)
+## ⚡ Méthode rapide (1 minute) : le fichier tout prêt
+
+1. Télécharge le fichier **[`GoldenMallDrift.rbxlx`](GoldenMallDrift.rbxlx)** (sur GitHub : ouvre le fichier puis clique sur le bouton **Télécharger** ⬇️).
+2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
+3. Clique sur **Play** ▶️. C'est tout !
+
+Les 5 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
+
+---
+
+## 🧩 Méthode manuelle (si le fichier ne s'ouvre pas)
 
 Il y a **5 fichiers** à copier. Chacun va dans un endroit précis de Studio.
 
