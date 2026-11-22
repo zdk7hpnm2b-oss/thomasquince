@@ -125,6 +125,7 @@ Tout ce qui se débloque en jouant reste gratuit. Ce qui est payant est **en plu
 | 4 | Pièces + améliorations du kart | ⏳ |
 | 5 | Boutique (Robux) : cosmétiques premium, klaxons, Game Pass | ⏳ |
 | 6 | Défis du jour, classements, drift en duo | ⏳ |
+| 6 bis | Mode en ligne « Police contre Fugitifs » (tirage au sort, manches de 5 min, 20 joueurs) | ✅ |
 | 7 | Sons, polish visuel, version mobile peaufinée | ⏳ |
 | 8 | Lancement public + vidéos TikTok | ⏳ |
 | 9 | Nouvelles zones (parking, mezzanine) + événements saisonniers | ⏳ |

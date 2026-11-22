@@ -181,6 +181,12 @@ for _, cote in ipairs({ -1, 1 }) do
 	local porte = deco(bloc("PorteOuverte", Vector3.new(6, 16, 0.4), CFrame.new(cote * (largeurPortes / 2 + 3), SOL + 8, DZ + 2.4), Color3.fromRGB(170, 205, 230), Enum.Material.Glass))
 	porte.Transparency = 0.55
 end
+-- Barrière de l'entrée : invisible en temps normal, fermée pendant une manche en ligne
+local barriere = bloc("BarriereManche", Vector3.new(largeurPortes, 16, 1), CFrame.new(0, SOL + 8, DZ + 1), Color3.fromRGB(200, 30, 40), Enum.Material.ForceField)
+barriere.Transparency = 1
+barriere.CanCollide = false
+local texteBarriere = texte(barriere, Enum.NormalId.Back, "🚨 MANCHE EN COURS 🚨", Color3.new(1, 1, 1))
+texteBarriere.TextTransparency = 1
 pancarte("EnseigneExterieure", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ + 2.3), Vector3.new(0, 0, 1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
 bloc("DessusPortes", Vector3.new(largeurPortes, HAUTEUR - 16, 2), CFrame.new(0, SOL + 16 + (HAUTEUR - 16) / 2, DZ + 1), MUR_MALL, Enum.Material.Marble)
 pancarte("Enseigne", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ - 0.3), Vector3.new(0, 0, -1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
@@ -1855,14 +1861,14 @@ local function asseoir(joueur: Player, kart: Model)
 	end)
 end
 
-local function creerKart(joueur: Player, cf: CFrame): Model
+local function creerKart(joueur: Player, cf: CFrame, persoForce: { [string]: any }?): Model
 	local profil = profils[joueur]
 	local ancien = kartsJoueurs[joueur]
 	if ancien then
 		ancien:Destroy()
 	end
 
-	local kart = KartBuilder.Construire(profil.Perso, cf, false)
+	local kart = KartBuilder.Construire(persoForce or profil.Perso, cf, false)
 	kart.Name = "Kart_" .. joueur.Name
 	kart.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
 	kart:SetAttribute("Proprietaire", joueur.UserId)
@@ -1918,53 +1924,146 @@ end
 
 -- F / « SORTIR MON KART » : le kart apparaît sur la ligne de départ dans le mall,
 -- et le joueur est assis dedans automatiquement
-local function sortirKart(joueur: Player)
-	if not profils[joueur] or tropRapide(joueur, "sortir", 1.5) then
-		return
+-- Les places de départ :
+--   • joueurs libres et FUGITIFS : la grille de départ (24 places, 3 rangées de 8)
+--   • POLICIERS (mode en ligne) : la passerelle du 1er étage
+local function placesDepart(role: string?): { CFrame }
+	local liste = {}
+	if role == "Police" then
+		for _, z in ipairs({ -5, 5 }) do
+			for _, x in ipairs({ -24, -12, 0, 12, 24 }) do
+				local pos = Vector3.new(x, SOL + ETAGE + 0.6, z)
+				table.insert(liste, CFrame.lookAt(pos, pos + Vector3.new(if x < 0 then -1 else 1, 0, 0)))
+			end
+		end
+	else
+		for _, dz in ipairs({ 7, 14, 21 }) do
+			for _, x in ipairs({ -5, 5, -15, 15, -25, 25, -35, 35 }) do
+				local pos = Vector3.new(x, SOL + 0.6, LIGNE_Z + dz)
+				table.insert(liste, CFrame.lookAt(pos, pos + Vector3.new(0, 0, -1))) -- face à la fontaine
+			end
+		end
+	end
+	return liste
+end
+
+local function placeLibre(role: string?): CFrame
+	local liste = placesDepart(role)
+	for _, cf in ipairs(liste) do
+		local libre = true
+		for _, k in pairs(kartsJoueurs) do
+			if k.Parent and k.PrimaryPart and (k.PrimaryPart.Position - cf.Position).Magnitude < 7 then
+				libre = false
+			end
+		end
+		if libre then
+			return cf
+		end
+	end
+	return liste[math.random(1, #liste)] + Vector3.new(0, 3, 0)
+end
+
+-- Le kart du policier : la personnalisation du joueur, en blanc et bleu avec gyrophare
+local function persoPolice(perso: { [string]: any }): { [string]: any }
+	local p = table.clone(perso)
+	p.Carrosserie = "Blanc"
+	p.Finition = "Brillant"
+	p.Bandes = "Bleu"
+	p.BandesActives = true
+	p.Neon = "Bleu"
+	p.Police = true
+	return p
+end
+
+-- Mettre le joueur au volant de son kart, sur la bonne place de départ.
+-- avecDepart = true : survol de la map + feux 3, 2, 1, PARTEZ !
+local function placerKart(joueur: Player, avecDepart: boolean): Model?
+	local profil = profils[joueur]
+	if not profil or joueur:GetAttribute("Arrete") then
+		return nil -- (un fugitif arrêté attend la fin de la manche)
 	end
 	local perso = joueur.Character
 	local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoide = perso and perso:FindFirstChildOfClass("Humanoid")
 	if not racine or not humanoide or humanoide.Health <= 0 then
-		return
-	end
-	local ancien = kartsJoueurs[joueur]
-	if ancien and humanoide.SeatPart and humanoide.SeatPart:IsDescendantOf(ancien) then
-		return -- déjà au volant
+		return nil
 	end
 	if humanoide.SeatPart then
 		humanoide.Sit = false
 	end
-	-- Le kart apparaît sur la ligne de départ, à l'intérieur du mall.
-	-- Le script du joueur joue l'animation + le compte à rebours 3, 2, 1, PARTEZ !
-	-- Grille de départ : 24 places (3 rangées de 8) pour jouer jusqu'à 20 en ligne
-	local depart = nil
-	local places = {}
-	for _, dz in ipairs({ 7, 14, 21 }) do
-		for _, x in ipairs({ -5, 5, -15, 15, -25, 25, -35, 35 }) do
-			table.insert(places, Vector2.new(x, LIGNE_Z + dz))
-		end
+	local role = joueur:GetAttribute("Role")
+	local cf = placeLibre(role)
+	local kart = creerKart(joueur, cf, if role == "Police" then persoPolice(profil.Perso) else nil)
+	if avecDepart then
+		kart:SetAttribute("DepartHall", true)
 	end
-	for _, place in ipairs(places) do
-		local candidat = Vector3.new(place.X, SOL + 0.6, place.Y)
-		local libre = true
-		for _, k in pairs(kartsJoueurs) do
-			if k.Parent and k.PrimaryPart and (k.PrimaryPart.Position - candidat).Magnitude < 7 then
-				libre = false
-			end
-		end
-		if libre then
-			depart = candidat
-			break
-		end
+	if role == nil then
+		-- Mode libre : la police du mall laisse tranquille pendant le départ
+		kart:SetAttribute("ProtegeJusqua", workspace:GetServerTimeNow() + 12)
+	else
+		-- Mode en ligne : un repère au-dessus du kart (🚓 ou 🏃) pour reconnaître les équipes
+		local repere = Instance.new("BillboardGui")
+		repere.Name = "RepereEquipe"
+		repere.Size = UDim2.new(0, 160, 0, 40)
+		repere.StudsOffset = Vector3.new(0, 5, 0)
+		repere.AlwaysOnTop = true
+		repere.MaxDistance = 220
+		repere.Parent = kart.PrimaryPart
+		local etiquette = Instance.new("TextLabel")
+		etiquette.Size = UDim2.fromScale(1, 1)
+		etiquette.BackgroundTransparency = 1
+		etiquette.TextScaled = true
+		etiquette.Font = Enum.Font.GothamBlack
+		etiquette.Text = (if role == "Police" then "🚓 " else "🏃 ") .. joueur.DisplayName
+		etiquette.TextColor3 = if role == "Police" then Color3.fromRGB(90, 150, 255) else Color3.fromRGB(255, 150, 40)
+		local contour = Instance.new("UIStroke")
+		contour.Thickness = 2
+		contour.Parent = etiquette
+		etiquette.Parent = repere
 	end
-	depart = depart or Vector3.new(math.random(-35, 35), SOL + 0.6, LIGNE_Z + 24)
-	local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1))) -- face au mall
-	kart:SetAttribute("DepartHall", true)
-	-- La police laisse tranquille pendant l'animation et le compte à rebours
-	kart:SetAttribute("ProtegeJusqua", workspace:GetServerTimeNow() + 12)
 	asseoir(joueur, kart)
+	return kart
 end
+
+-- F / « SORTIR MON KART »
+local function sortirKart(joueur: Player)
+	if not profils[joueur] or tropRapide(joueur, "sortir", 1.5) then
+		return
+	end
+	local humanoide = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+	local ancien = kartsJoueurs[joueur]
+	if ancien and humanoide and humanoide.SeatPart and humanoide.SeatPart:IsDescendantOf(ancien) then
+		return -- déjà au volant
+	end
+	if workspace:GetAttribute("MancheEnCours") and joueur:GetAttribute("Role") == nil then
+		return -- une manche est en cours : on attend la suivante (au garage)
+	end
+	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
+	placerKart(joueur, joueur:GetAttribute("Role") == nil)
+end
+
+-- Pour le script des manches (ManchesServer)
+local PlacerKart = Instance.new("BindableFunction")
+PlacerKart.Name = "PlacerKart"
+PlacerKart.OnInvoke = function(joueur: Player, avecDepart: boolean)
+	return placerKart(joueur, avecDepart)
+end
+PlacerKart.Parent = game:GetService("ServerStorage")
+local RetirerKart = Instance.new("BindableFunction")
+RetirerKart.Name = "RetirerKart"
+RetirerKart.OnInvoke = function(joueur: Player)
+	local humanoide = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+	if humanoide and humanoide.SeatPart then
+		humanoide.Sit = false
+	end
+	local kart = kartsJoueurs[joueur]
+	if kart then
+		kart:Destroy()
+	end
+	kartsJoueurs[joueur] = nil
+	return true
+end
+RetirerKart.Parent = game:GetService("ServerStorage")
 
 SortirKart.OnServerEvent:Connect(sortirKart)
 
@@ -1976,9 +2075,9 @@ Personnaliser.OnServerEvent:Connect(function(joueur: Player, perso: any)
 	local ancienType = profil.Perso.Kart
 	profil.Perso = KartBuilder.Nettoyer(perso, niveauDe(profil))
 
-	-- Met à jour le kart déjà sorti
+	-- Met à jour le kart déjà sorti (sauf pendant une manche en ligne)
 	local kart = kartsJoueurs[joueur]
-	if kart and kart.Parent then
+	if kart and kart.Parent and joueur:GetAttribute("Role") == nil then
 		if profil.Perso.Kart == ancienType then
 			KartBuilder.Peindre(kart, profil.Perso)
 		else

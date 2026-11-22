@@ -350,6 +350,10 @@ local kartsConduits: { KartConduit } = {}
 
 local function mettreAJourKarts()
 	local liste = {}
+	if workspace:GetAttribute("MancheEnCours") then
+		kartsConduits = liste -- pendant une manche en ligne, ce sont les joueurs qui font la police
+		return
+	end
 	for _, kart in ipairs(dossierKarts:GetChildren()) do
 		local proprietaire = Players:GetPlayerByUserId(kart:GetAttribute("Proprietaire") or 0)
 		local siege = kart:FindFirstChild("Siege") :: Seat?

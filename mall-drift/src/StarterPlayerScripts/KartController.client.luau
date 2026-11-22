@@ -1084,10 +1084,12 @@ end)
 -- NÉONS ARC-EN-CIEL : ils changent de couleur en continu
 ---------------------------------------------------------------------
 local kartsArcEnCiel: { { parties: { BasePart }, lumieres: { PointLight } } } = {}
+local gyrosPolice: { BasePart } = {}
 local prochainScan = 0
 
 local function scannerArcEnCiel()
 	kartsArcEnCiel = {}
+	gyrosPolice = {}
 	local candidats = {}
 	local dossier = workspace:FindFirstChild("KartsJoueurs")
 	if dossier then
@@ -1100,6 +1102,13 @@ local function scannerArcEnCiel()
 		table.insert(candidats, apercuGarage)
 	end
 	for _, m in ipairs(candidats) do
+		if m:GetAttribute("Police") then
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") and d.Name == "GyroPolice" then
+					table.insert(gyrosPolice, d)
+				end
+			end
+		end
 		if m:GetAttribute("NeonArcEnCiel") then
 			local entree = { parties = {}, lumieres = {} }
 			for _, d in ipairs(m:GetDescendants()) do
@@ -1119,6 +1128,12 @@ RunService.Heartbeat:Connect(function()
 	if maintenant > prochainScan then
 		prochainScan = maintenant + 1
 		scannerArcEnCiel()
+	end
+	-- Gyrophares police : rouge / bleu qui alternent
+	local alterne = math.floor(maintenant * 5) % 2 == 0
+	for i, g in ipairs(gyrosPolice) do
+		local rouge = (i % 2 == 1) == alterne
+		g.Color = if rouge then Color3.fromRGB(255, 40, 40) else Color3.fromRGB(40, 90, 255)
 	end
 	if #kartsArcEnCiel == 0 then
 		return

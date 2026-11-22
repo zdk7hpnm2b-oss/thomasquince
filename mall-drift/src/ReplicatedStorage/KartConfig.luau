@@ -178,6 +178,23 @@ Config.Securite = {
 }
 
 ---------------------------------------------------------------------
+-- LE MODE EN LIGNE « POLICE CONTRE FUGITIFS »
+-- Dès qu'il y a assez de joueurs : tirage au sort des équipes (moitié police,
+-- moitié fugitifs), puis une manche. La police doit attraper tous les fugitifs
+-- avant la fin du temps ; sinon, les fugitifs gagnent.
+---------------------------------------------------------------------
+Config.Partie = {
+	JoueursMin = 2, -- joueurs nécessaires pour lancer une manche
+	Intermission = 20, -- secondes d'attente entre deux manches
+	DureeManche = 300, -- durée d'une manche (5 minutes)
+	AvanceFugitifs = 8, -- secondes d'avance des fugitifs sur la police
+	DistanceArrestation = 7, -- un policier aussi près d'un fugitif l'arrête
+	XPVictoire = 300, -- XP pour chaque joueur de l'équipe gagnante
+	XPParticipation = 50, -- XP pour tous les participants
+	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
+}
+
+---------------------------------------------------------------------
 -- LES TAPIS ROULANTS (les rampes entre les 2 étages)
 ---------------------------------------------------------------------
 Config.Tapis = {

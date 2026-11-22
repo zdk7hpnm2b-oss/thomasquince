@@ -98,9 +98,14 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 			p.Color = neon.Couleur
 			p.Enabled = not sansNeon
 		elseif p:IsA("TextLabel") and p.Name == "Deco" then
-			local autocollant = Config.Autocollant(perso.Autocollant)
-			local symbole = autocollant and autocollant.Texte or ""
-			p.Text = (symbole ~= "" and (symbole .. " ") or "") .. tostring(perso.Numero)
+			if perso.Police then
+				p.Text = "POLICE"
+				p.TextColor3 = Color3.fromRGB(25, 60, 170)
+			else
+				local autocollant = Config.Autocollant(perso.Autocollant)
+				local symbole = autocollant and autocollant.Texte or ""
+				p.Text = (symbole ~= "" and (symbole .. " ") or "") .. tostring(perso.Numero)
+			end
 		end
 	end
 	modele:SetAttribute("KartType", perso.Kart)
@@ -242,6 +247,14 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 				piece("LiseretOr", Vector3.new(0.1, 0.15, 5.6), CFrame.new(cote * 2.05, 0.35, 0), OR, nil, Enum.Material.Foil)
 			end
 		end
+	end
+
+	-- Kart de police (mode en ligne) : mât + gyrophare rouge et bleu
+	if perso.Police then
+		piece("MatGyrophare", Vector3.new(0.2, 1.8, 0.2), CFrame.new(0, 1.3, 2.7), Color3.fromRGB(40, 40, 45), nil, Enum.Material.Metal)
+		piece("GyroPolice", Vector3.new(1.1, 0.35, 0.6), CFrame.new(-0.55, 2.25, 2.7), Color3.fromRGB(255, 40, 40), nil, Enum.Material.Neon)
+		piece("GyroPolice", Vector3.new(1.1, 0.35, 0.6), CFrame.new(0.55, 2.25, 2.7), Color3.fromRGB(40, 90, 255), nil, Enum.Material.Neon)
+		modele:SetAttribute("Police", true)
 	end
 
 	-- Le siège (on s'assoit dedans)

@@ -14,6 +14,13 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : après 20 s d'attente,
+  **tirage au sort** des équipes (moitié policiers 🚓, moitié fugitifs 🏃). L'entrée du mall se ferme ;
+  les fugitifs partent de la ligne de départ avec 8 s d'avance, les policiers partent du 1er étage
+  dans des **karts de police** (gyrophare). Un policier qui colle un fugitif l'**arrête** (il part au
+  garage). **La police gagne** si tous les fugitifs sont arrêtés, sinon **les fugitifs gagnent** au
+  bout de 5 minutes. XP pour tous, bonus pour les gagnants et pour chaque arrestation. Seul, tu restes
+  en mode libre (avec la police de l'ordinateur)
 - **🏬 Deux étages** : au-dessus du rez-de-chaussée, un **1er étage** avec ses propres boutiques. Au
   centre, un grand **atrium** ouvert sur les deux étages, traversé par une **passerelle**. On change d'étage
   en kart par **deux tapis roulants** au-dessus de la place centrale : celui de gauche **monte**, celui de
@@ -66,14 +73,14 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 9 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 11 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
 
 ## 🧩 Méthode manuelle (si le fichier ne s'ouvre pas)
 
-Il y a **9 fichiers** à copier. Chacun va dans un endroit précis de Studio.
+Il y a **11 fichiers** à copier. Chacun va dans un endroit précis de Studio.
 
 ### Étape 0 — Ouvrir un nouveau jeu
 1. Ouvre **Roblox Studio**, clique sur **Nouveau** puis sur le modèle **Baseplate**.
@@ -90,18 +97,19 @@ Survole **ReplicatedStorage**, clique sur le **+**, choisis **ModuleScript**. Fa
 Pour renommer : clic droit > **Renommer**. Pour coller : double-clic sur le script,
 **efface tout** (Ctrl+A puis Suppr), puis colle.
 
-### Étape 2 — Dans ServerScriptService : 3 Scripts
-Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 3 fois :
+### Étape 2 — Dans ServerScriptService : 4 Scripts
+Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 4 fois :
 
 | Nom | Contenu à coller |
 |---|---|
 | `MallDriftServer` | [`src/ServerScriptService/MallDriftServer.server.luau`](src/ServerScriptService/MallDriftServer.server.luau) |
 | `SecuriteServer` | [`src/ServerScriptService/SecuriteServer.server.luau`](src/ServerScriptService/SecuriteServer.server.luau) |
 | `PNJServer` | [`src/ServerScriptService/PNJServer.server.luau`](src/ServerScriptService/PNJServer.server.luau) |
+| `ManchesServer` | [`src/ServerScriptService/ManchesServer.server.luau`](src/ServerScriptService/ManchesServer.server.luau) |
 
-### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 4 LocalScripts
+### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 5 LocalScripts
 Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et choisis
-**LocalScript** (bien **Local**Script !). Fais-le 4 fois :
+**LocalScript** (bien **Local**Script !). Fais-le 5 fois :
 
 | Nom | Contenu à coller |
 |---|---|
@@ -109,6 +117,7 @@ Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et c
 | `GarageUI` | [`src/StarterPlayerScripts/GarageUI.client.luau`](src/StarterPlayerScripts/GarageUI.client.luau) |
 | `Intro` | [`src/StarterPlayerScripts/Intro.client.luau`](src/StarterPlayerScripts/Intro.client.luau) |
 | `SecuriteUI` | [`src/StarterPlayerScripts/SecuriteUI.client.luau`](src/StarterPlayerScripts/SecuriteUI.client.luau) |
+| `PartieUI` | [`src/StarterPlayerScripts/PartieUI.client.luau`](src/StarterPlayerScripts/PartieUI.client.luau) |
 
 ### Étape 4 — Activer la sauvegarde (recommandé)
 1. Enregistre le jeu sur Roblox : **Fichier > Publier sur Roblox**.
@@ -126,6 +135,16 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 > 💡 Dans la fenêtre **Sortie (Output)**, tu dois voir
 > `[Golden Mall] Le Golden Mall de Dubaï est prêt !`. S'il y a un message en **rouge**,
 > copie-le-moi et je corrige.
+
+---
+
+## 👥 Tester le mode en ligne dans Studio
+
+Onglet **Test** > zone **Clients et serveurs** : choisis **2 joueurs** (ou plus) puis clique sur
+**Démarrer**. Studio ouvre une fenêtre par joueur : au bout de 20 secondes, le tirage au sort se lance.
+
+Pour jouer pour de vrai : **Fichier > Publier sur Roblox**, puis **Paramètres du jeu > Places** :
+nombre max de joueurs = **20**.
 
 ---
 
@@ -174,10 +193,12 @@ mall-drift/
     ├── ServerScriptService/
     │   ├── MallDriftServer.server.luau      (Script) le mall, le garage, la sauvegarde
     │   ├── SecuriteServer.server.luau       (Script) la police
-    │   └── PNJServer.server.luau            (Script) les vendeurs et les clients
+    │   ├── PNJServer.server.luau            (Script) les vendeurs et les clients
+    │   └── ManchesServer.server.luau        (Script) le mode en ligne Police vs Fugitifs
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP
         ├── Intro.client.luau                (LocalScript) intro cinématique
-        └── SecuriteUI.client.luau           (LocalScript) alertes de la sécurité
+        ├── SecuriteUI.client.luau           (LocalScript) alertes de la police
+        └── PartieUI.client.luau             (LocalScript) écrans du mode en ligne
 ```
