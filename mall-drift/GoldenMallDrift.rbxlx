@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ReplicatedStorage" referent="RBX12"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">KartBuilder</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ReplicatedStorage" referent="RBX13"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">KartBuilder</string><ProtectedString name="Source"><![CDATA[--[[
 	KartBuilder  (ModuleScript)
 	À placer dans : ReplicatedStorage   — nom exact : KartBuilder
 
@@ -417,6 +417,35 @@ Config.NomDuJeu = "Golden Mall Drift"
 Config.Lieu = "Dubaï"
 
 ---------------------------------------------------------------------
+-- LES PLACES DE L'EXPÉRIENCE (lobby + places de jeu)
+-- Mets ici le numéro (PlaceId) de chaque place, visible sur le Creator Hub.
+-- Tant que Lobby = 0, tout le jeu tourne dans UNE seule place (pratique pour
+-- tester dans Studio). Le même fichier est publié dans toutes les places :
+-- chacune reconnaît son rôle grâce à son PlaceId.
+---------------------------------------------------------------------
+Config.Places = {
+	Lobby = 0, -- la place de départ (publique) : garage + menu + matchmaking
+	Entrainement = 0, -- drift libre avec la police bot
+	PoliceFugitifs = 0, -- les manches en équipes (serveurs privés créés par le matchmaking)
+	DriftBattle = 0, -- le défi solo + classement mondial
+	Jeu4 = 0, -- (réservée pour un 4e mode de jeu)
+}
+
+-- Le rôle de la place où tourne le jeu : "Lobby", "Entrainement", "PoliceFugitifs",
+-- "DriftBattle", "Jeu4", ou "ToutEnUn" (tout dans une seule place)
+function Config.TypeDePlace(): string
+	if Config.Places.Lobby == 0 then
+		return "ToutEnUn"
+	end
+	for nom, id in pairs(Config.Places) do
+		if id ~= 0 and id == game.PlaceId then
+			return nom
+		end
+	end
+	return "ToutEnUn" -- (place inconnue, par exemple un fichier pas encore publié)
+end
+
+---------------------------------------------------------------------
 -- LES KARTS  (Niveau = niveau du joueur nécessaire pour le débloquer)
 -- VitesseMax     : vitesse de pointe (≈ km/h affichés)
 -- Acceleration   : vitesse pour atteindre la vitesse max
@@ -710,7 +739,7 @@ function Config.AppliquerAmbiance(nuit: boolean)
 end
 
 return Config
-]]></ProtectedString></Properties></Item></Item><Item class="ServerScriptService" referent="RBX13"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX3"><Properties><string name="Name">MallDriftServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ServerScriptService" referent="RBX14"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX3"><Properties><string name="Name">MallDriftServer</string><ProtectedString name="Source"><![CDATA[--[[
 	MallDriftServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : MallDriftServer
 
@@ -739,6 +768,7 @@ local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
 local KartBuilder = require(ReplicatedStorage:WaitForChild("KartBuilder"))
 
 Config.AppliquerAmbiance(Config.NuitParDefaut)
+local TYPE = Config.TypeDePlace() -- rôle de cette place (voir KartConfig > Config.Places)
 
 if not Lighting:FindFirstChildOfClass("BloomEffect") then
 	local bloom = Instance.new("BloomEffect")
@@ -2792,6 +2822,9 @@ local function sortirKart(joueur: Player)
 	if joueur:GetAttribute("EnSalle") then
 		return -- page d'attente : la manche va commencer
 	end
+	if TYPE == "Lobby" then
+		return -- dans le lobby, on ne roule pas : on choisit son mode dans le menu
+	end
 	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
 	placerKart(joueur, joueur:GetAttribute("Role") == nil)
 end
@@ -2820,6 +2853,28 @@ end
 RetirerKart.Parent = game:GetService("ServerStorage")
 
 SortirKart.OnServerEvent:Connect(sortirKart)
+
+-- Place Entraînement : en arrivant, le kart t'attend sur la ligne de départ
+if TYPE == "Entrainement" then
+	local function arrivee(joueur: Player)
+		joueur.CharacterAdded:Connect(function()
+			task.spawn(function()
+				local debut = os.clock()
+				while not profils[joueur] and os.clock() - debut < 15 do
+					task.wait(0.3)
+				end
+				task.wait(1.5)
+				if joueur.Parent and not kartsJoueurs[joueur] then
+					placerKart(joueur, true)
+				end
+			end)
+		end)
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+end
 
 -- Toutes les secondes : chaque joueur au volant doit avoir le contrôle physique
 -- de son kart (sinon il ne peut pas avancer). On le lui redonne si besoin.
@@ -2983,6 +3038,24 @@ local carte = workspace:WaitForChild("GoldenMall")
 local dossierKarts = workspace:WaitForChild("KartsJoueurs")
 
 local P = Config.Partie or {}
+local TYPE = Config.TypeDePlace() -- "ToutEnUn", "Lobby", "PoliceFugitifs", "DriftBattle", "Entrainement"...
+local TeleportService = game:GetService("TeleportService")
+
+-- Renvoie des joueurs au lobby (expérience à plusieurs places), le menu s'y ouvrira
+local function retourAuLobby(joueurs: { Player }): boolean
+	if (Config.Places and Config.Places.Lobby or 0) == 0 or #joueurs == 0 then
+		return false
+	end
+	local options = Instance.new("TeleportOptions")
+	options:SetTeleportData({ ouvrirMenu = true })
+	local ok, erreur = pcall(function()
+		TeleportService:TeleportAsync(Config.Places.Lobby, joueurs, options)
+	end)
+	if not ok then
+		warn("[Manches] Retour au lobby impossible : " .. tostring(erreur))
+	end
+	return ok
+end
 local JOUEURS_MIN = P.JoueursMin or 2
 local INTERMISSION = P.Intermission or 20
 local DUREE = P.DureeManche or 300
@@ -3542,7 +3615,16 @@ local function jouerManche(participants: { Participant })
 	end
 	task.wait(6)
 
-	-- 5) Retour au garage pour tout le monde
+	-- 5) Retour au garage (ou au lobby, dans la place Police contre Fugitifs)
+	if TYPE == "PoliceFugitifs" then
+		local tous = {}
+		for _, p in ipairs(participants) do
+			if p.joueur and p.joueur.Parent then
+				table.insert(tous, p.joueur)
+			end
+		end
+		retourAuLobby(tous)
+	end
 	workspace:SetAttribute("MancheEnCours", false)
 	fermerEntree(false)
 	dossierBots:ClearAllChildren()
@@ -3777,6 +3859,13 @@ local function lancerBattle(joueur: Player)
 	joueur:SetAttribute("RecordBattle", record)
 	local top, autour, rang = classementAutour(joueur, record)
 	Partie:FireClient(joueur, { type = "classementMondial", top = top, autour = autour, rang = rang, record = record })
+	if TYPE == "DriftBattle" then
+		task.delay(9, function() -- (le temps de voir son score et le classement)
+			if joueur.Parent then
+				retourAuLobby({ joueur })
+			end
+		end)
+	end
 end
 
 DriftEnregistre.Event:Connect(function(joueur: Player, points: number)
@@ -3853,7 +3942,60 @@ for _, joueur in ipairs(Players:GetPlayers()) do
 end
 workspace:SetAttribute("MancheEnCours", false)
 
+-- Place Drift Battle : le défi démarre dès qu'on arrive
+if TYPE == "DriftBattle" then
+	local function arrivee(joueur: Player)
+		task.spawn(function()
+			local debut = os.clock()
+			while not joueur.Character and os.clock() - debut < 15 do
+				task.wait(0.3)
+			end
+			task.wait(2.5) -- le temps que le profil du joueur soit chargé
+			if joueur.Parent then
+				lancerBattle(joueur)
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+end
+
+-- Place Police contre Fugitifs : tous les arrivants jouent, on attend le groupe
+local attendus = 1
+local premiereArrivee: number? = nil
+if TYPE == "PoliceFugitifs" then
+	local function arrivee(joueur: Player)
+		joueur:SetAttribute("Pret", true)
+		premiereArrivee = premiereArrivee or os.clock()
+		local donnees = joueur:GetJoinData().TeleportData
+		if type(donnees) == "table" and type(donnees.attendus) == "number" then
+			attendus = math.max(attendus, donnees.attendus)
+		end
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+end
+
+-- Les manches ne tournent que dans la place « tout en un » et la place Police contre Fugitifs
+if TYPE ~= "ToutEnUn" and TYPE ~= "PoliceFugitifs" then
+	print(("[Golden Mall] Place « %s » : pas de manches ici."):format(TYPE))
+	return
+end
+
 task.spawn(function()
+	-- Place Police contre Fugitifs : on attend que tout le groupe soit arrivé (15 s max)
+	if TYPE == "PoliceFugitifs" then
+		while not premiereArrivee do
+			task.wait(0.5)
+		end
+		while #Players:GetPlayers() < attendus and os.clock() - (premiereArrivee :: number) < 15 do
+			task.wait(0.5)
+		end
+	end
 	while true do
 		-- Attente : chacun est libre (entraînement, garage...)
 		while not modeDisponible() do
@@ -3909,7 +4051,163 @@ task.spawn(function()
 end)
 
 print(("[Golden Mall] Modes prêts : Police contre Fugitifs en ligne (bots de test : %d) et Drift Battle solo."):format(BOTS_TEST))
-]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX5"><Properties><string name="Name">PNJServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX5"><Properties><string name="Name">MatchmakingServer</string><ProtectedString name="Source"><![CDATA[--[[
+	MatchmakingServer  (Script)
+	À placer dans : ServerScriptService   — nom conseillé : MatchmakingServer
+
+	LE MATCHMAKING ENTRE LES PLACES DE L'EXPÉRIENCE
+	  • Dans le LOBBY (place de départ, publique) :
+	      - 🏁 Entraînement : on part tout de suite vers la place Entraînement
+	      - 🔥 Drift Battle : on part tout de suite vers la place Drift Battle
+	      - 🌐 Police contre Fugitifs : on entre dans une FILE D'ATTENTE. Dès qu'il y
+	        a assez de joueurs (ou avec les bots de test), le matchmaking crée un
+	        serveur privé et y envoie le groupe (jusqu'à 20 joueurs) ENSEMBLE.
+	  • Dans les PLACES DE JEU : le bouton « Retour au lobby ».
+	Rien ne se passe en mode « ToutEnUn » (KartConfig > Config.Places pas rempli).
+	Les téléportations ne marchent que dans le jeu publié (pas dans Studio).
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
+
+local TYPE = Config.TypeDePlace()
+local P = Config.Partie or {}
+local JOUEURS_MIN = P.JoueursMin or 2
+local MAX_PAR_PARTIE = 20
+local ATTENTE_BOTS = 8 -- seul dans la file avec les bots de test : départ au bout de 8 s
+
+local Voyage = Instance.new("RemoteEvent")
+Voyage.Name = "Voyage"
+Voyage.Parent = remotes
+
+if TYPE == "ToutEnUn" then
+	return -- tout se joue dans cette place : pas de téléportation
+end
+
+---------------------------------------------------------------------
+-- Téléporter des joueurs vers une place
+---------------------------------------------------------------------
+local function teleporter(joueurs: { Player }, placeId: number, donnees: { [string]: any }, codeServeurPrive: string?): boolean
+	if placeId == 0 or #joueurs == 0 then
+		return false
+	end
+	local options = Instance.new("TeleportOptions")
+	if codeServeurPrive then
+		options.ReservedServerAccessCode = codeServeurPrive
+	end
+	options:SetTeleportData(donnees)
+	local ok, erreur = pcall(function()
+		TeleportService:TeleportAsync(placeId, joueurs, options)
+	end)
+	if not ok then
+		warn("[Matchmaking] Téléportation impossible : " .. tostring(erreur))
+		for _, j in ipairs(joueurs) do
+			Voyage:FireClient(j, { type = "erreur", texte = "Impossible de rejoindre la partie. Réessaie !" })
+		end
+	end
+	return ok
+end
+
+TeleportService.TeleportInitFailed:Connect(function(joueur: Player)
+	joueur:SetAttribute("Pret", false)
+	Voyage:FireClient(joueur, { type = "erreur", texte = "Le voyage a échoué. Réessaie !" })
+end)
+
+---------------------------------------------------------------------
+-- Dans une PLACE DE JEU : retour au lobby
+---------------------------------------------------------------------
+if TYPE ~= "Lobby" then
+	Voyage.OnServerEvent:Connect(function(joueur: Player, info)
+		if type(info) == "table" and info.mode == "Lobby" then
+			Voyage:FireClient(joueur, { type = "depart", texte = "Retour au lobby…" })
+			teleporter({ joueur }, Config.Places.Lobby, { ouvrirMenu = true })
+		end
+	end)
+	print(("[Matchmaking] Place de jeu « %s » : retour au lobby prêt."):format(TYPE))
+	return
+end
+
+---------------------------------------------------------------------
+-- Dans le LOBBY : départs directs + file d'attente Police contre Fugitifs
+---------------------------------------------------------------------
+local file: { Player } = {}
+local entreeDansLaFile: { [Player]: number } = {}
+
+local function retirerDeLaFile(joueur: Player)
+	for i, j in ipairs(file) do
+		if j == joueur then
+			table.remove(file, i)
+			break
+		end
+	end
+	entreeDansLaFile[joueur] = nil
+	joueur:SetAttribute("Pret", false)
+end
+
+Voyage.OnServerEvent:Connect(function(joueur: Player, info)
+	if type(info) ~= "table" then
+		return
+	end
+	if info.mode == "Entrainement" or info.mode == "DriftBattle" then
+		retirerDeLaFile(joueur)
+		Voyage:FireClient(joueur, { type = "depart", texte = if info.mode == "Entrainement" then "Direction l'entraînement…" else "Direction le Drift Battle…" })
+		teleporter({ joueur }, Config.Places[info.mode], { mode = info.mode })
+	elseif info.mode == "PoliceFugitifs" then
+		if joueur:GetAttribute("Pret") then
+			retirerDeLaFile(joueur) -- (recliquer = quitter la file)
+		else
+			table.insert(file, joueur)
+			entreeDansLaFile[joueur] = os.clock()
+			joueur:SetAttribute("Pret", true)
+		end
+	end
+end)
+
+Players.PlayerRemoving:Connect(retirerDeLaFile)
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		-- On retire les joueurs partis
+		for i = #file, 1, -1 do
+			if not file[i].Parent then
+				table.remove(file, i)
+			end
+		end
+		-- Assez de monde ? (ou un joueur seul depuis 8 s, avec les bots de test)
+		local plusAncien = file[1] and entreeDansLaFile[file[1]] or os.clock()
+		local avecBots = (P.BotsTest or 0) > 0 and #file >= 1 and os.clock() - plusAncien >= ATTENTE_BOTS
+		if #file >= JOUEURS_MIN or avecBots then
+			local groupe = {}
+			for i = 1, math.min(#file, MAX_PAR_PARTIE) do
+				table.insert(groupe, file[i])
+			end
+			for _, j in ipairs(groupe) do
+				retirerDeLaFile(j)
+				Voyage:FireClient(j, { type = "depart", texte = ("🚓 Partie trouvée ! %d joueur%s, c'est parti…"):format(#groupe, if #groupe > 1 then "s" else "") })
+			end
+			local ok, code = pcall(function()
+				return TeleportService:ReserveServer(Config.Places.PoliceFugitifs)
+			end)
+			if ok and code then
+				teleporter(groupe, Config.Places.PoliceFugitifs, { mode = "PoliceFugitifs", attendus = #groupe }, code)
+			else
+				warn("[Matchmaking] Impossible de créer le serveur privé : " .. tostring(code))
+				for _, j in ipairs(groupe) do
+					Voyage:FireClient(j, { type = "erreur", texte = "Impossible de créer la partie. Réessaie !" })
+				end
+			end
+		end
+		Voyage:FireAllClients({ type = "file", n = #file, min = JOUEURS_MIN })
+	end
+end)
+
+print("[Matchmaking] Lobby prêt : Entraînement, Drift Battle, file Police contre Fugitifs.")
+]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX6"><Properties><string name="Name">PNJServer</string><ProtectedString name="Source"><![CDATA[--[[
 	PNJServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : PNJServer
 
@@ -3930,6 +4228,10 @@ ReplicatedStorage:WaitForChild("MallDriftRemotes") -- = la carte est construite
 local carte = workspace:WaitForChild("GoldenMall")
 
 local REGLAGES = Config.PNJ or { Max = 220, ChanceClient = 0.75 }
+if Config.TypeDePlace() == "Lobby" then
+	-- Dans le lobby, on reste au garage : pas besoin de remplir les boutiques (plus léger)
+	return
+end
 local random = Random.new(7)
 
 local dossier = Instance.new("Folder")
@@ -4090,7 +4392,7 @@ for _, poste in ipairs(postes) do
 end
 
 print(("[Golden Mall] %d personnes dans le mall."):format(nombre))
-]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX6"><Properties><string name="Name">SecuriteServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX7"><Properties><string name="Name">SecuriteServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SecuriteServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : SecuriteServer
 
@@ -4123,6 +4425,12 @@ local carte = workspace:WaitForChild("GoldenMall")
 local dossierKarts = workspace:WaitForChild("KartsJoueurs")
 
 local R = Config.Securite
+local TYPE = Config.TypeDePlace()
+if TYPE == "Lobby" or TYPE == "PoliceFugitifs" or TYPE == "DriftBattle" then
+	-- Pas de police bot ici (lobby, ou les vrais joueurs font la police / défi sans police)
+	print(("[Golden Mall] Place « %s » : pas de police bot."):format(TYPE))
+	return
+end
 local SOL = 1
 local random = Random.new()
 
@@ -4934,7 +5242,7 @@ for i = 1, (R.PoliciersEtage or 0) do
 end
 
 print(("[Golden Mall] Police en place : %d policiers en bas, %d à l'étage."):format(R.Policiers, R.PoliciersEtage or 0))
-]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX15"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX14"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX7"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX16"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX15"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX8"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
 	GarageUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : GarageUI
 
@@ -5609,7 +5917,7 @@ task.spawn(function()
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX8"><Properties><string name="Name">Intro</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">Intro</string><ProtectedString name="Source"><![CDATA[--[[
 	Intro  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Intro
 
@@ -5773,6 +6081,15 @@ task.delay(12, function()
 end)
 
 local function sequence()
+	-- L'intro ne se joue qu'en arrivant au lobby (pas dans les places de jeu,
+	-- ni quand on revient au lobby après une partie)
+	local TYPE = Config.TypeDePlace()
+	local donneesVoyage = game:GetService("TeleportService"):GetLocalPlayerTeleportData()
+	local retour = type(donneesVoyage) == "table" and donneesVoyage.ouvrirMenu == true
+	if (TYPE ~= "Lobby" and TYPE ~= "ToutEnUn") or retour then
+		finir()
+		return
+	end
 	-- On attend le personnage et la carte
 	local perso = joueur.Character or joueur.CharacterAdded:Wait()
 	local racine = perso:WaitForChild("HumanoidRootPart", 10) :: BasePart?
@@ -5851,7 +6168,7 @@ task.spawn(function()
 		finir()
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
 	KartController  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : KartController
 
@@ -5879,6 +6196,7 @@ local Lighting = game:GetService("Lighting")
 
 local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
+local TYPE_PLACE = Config.TypeDePlace() -- rôle de cette place (lobby, entraînement…)
 
 local joueur = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -6139,9 +6457,11 @@ task.spawn(function()
 	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 12 do
 		task.wait(0.2)
 	end
-	message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
-	task.wait(3.8)
-	message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
+	if TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn" then
+		message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
+		task.wait(3.8)
+		message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
+	end
 end)
 
 local function vers(valeur: number, cible: number, pas: number): number
@@ -6537,6 +6857,9 @@ end
 boutonConduire.Activated:Connect(demanderKart)
 
 local function activerToucheConduire(actif: boolean)
+	if TYPE_PLACE == "Lobby" then
+		actif = false -- dans le lobby, on choisit son mode dans le menu (pas de kart)
+	end
 	boutonConduire.Visible = actif
 	if actif then
 		ContextActionService:BindAction("MallDrift_Conduire", function(_, etat)
@@ -7172,7 +7495,7 @@ task.spawn(function()
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
 	PartieUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : PartieUI
 
@@ -7186,12 +7509,18 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 
 local joueur = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local controles = require(joueur:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
 local Partie = remotes:WaitForChild("Partie", 30)
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local TYPE = Config.TypeDePlace() -- "ToutEnUn", "Lobby", "Entrainement", "PoliceFugitifs", "DriftBattle"…
+local Voyage = remotes:WaitForChild("Voyage", 10) -- (matchmaking entre les places)
+local EN_LOBBY = TYPE == "Lobby"
+local DANS_UNE_PLACE_DE_JEU = TYPE ~= "Lobby" and TYPE ~= "ToutEnUn"
 if not Partie then
 	return
 end
@@ -7430,6 +7759,50 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 ---------------------------------------------------------------------
+-- L'ÉCRAN DE CHARGEMENT (voyage entre le lobby et les places de jeu)
+---------------------------------------------------------------------
+local function creerEcranChargement(parent: Instance): (Frame, TextLabel)
+	local f = Instance.new("Frame")
+	f.Size = UDim2.fromScale(1, 1)
+	f.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+	f.ZIndex = 100
+	f.Parent = parent
+	local t1 = Instance.new("TextLabel")
+	t1.AnchorPoint = Vector2.new(0.5, 0.5)
+	t1.Size = UDim2.new(0.8, 0, 0, 70)
+	t1.Position = UDim2.fromScale(0.5, 0.42)
+	t1.BackgroundTransparency = 1
+	t1.Font = Enum.Font.GothamBlack
+	t1.TextScaled = true
+	t1.TextColor3 = Color3.fromRGB(255, 205, 70)
+	t1.Text = "GOLDEN MALL DRIFT"
+	t1.ZIndex = 101
+	t1.Parent = f
+	local t2 = Instance.new("TextLabel")
+	t2.AnchorPoint = Vector2.new(0.5, 0.5)
+	t2.Size = UDim2.new(0.7, 0, 0, 36)
+	t2.Position = UDim2.fromScale(0.5, 0.54)
+	t2.BackgroundTransparency = 1
+	t2.Font = Enum.Font.GothamBold
+	t2.TextScaled = true
+	t2.TextColor3 = Color3.new(1, 1, 1)
+	t2.Text = "Chargement…"
+	t2.ZIndex = 101
+	t2.Parent = f
+	return f, t2
+end
+local ecranVoyage, texteVoyage = creerEcranChargement(gui)
+ecranVoyage.Visible = false
+-- (le même écran reste affiché pendant la téléportation)
+local guiTeleport = Instance.new("ScreenGui")
+guiTeleport.Name = "ChargementVoyage"
+guiTeleport.IgnoreGuiInset = true
+creerEcranChargement(guiTeleport)
+pcall(function()
+	TeleportService:SetTeleportGui(guiTeleport)
+end)
+
+---------------------------------------------------------------------
 -- LE MENU : choisir son mode de jeu
 --   🏁 ENTRAÎNEMENT : drift libre, la police du mall (bots) te poursuit
 --   🌐 JOUER EN LIGNE : Police contre Fugitifs avec de vrais joueurs
@@ -7519,6 +7892,12 @@ local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
 local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour faire le plus de points de drift. Ça part tout de suite !", Color3.fromRGB(255, 90, 170))
 local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
+local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Retourne au lobby pour changer de mode ou personnaliser ton kart.", Color3.fromRGB(255, 205, 70))
+-- Dans une place de jeu (entraînement, partie, défi) : seulement « retour au lobby »
+carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
+for _, carteJeu in ipairs({ carteEntrainement, carteEnLigne, carteBattle, carteGarage }) do
+	carteJeu.Visible = not DANS_UNE_PLACE_DE_JEU
+end
 
 local boutonFermerMenu = Instance.new("TextButton")
 boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
@@ -7563,8 +7942,18 @@ end)
 boutonFermerMenu.Activated:Connect(function()
 	ouvrirMenu(false)
 end)
+carteLobby.Activated:Connect(function()
+	ouvrirMenu(false)
+	if Voyage then
+		Voyage:FireServer({ mode = "Lobby" })
+	end
+end)
 carteEntrainement.Activated:Connect(function()
 	ouvrirMenu(false)
+	if EN_LOBBY and Voyage then
+		Voyage:FireServer({ mode = "Entrainement" }) -- direction la place Entraînement
+		return
+	end
 	if joueur:GetAttribute("Pret") then
 		Partie:FireServer({ type = "pret", valeur = false })
 	end
@@ -7574,12 +7963,20 @@ end)
 carteEnLigne.Activated:Connect(function()
 	ouvrirMenu(false)
 	local prete = joueur:GetAttribute("Pret") == true
-	Partie:FireServer({ type = "pret", valeur = not prete })
+	if EN_LOBBY and Voyage then
+		Voyage:FireServer({ mode = "PoliceFugitifs" }) -- file d'attente du matchmaking
+	else
+		Partie:FireServer({ type = "pret", valeur = not prete })
+	end
 	ajouterAuFil(if prete then "Tu as quitté la file d'attente." else "🌐 Tu es dans la file pour Police contre Fugitifs !", Color3.fromRGB(90, 150, 255))
 end)
 carteBattle.Activated:Connect(function()
 	ouvrirMenu(false)
-	Partie:FireServer({ type = "battle" }) -- le défi démarre tout de suite
+	if EN_LOBBY and Voyage then
+		Voyage:FireServer({ mode = "DriftBattle" }) -- direction la place Drift Battle
+	else
+		Partie:FireServer({ type = "battle" }) -- le défi démarre tout de suite
+	end
 end)
 carteGarage.Activated:Connect(function()
 	ouvrirMenu(false)
@@ -7587,6 +7984,41 @@ carteGarage.Activated:Connect(function()
 end)
 
 -- (En arrivant, on visite le garage : le menu s'ouvre avec le bouton « ☰ MENU »)
+
+if Voyage then
+	Voyage.OnClientEvent:Connect(function(info)
+		if type(info) ~= "table" then
+			return
+		end
+		if info.type == "file" and EN_LOBBY then
+			texteBarre.Text = if joueur:GetAttribute("Pret")
+				then ("🌐 Dans la file Police vs Fugitifs : %d/%d joueurs… la partie arrive !"):format(info.n or 0, info.min or 2)
+				else ("🏠 LOBBY · Police vs Fugitifs : %d joueur(s) dans la file · ☰ MENU pour jouer"):format(info.n or 0)
+			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
+		elseif info.type == "depart" then
+			texteVoyage.Text = info.texte or "Chargement…"
+			ecranVoyage.Visible = true
+			task.delay(15, function()
+				ecranVoyage.Visible = false -- (au cas où le voyage échoue)
+			end)
+		elseif info.type == "erreur" then
+			ecranVoyage.Visible = false
+			ajouterAuFil("⚠ " .. (info.texte or "Erreur de voyage"), Color3.fromRGB(255, 100, 100))
+		end
+	end)
+end
+
+-- Retour au lobby après une partie : le menu s'ouvre directement
+task.spawn(function()
+	local donnees = TeleportService:GetLocalPlayerTeleportData()
+	if EN_LOBBY and type(donnees) == "table" and donnees.ouvrirMenu then
+		while not joueur:GetAttribute("IntroFinie") do
+			task.wait(0.3)
+		end
+		task.wait(0.5)
+		ouvrirMenu(true)
+	end
+end)
 
 ---------------------------------------------------------------------
 -- LE CLASSEMENT MONDIAL DU DRIFT BATTLE : top 3 + ta place directement
@@ -7739,7 +8171,9 @@ Partie.OnClientEvent:Connect(function(info)
 			("Meilleur drift : %d"):format(info.meilleur or 0),
 			if info.nouveauRecord then Color3.fromRGB(255, 205, 70) else Color3.fromRGB(255, 90, 170), 3)
 		task.delay(3, function()
-			ouvrirMenu(true) -- retour direct au menu
+			if not DANS_UNE_PLACE_DE_JEU then
+				ouvrirMenu(true) -- retour direct au menu
+			end
 		end)
 	elseif info.type == "classementMondial" then
 		task.delay(3, function()
@@ -7768,7 +8202,7 @@ Partie.OnClientEvent:Connect(function(info)
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX12"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
 	SecuriteUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : SecuriteUI
 

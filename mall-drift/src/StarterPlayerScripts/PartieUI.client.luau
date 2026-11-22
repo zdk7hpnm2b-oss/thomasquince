@@ -12,12 +12,18 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 
 local joueur = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local controles = require(joueur:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
 local Partie = remotes:WaitForChild("Partie", 30)
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local TYPE = Config.TypeDePlace() -- "ToutEnUn", "Lobby", "Entrainement", "PoliceFugitifs", "DriftBattle"…
+local Voyage = remotes:WaitForChild("Voyage", 10) -- (matchmaking entre les places)
+local EN_LOBBY = TYPE == "Lobby"
+local DANS_UNE_PLACE_DE_JEU = TYPE ~= "Lobby" and TYPE ~= "ToutEnUn"
 if not Partie then
 	return
 end
@@ -256,6 +262,50 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 ---------------------------------------------------------------------
+-- L'ÉCRAN DE CHARGEMENT (voyage entre le lobby et les places de jeu)
+---------------------------------------------------------------------
+local function creerEcranChargement(parent: Instance): (Frame, TextLabel)
+	local f = Instance.new("Frame")
+	f.Size = UDim2.fromScale(1, 1)
+	f.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+	f.ZIndex = 100
+	f.Parent = parent
+	local t1 = Instance.new("TextLabel")
+	t1.AnchorPoint = Vector2.new(0.5, 0.5)
+	t1.Size = UDim2.new(0.8, 0, 0, 70)
+	t1.Position = UDim2.fromScale(0.5, 0.42)
+	t1.BackgroundTransparency = 1
+	t1.Font = Enum.Font.GothamBlack
+	t1.TextScaled = true
+	t1.TextColor3 = Color3.fromRGB(255, 205, 70)
+	t1.Text = "GOLDEN MALL DRIFT"
+	t1.ZIndex = 101
+	t1.Parent = f
+	local t2 = Instance.new("TextLabel")
+	t2.AnchorPoint = Vector2.new(0.5, 0.5)
+	t2.Size = UDim2.new(0.7, 0, 0, 36)
+	t2.Position = UDim2.fromScale(0.5, 0.54)
+	t2.BackgroundTransparency = 1
+	t2.Font = Enum.Font.GothamBold
+	t2.TextScaled = true
+	t2.TextColor3 = Color3.new(1, 1, 1)
+	t2.Text = "Chargement…"
+	t2.ZIndex = 101
+	t2.Parent = f
+	return f, t2
+end
+local ecranVoyage, texteVoyage = creerEcranChargement(gui)
+ecranVoyage.Visible = false
+-- (le même écran reste affiché pendant la téléportation)
+local guiTeleport = Instance.new("ScreenGui")
+guiTeleport.Name = "ChargementVoyage"
+guiTeleport.IgnoreGuiInset = true
+creerEcranChargement(guiTeleport)
+pcall(function()
+	TeleportService:SetTeleportGui(guiTeleport)
+end)
+
+---------------------------------------------------------------------
 -- LE MENU : choisir son mode de jeu
 --   🏁 ENTRAÎNEMENT : drift libre, la police du mall (bots) te poursuit
 --   🌐 JOUER EN LIGNE : Police contre Fugitifs avec de vrais joueurs
@@ -345,6 +395,12 @@ local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
 local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour faire le plus de points de drift. Ça part tout de suite !", Color3.fromRGB(255, 90, 170))
 local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
+local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Retourne au lobby pour changer de mode ou personnaliser ton kart.", Color3.fromRGB(255, 205, 70))
+-- Dans une place de jeu (entraînement, partie, défi) : seulement « retour au lobby »
+carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
+for _, carteJeu in ipairs({ carteEntrainement, carteEnLigne, carteBattle, carteGarage }) do
+	carteJeu.Visible = not DANS_UNE_PLACE_DE_JEU
+end
 
 local boutonFermerMenu = Instance.new("TextButton")
 boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
@@ -389,8 +445,18 @@ end)
 boutonFermerMenu.Activated:Connect(function()
 	ouvrirMenu(false)
 end)
+carteLobby.Activated:Connect(function()
+	ouvrirMenu(false)
+	if Voyage then
+		Voyage:FireServer({ mode = "Lobby" })
+	end
+end)
 carteEntrainement.Activated:Connect(function()
 	ouvrirMenu(false)
+	if EN_LOBBY and Voyage then
+		Voyage:FireServer({ mode = "Entrainement" }) -- direction la place Entraînement
+		return
+	end
 	if joueur:GetAttribute("Pret") then
 		Partie:FireServer({ type = "pret", valeur = false })
 	end
@@ -400,12 +466,20 @@ end)
 carteEnLigne.Activated:Connect(function()
 	ouvrirMenu(false)
 	local prete = joueur:GetAttribute("Pret") == true
-	Partie:FireServer({ type = "pret", valeur = not prete })
+	if EN_LOBBY and Voyage then
+		Voyage:FireServer({ mode = "PoliceFugitifs" }) -- file d'attente du matchmaking
+	else
+		Partie:FireServer({ type = "pret", valeur = not prete })
+	end
 	ajouterAuFil(if prete then "Tu as quitté la file d'attente." else "🌐 Tu es dans la file pour Police contre Fugitifs !", Color3.fromRGB(90, 150, 255))
 end)
 carteBattle.Activated:Connect(function()
 	ouvrirMenu(false)
-	Partie:FireServer({ type = "battle" }) -- le défi démarre tout de suite
+	if EN_LOBBY and Voyage then
+		Voyage:FireServer({ mode = "DriftBattle" }) -- direction la place Drift Battle
+	else
+		Partie:FireServer({ type = "battle" }) -- le défi démarre tout de suite
+	end
 end)
 carteGarage.Activated:Connect(function()
 	ouvrirMenu(false)
@@ -413,6 +487,41 @@ carteGarage.Activated:Connect(function()
 end)
 
 -- (En arrivant, on visite le garage : le menu s'ouvre avec le bouton « ☰ MENU »)
+
+if Voyage then
+	Voyage.OnClientEvent:Connect(function(info)
+		if type(info) ~= "table" then
+			return
+		end
+		if info.type == "file" and EN_LOBBY then
+			texteBarre.Text = if joueur:GetAttribute("Pret")
+				then ("🌐 Dans la file Police vs Fugitifs : %d/%d joueurs… la partie arrive !"):format(info.n or 0, info.min or 2)
+				else ("🏠 LOBBY · Police vs Fugitifs : %d joueur(s) dans la file · ☰ MENU pour jouer"):format(info.n or 0)
+			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
+		elseif info.type == "depart" then
+			texteVoyage.Text = info.texte or "Chargement…"
+			ecranVoyage.Visible = true
+			task.delay(15, function()
+				ecranVoyage.Visible = false -- (au cas où le voyage échoue)
+			end)
+		elseif info.type == "erreur" then
+			ecranVoyage.Visible = false
+			ajouterAuFil("⚠ " .. (info.texte or "Erreur de voyage"), Color3.fromRGB(255, 100, 100))
+		end
+	end)
+end
+
+-- Retour au lobby après une partie : le menu s'ouvre directement
+task.spawn(function()
+	local donnees = TeleportService:GetLocalPlayerTeleportData()
+	if EN_LOBBY and type(donnees) == "table" and donnees.ouvrirMenu then
+		while not joueur:GetAttribute("IntroFinie") do
+			task.wait(0.3)
+		end
+		task.wait(0.5)
+		ouvrirMenu(true)
+	end
+end)
 
 ---------------------------------------------------------------------
 -- LE CLASSEMENT MONDIAL DU DRIFT BATTLE : top 3 + ta place directement
@@ -565,7 +674,9 @@ Partie.OnClientEvent:Connect(function(info)
 			("Meilleur drift : %d"):format(info.meilleur or 0),
 			if info.nouveauRecord then Color3.fromRGB(255, 205, 70) else Color3.fromRGB(255, 90, 170), 3)
 		task.delay(3, function()
-			ouvrirMenu(true) -- retour direct au menu
+			if not DANS_UNE_PLACE_DE_JEU then
+				ouvrirMenu(true) -- retour direct au menu
+			end
 		end)
 	elseif info.type == "classementMondial" then
 		task.delay(3, function()

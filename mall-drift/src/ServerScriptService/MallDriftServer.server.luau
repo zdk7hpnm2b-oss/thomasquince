@@ -27,6 +27,7 @@ local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
 local KartBuilder = require(ReplicatedStorage:WaitForChild("KartBuilder"))
 
 Config.AppliquerAmbiance(Config.NuitParDefaut)
+local TYPE = Config.TypeDePlace() -- rôle de cette place (voir KartConfig > Config.Places)
 
 if not Lighting:FindFirstChildOfClass("BloomEffect") then
 	local bloom = Instance.new("BloomEffect")
@@ -2080,6 +2081,9 @@ local function sortirKart(joueur: Player)
 	if joueur:GetAttribute("EnSalle") then
 		return -- page d'attente : la manche va commencer
 	end
+	if TYPE == "Lobby" then
+		return -- dans le lobby, on ne roule pas : on choisit son mode dans le menu
+	end
 	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
 	placerKart(joueur, joueur:GetAttribute("Role") == nil)
 end
@@ -2108,6 +2112,28 @@ end
 RetirerKart.Parent = game:GetService("ServerStorage")
 
 SortirKart.OnServerEvent:Connect(sortirKart)
+
+-- Place Entraînement : en arrivant, le kart t'attend sur la ligne de départ
+if TYPE == "Entrainement" then
+	local function arrivee(joueur: Player)
+		joueur.CharacterAdded:Connect(function()
+			task.spawn(function()
+				local debut = os.clock()
+				while not profils[joueur] and os.clock() - debut < 15 do
+					task.wait(0.3)
+				end
+				task.wait(1.5)
+				if joueur.Parent and not kartsJoueurs[joueur] then
+					placerKart(joueur, true)
+				end
+			end)
+		end)
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+end
 
 -- Toutes les secondes : chaque joueur au volant doit avoir le contrôle physique
 -- de son kart (sinon il ne peut pas avancer). On le lui redonne si besoin.

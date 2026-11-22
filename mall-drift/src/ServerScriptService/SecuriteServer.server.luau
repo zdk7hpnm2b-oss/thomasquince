@@ -31,6 +31,12 @@ local carte = workspace:WaitForChild("GoldenMall")
 local dossierKarts = workspace:WaitForChild("KartsJoueurs")
 
 local R = Config.Securite
+local TYPE = Config.TypeDePlace()
+if TYPE == "Lobby" or TYPE == "PoliceFugitifs" or TYPE == "DriftBattle" then
+	-- Pas de police bot ici (lobby, ou les vrais joueurs font la police / défi sans police)
+	print(("[Golden Mall] Place « %s » : pas de police bot."):format(TYPE))
+	return
+end
 local SOL = 1
 local random = Random.new()
 

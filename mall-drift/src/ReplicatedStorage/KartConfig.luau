@@ -14,6 +14,35 @@ Config.NomDuJeu = "Golden Mall Drift"
 Config.Lieu = "Dubaï"
 
 ---------------------------------------------------------------------
+-- LES PLACES DE L'EXPÉRIENCE (lobby + places de jeu)
+-- Mets ici le numéro (PlaceId) de chaque place, visible sur le Creator Hub.
+-- Tant que Lobby = 0, tout le jeu tourne dans UNE seule place (pratique pour
+-- tester dans Studio). Le même fichier est publié dans toutes les places :
+-- chacune reconnaît son rôle grâce à son PlaceId.
+---------------------------------------------------------------------
+Config.Places = {
+	Lobby = 0, -- la place de départ (publique) : garage + menu + matchmaking
+	Entrainement = 0, -- drift libre avec la police bot
+	PoliceFugitifs = 0, -- les manches en équipes (serveurs privés créés par le matchmaking)
+	DriftBattle = 0, -- le défi solo + classement mondial
+	Jeu4 = 0, -- (réservée pour un 4e mode de jeu)
+}
+
+-- Le rôle de la place où tourne le jeu : "Lobby", "Entrainement", "PoliceFugitifs",
+-- "DriftBattle", "Jeu4", ou "ToutEnUn" (tout dans une seule place)
+function Config.TypeDePlace(): string
+	if Config.Places.Lobby == 0 then
+		return "ToutEnUn"
+	end
+	for nom, id in pairs(Config.Places) do
+		if id ~= 0 and id == game.PlaceId then
+			return nom
+		end
+	end
+	return "ToutEnUn" -- (place inconnue, par exemple un fichier pas encore publié)
+end
+
+---------------------------------------------------------------------
 -- LES KARTS  (Niveau = niveau du joueur nécessaire pour le débloquer)
 -- VitesseMax     : vitesse de pointe (≈ km/h affichés)
 -- Acceleration   : vitesse pour atteindre la vitesse max

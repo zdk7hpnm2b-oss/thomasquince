@@ -19,6 +19,10 @@ ReplicatedStorage:WaitForChild("MallDriftRemotes") -- = la carte est construite
 local carte = workspace:WaitForChild("GoldenMall")
 
 local REGLAGES = Config.PNJ or { Max = 220, ChanceClient = 0.75 }
+if Config.TypeDePlace() == "Lobby" then
+	-- Dans le lobby, on reste au garage : pas besoin de remplir les boutiques (plus léger)
+	return
+end
 local random = Random.new(7)
 
 local dossier = Instance.new("Folder")

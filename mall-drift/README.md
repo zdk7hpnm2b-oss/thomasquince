@@ -83,14 +83,14 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 11 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 12 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
 
 ## 🧩 Méthode manuelle (si le fichier ne s'ouvre pas)
 
-Il y a **11 fichiers** à copier. Chacun va dans un endroit précis de Studio.
+Il y a **12 fichiers** à copier. Chacun va dans un endroit précis de Studio.
 
 ### Étape 0 — Ouvrir un nouveau jeu
 1. Ouvre **Roblox Studio**, clique sur **Nouveau** puis sur le modèle **Baseplate**.
@@ -107,8 +107,8 @@ Survole **ReplicatedStorage**, clique sur le **+**, choisis **ModuleScript**. Fa
 Pour renommer : clic droit > **Renommer**. Pour coller : double-clic sur le script,
 **efface tout** (Ctrl+A puis Suppr), puis colle.
 
-### Étape 2 — Dans ServerScriptService : 4 Scripts
-Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 4 fois :
+### Étape 2 — Dans ServerScriptService : 5 Scripts
+Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 5 fois :
 
 | Nom | Contenu à coller |
 |---|---|
@@ -116,6 +116,7 @@ Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le
 | `SecuriteServer` | [`src/ServerScriptService/SecuriteServer.server.luau`](src/ServerScriptService/SecuriteServer.server.luau) |
 | `PNJServer` | [`src/ServerScriptService/PNJServer.server.luau`](src/ServerScriptService/PNJServer.server.luau) |
 | `ManchesServer` | [`src/ServerScriptService/ManchesServer.server.luau`](src/ServerScriptService/ManchesServer.server.luau) |
+| `MatchmakingServer` | [`src/ServerScriptService/MatchmakingServer.server.luau`](src/ServerScriptService/MatchmakingServer.server.luau) |
 
 ### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 5 LocalScripts
 Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et choisis
@@ -145,6 +146,40 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 > 💡 Dans la fenêtre **Sortie (Output)**, tu dois voir
 > `[Golden Mall] Le Golden Mall de Dubaï est prêt !`. S'il y a un message en **rouge**,
 > copie-le-moi et je corrige.
+
+---
+
+## 🌍 Publier en plusieurs places (lobby + places de jeu)
+
+Le jeu peut tourner de deux façons :
+- **Tout dans une seule place** (par défaut, `Config.Places.Lobby = 0`) : pratique pour tester dans Studio.
+- **Une expérience avec plusieurs places**, comme les gros jeux Roblox :
+
+| Place | Rôle |
+|---|---|
+| 🏠 **Lobby** (place de départ, publique) | On arrive, on visite le garage, on choisit son mode dans le menu |
+| 🏁 **Entraînement** | Drift libre avec la police bot (le kart t'attend sur la ligne de départ) |
+| 🚓 **Police contre Fugitifs** | Le matchmaking du lobby y envoie les groupes (jusqu'à 20) sur un serveur privé |
+| 🔥 **Drift Battle** | Le défi solo + le classement mondial, puis retour au lobby |
+| ➕ **Jeu4** | Réservée pour un 4e mode |
+
+Les places de jeu ne sont pas accessibles directement : seul le lobby y envoie les joueurs, et à la
+fin d'une partie, on revient au lobby (le menu s'ouvre tout seul).
+
+**Mise en place (une seule fois) :**
+1. Publie le fichier `GoldenMallDrift.rbxlx` : **Fichier > Publier sur Roblox** → nouvelle expérience.
+   Cette première place devient le **Lobby**.
+2. Sur le **Creator Hub** (create.roblox.com) > ton expérience > **Places** > **Ajouter une place** :
+   crée 3 places (**Entraînement**, **Police contre Fugitifs**, **Drift Battle**). Note le **numéro
+   (ID)** de chaque place, y compris celui du lobby.
+3. Dans Studio, ouvre `KartConfig` et remplis `Config.Places` avec ces 4 numéros.
+4. Publie **le même fichier dans chaque place** : **Fichier > Publier sur Roblox en tant que…** →
+   choisis ton expérience → choisis la place à remplacer. Fais-le pour les 4 places.
+5. **Paramètres du jeu > Sécurité** : active **l'accès aux services API** (sauvegarde + classement).
+6. Nombre max de joueurs conseillé : Lobby 40, Police contre Fugitifs 20, Entraînement 20, Drift Battle 10.
+
+⚠️ Les téléportations entre places ne marchent **que dans le jeu publié** (pas dans Studio).
+Pour tester dans Studio, remets `Config.Places.Lobby = 0` (tout dans une seule place).
 
 ---
 
@@ -211,7 +246,8 @@ mall-drift/
     │   ├── MallDriftServer.server.luau      (Script) le mall, le garage, la sauvegarde
     │   ├── SecuriteServer.server.luau       (Script) la police
     │   ├── PNJServer.server.luau            (Script) les vendeurs et les clients
-    │   └── ManchesServer.server.luau        (Script) le mode en ligne Police vs Fugitifs
+    │   ├── ManchesServer.server.luau        (Script) Police vs Fugitifs, Drift Battle
+    │   └── MatchmakingServer.server.luau    (Script) lobby → places de jeu (téléportations)
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP

@@ -162,6 +162,15 @@ task.delay(12, function()
 end)
 
 local function sequence()
+	-- L'intro ne se joue qu'en arrivant au lobby (pas dans les places de jeu,
+	-- ni quand on revient au lobby après une partie)
+	local TYPE = Config.TypeDePlace()
+	local donneesVoyage = game:GetService("TeleportService"):GetLocalPlayerTeleportData()
+	local retour = type(donneesVoyage) == "table" and donneesVoyage.ouvrirMenu == true
+	if (TYPE ~= "Lobby" and TYPE ~= "ToutEnUn") or retour then
+		finir()
+		return
+	end
 	-- On attend le personnage et la carte
 	local perso = joueur.Character or joueur.CharacterAdded:Wait()
 	local racine = perso:WaitForChild("HumanoidRootPart", 10) :: BasePart?

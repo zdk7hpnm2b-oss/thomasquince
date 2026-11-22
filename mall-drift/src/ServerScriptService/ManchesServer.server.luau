@@ -34,6 +34,24 @@ local carte = workspace:WaitForChild("GoldenMall")
 local dossierKarts = workspace:WaitForChild("KartsJoueurs")
 
 local P = Config.Partie or {}
+local TYPE = Config.TypeDePlace() -- "ToutEnUn", "Lobby", "PoliceFugitifs", "DriftBattle", "Entrainement"...
+local TeleportService = game:GetService("TeleportService")
+
+-- Renvoie des joueurs au lobby (expérience à plusieurs places), le menu s'y ouvrira
+local function retourAuLobby(joueurs: { Player }): boolean
+	if (Config.Places and Config.Places.Lobby or 0) == 0 or #joueurs == 0 then
+		return false
+	end
+	local options = Instance.new("TeleportOptions")
+	options:SetTeleportData({ ouvrirMenu = true })
+	local ok, erreur = pcall(function()
+		TeleportService:TeleportAsync(Config.Places.Lobby, joueurs, options)
+	end)
+	if not ok then
+		warn("[Manches] Retour au lobby impossible : " .. tostring(erreur))
+	end
+	return ok
+end
 local JOUEURS_MIN = P.JoueursMin or 2
 local INTERMISSION = P.Intermission or 20
 local DUREE = P.DureeManche or 300
@@ -593,7 +611,16 @@ local function jouerManche(participants: { Participant })
 	end
 	task.wait(6)
 
-	-- 5) Retour au garage pour tout le monde
+	-- 5) Retour au garage (ou au lobby, dans la place Police contre Fugitifs)
+	if TYPE == "PoliceFugitifs" then
+		local tous = {}
+		for _, p in ipairs(participants) do
+			if p.joueur and p.joueur.Parent then
+				table.insert(tous, p.joueur)
+			end
+		end
+		retourAuLobby(tous)
+	end
 	workspace:SetAttribute("MancheEnCours", false)
 	fermerEntree(false)
 	dossierBots:ClearAllChildren()
@@ -828,6 +855,13 @@ local function lancerBattle(joueur: Player)
 	joueur:SetAttribute("RecordBattle", record)
 	local top, autour, rang = classementAutour(joueur, record)
 	Partie:FireClient(joueur, { type = "classementMondial", top = top, autour = autour, rang = rang, record = record })
+	if TYPE == "DriftBattle" then
+		task.delay(9, function() -- (le temps de voir son score et le classement)
+			if joueur.Parent then
+				retourAuLobby({ joueur })
+			end
+		end)
+	end
 end
 
 DriftEnregistre.Event:Connect(function(joueur: Player, points: number)
@@ -904,7 +938,60 @@ for _, joueur in ipairs(Players:GetPlayers()) do
 end
 workspace:SetAttribute("MancheEnCours", false)
 
+-- Place Drift Battle : le défi démarre dès qu'on arrive
+if TYPE == "DriftBattle" then
+	local function arrivee(joueur: Player)
+		task.spawn(function()
+			local debut = os.clock()
+			while not joueur.Character and os.clock() - debut < 15 do
+				task.wait(0.3)
+			end
+			task.wait(2.5) -- le temps que le profil du joueur soit chargé
+			if joueur.Parent then
+				lancerBattle(joueur)
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+end
+
+-- Place Police contre Fugitifs : tous les arrivants jouent, on attend le groupe
+local attendus = 1
+local premiereArrivee: number? = nil
+if TYPE == "PoliceFugitifs" then
+	local function arrivee(joueur: Player)
+		joueur:SetAttribute("Pret", true)
+		premiereArrivee = premiereArrivee or os.clock()
+		local donnees = joueur:GetJoinData().TeleportData
+		if type(donnees) == "table" and type(donnees.attendus) == "number" then
+			attendus = math.max(attendus, donnees.attendus)
+		end
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+end
+
+-- Les manches ne tournent que dans la place « tout en un » et la place Police contre Fugitifs
+if TYPE ~= "ToutEnUn" and TYPE ~= "PoliceFugitifs" then
+	print(("[Golden Mall] Place « %s » : pas de manches ici."):format(TYPE))
+	return
+end
+
 task.spawn(function()
+	-- Place Police contre Fugitifs : on attend que tout le groupe soit arrivé (15 s max)
+	if TYPE == "PoliceFugitifs" then
+		while not premiereArrivee do
+			task.wait(0.5)
+		end
+		while #Players:GetPlayers() < attendus and os.clock() - (premiereArrivee :: number) < 15 do
+			task.wait(0.5)
+		end
+	end
 	while true do
 		-- Attente : chacun est libre (entraînement, garage...)
 		while not modeDisponible() do

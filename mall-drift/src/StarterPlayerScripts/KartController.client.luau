@@ -26,6 +26,7 @@ local Lighting = game:GetService("Lighting")
 
 local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
+local TYPE_PLACE = Config.TypeDePlace() -- rôle de cette place (lobby, entraînement…)
 
 local joueur = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -286,9 +287,11 @@ task.spawn(function()
 	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 12 do
 		task.wait(0.2)
 	end
-	message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
-	task.wait(3.8)
-	message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
+	if TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn" then
+		message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
+		task.wait(3.8)
+		message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
+	end
 end)
 
 local function vers(valeur: number, cible: number, pas: number): number
@@ -684,6 +687,9 @@ end
 boutonConduire.Activated:Connect(demanderKart)
 
 local function activerToucheConduire(actif: boolean)
+	if TYPE_PLACE == "Lobby" then
+		actif = false -- dans le lobby, on choisit son mode dans le menu (pas de kart)
+	end
 	boutonConduire.Visible = actif
 	if actif then
 		ContextActionService:BindAction("MallDrift_Conduire", function(_, etat)
