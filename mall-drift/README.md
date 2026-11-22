@@ -14,6 +14,14 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **🏬 Deux étages** : au-dessus du rez-de-chaussée, un **1er étage** avec ses propres boutiques. Au
+  centre, un grand **atrium** ouvert sur les deux étages, traversé par une **passerelle**. On monte en
+  kart par **deux rampes** au-dessus de la place centrale (le kart s'incline dans la pente). Garde-corps
+  vitrés partout pour ne pas tomber
+- **👥 Du monde partout** : un **vendeur à la caisse** de chaque boutique, des **clients** qui font leurs
+  courses (ou assis chez le coiffeur), des gens sur les bancs et aux kiosques. Chaque boutique a une
+  vraie **caisse** (caisse enregistreuse, écran, terminal de carte) ; les magasins de vêtements ont des
+  **cabines d'essayage** ; nouvelle **supérette** avec rayons, frigos à boissons, fruits et caisse à tapis
 - **🚨 La police du mall** : 3 policiers patrouillent **à pied**. Quand l'un d'eux voit ton kart (❗), il
   **saute dans son kart de police** (gyrophare bleu/rouge, « POLICE » sur les côtés) et te prend en
   chasse, presque aussi vite que toi. Il vise l'endroit où tu vas et appelle ses collègues en
@@ -56,14 +64,14 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 8 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 9 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
 
 ## 🧩 Méthode manuelle (si le fichier ne s'ouvre pas)
 
-Il y a **8 fichiers** à copier. Chacun va dans un endroit précis de Studio.
+Il y a **9 fichiers** à copier. Chacun va dans un endroit précis de Studio.
 
 ### Étape 0 — Ouvrir un nouveau jeu
 1. Ouvre **Roblox Studio**, clique sur **Nouveau** puis sur le modèle **Baseplate**.
@@ -80,13 +88,14 @@ Survole **ReplicatedStorage**, clique sur le **+**, choisis **ModuleScript**. Fa
 Pour renommer : clic droit > **Renommer**. Pour coller : double-clic sur le script,
 **efface tout** (Ctrl+A puis Suppr), puis colle.
 
-### Étape 2 — Dans ServerScriptService : 2 Scripts
-Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 2 fois :
+### Étape 2 — Dans ServerScriptService : 3 Scripts
+Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 3 fois :
 
 | Nom | Contenu à coller |
 |---|---|
 | `MallDriftServer` | [`src/ServerScriptService/MallDriftServer.server.luau`](src/ServerScriptService/MallDriftServer.server.luau) |
 | `SecuriteServer` | [`src/ServerScriptService/SecuriteServer.server.luau`](src/ServerScriptService/SecuriteServer.server.luau) |
+| `PNJServer` | [`src/ServerScriptService/PNJServer.server.luau`](src/ServerScriptService/PNJServer.server.luau) |
 
 ### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 4 LocalScripts
 Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et choisis
@@ -162,7 +171,8 @@ mall-drift/
     │   └── KartBuilder.luau                 (ModuleScript) fabrique les karts
     ├── ServerScriptService/
     │   ├── MallDriftServer.server.luau      (Script) le mall, le garage, la sauvegarde
-    │   └── SecuriteServer.server.luau       (Script) les gardes de sécurité
+    │   ├── SecuriteServer.server.luau       (Script) la police
+    │   └── PNJServer.server.luau            (Script) les vendeurs et les clients
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP

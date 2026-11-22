@@ -117,7 +117,7 @@ local function pancarte(nom: string, taille: Vector3, position: Vector3, versOu:
 end
 
 local SOL = 1
-local LARGEUR, PROFONDEUR, HAUTEUR = 420, 320, 40
+local LARGEUR, PROFONDEUR, HAUTEUR = 420, 320, 52 -- murs assez hauts pour 2 étages
 local DX, DZ = LARGEUR / 2, PROFONDEUR / 2
 
 local MARBRE = Color3.fromRGB(242, 236, 224)
@@ -185,25 +185,53 @@ pancarte("EnseigneExterieure", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22,
 bloc("DessusPortes", Vector3.new(largeurPortes, HAUTEUR - 16, 2), CFrame.new(0, SOL + 16 + (HAUTEUR - 16) / 2, DZ + 1), MUR_MALL, Enum.Material.Marble)
 pancarte("Enseigne", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ - 0.3), Vector3.new(0, 0, -1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
 
--- Plafond blanc (au ras du haut des boutiques) avec des puits de lumière
-local HAUT_PLAFOND = 24
-local plafond = bloc("Plafond", Vector3.new(LARGEUR + 4, 1, PROFONDEUR + 4), CFrame.new(0, SOL + HAUT_PLAFOND + 0.5, 0), Color3.fromRGB(245, 244, 240), Enum.Material.SmoothPlastic)
+-- 2 ÉTAGES : le plafond du rez-de-chaussée est le plancher du 1er étage.
+-- Au centre, l'ATRIUM (au-dessus de la place centrale) est ouvert sur les 2 étages,
+-- traversé par une PASSERELLE au 1er étage. Deux RAMPES permettent de monter en kart.
+local HAUT_PLAFOND = 24 -- hauteur du rez-de-chaussée
+local ETAGE = HAUT_PLAFOND + 1 -- dessus du plancher du 1er étage
+local HAUT_PLAFOND_2 = ETAGE + 24 -- plafond du 1er étage
+local ATRIUM_X = 30 -- l'atrium va de x = -30 à 30 (au 1er étage, une galerie de 8 passe devant les boutiques)
+local ATRIUM_Z = 124 -- ... et de z = -124 à 124 (hors passerelle)
+local PASSERELLE_Z = 13 -- la passerelle va de z = -13 à 13
+local COULEUR_PLANCHER = Color3.fromRGB(236, 234, 228)
+local plancher = Instance.new("Folder")
+plancher.Name = "Plancher1erEtage"
+plancher.Parent = carte
+local function dalle(nom: string, x1: number, x2: number, z1: number, z2: number)
+	local d = bloc(nom, Vector3.new(x2 - x1, 1, z2 - z1), CFrame.new((x1 + x2) / 2, SOL + HAUT_PLAFOND + 0.5, (z1 + z2) / 2), COULEUR_PLANCHER, Enum.Material.SmoothPlastic, plancher)
+	d.CastShadow = false
+	d.Reflectance = 0.15
+	return d
+end
+dalle("DalleOuest", -DX - 2, -ATRIUM_X, -DZ - 2, DZ + 2)
+dalle("DalleEst", ATRIUM_X, DX + 2, -DZ - 2, DZ + 2)
+dalle("DalleNord", -ATRIUM_X, ATRIUM_X, -DZ - 2, -ATRIUM_Z)
+dalle("DalleSud", -ATRIUM_X, ATRIUM_X, ATRIUM_Z, DZ + 2)
+dalle("Passerelle", -ATRIUM_X, ATRIUM_X, -PASSERELLE_Z, PASSERELLE_Z)
+local plafond = bloc("Plafond", Vector3.new(LARGEUR + 4, 1, PROFONDEUR + 4), CFrame.new(0, SOL + HAUT_PLAFOND_2 + 0.5, 0), Color3.fromRGB(245, 244, 240), Enum.Material.SmoothPlastic)
 plafond.CastShadow = false
 local puits = Instance.new("Folder")
 puits.Name = "PuitsDeLumiere"
 puits.Parent = carte
-local function puitsDeLumiere(x: number, z: number, taille: Vector3)
-	local p = deco(bloc("PuitsDeLumiere", taille, CFrame.new(x, SOL + HAUT_PLAFOND - 0.05, z), Color3.fromRGB(150, 180, 205), Enum.Material.Neon, puits))
+local function puitsDeLumiere(x: number, z: number, taille: Vector3, hauteur: number?)
+	local h = hauteur or HAUT_PLAFOND
+	if h == HAUT_PLAFOND and math.abs(x) < ATRIUM_X and math.abs(z) < ATRIUM_Z and math.abs(z) > PASSERELLE_Z then
+		return -- pas de plafond ici au rez-de-chaussée : c'est l'atrium
+	end
+	local p = deco(bloc("PuitsDeLumiere", taille, CFrame.new(x, SOL + h - 0.05, z), Color3.fromRGB(150, 180, 205), Enum.Material.Neon, puits))
 	p.CastShadow = false
-	deco(bloc("CadrePuits", taille + Vector3.new(1, -0.05, 1), CFrame.new(x, SOL + HAUT_PLAFOND - 0.02, z), Color3.fromRGB(225, 225, 228), Enum.Material.Metal, puits))
+	deco(bloc("CadrePuits", taille + Vector3.new(1, -0.05, 1), CFrame.new(x, SOL + h - 0.02, z), Color3.fromRGB(225, 225, 228), Enum.Material.Metal, puits))
 end
 for x = -175, 175, 50 do
-	puitsDeLumiere(x, 0, Vector3.new(18, 0.1, 7)) -- allée centrale
-	puitsDeLumiere(x, -137, Vector3.new(18, 0.1, 7)) -- allée nord
-	puitsDeLumiere(x, 137, Vector3.new(18, 0.1, 7)) -- allée sud
+	for _, h in ipairs({ HAUT_PLAFOND, HAUT_PLAFOND_2 }) do
+		puitsDeLumiere(x, 0, Vector3.new(18, 0.1, 7), h) -- allée centrale
+		puitsDeLumiere(x, -137, Vector3.new(18, 0.1, 7), h) -- allée nord
+		puitsDeLumiere(x, 137, Vector3.new(18, 0.1, 7), h) -- allée sud
+	end
 end
 for _, z in ipairs({ -110, -60, 60, 110 }) do
-	puitsDeLumiere(0, z, Vector3.new(10, 0.1, 22)) -- place centrale
+	puitsDeLumiere(0, z, Vector3.new(22, 0.1, 30), HAUT_PLAFOND_2) -- grande verrière de l'atrium
 end
 
 -- Lumières des allées
@@ -211,9 +239,13 @@ local lampes = Instance.new("Folder")
 lampes.Name = "Lampes"
 lampes.Parent = carte
 local nombreSpots = 0
-local function lampe(x: number, z: number)
+local function lampe(x: number, z: number, hauteur: number?)
+	local h = hauteur or HAUT_PLAFOND
+	if h == HAUT_PLAFOND and math.abs(x) < ATRIUM_X and math.abs(z) < ATRIUM_Z and math.abs(z) > PASSERELLE_Z then
+		return
+	end
 	nombreSpots += 1
-	local l = bloc("Spot", Vector3.new(2.2, 0.2, 2.2), CFrame.new(x, SOL + HAUT_PLAFOND - 0.1, z), Color3.fromRGB(200, 195, 185), Enum.Material.Neon, lampes)
+	local l = bloc("Spot", Vector3.new(2.2, 0.2, 2.2), CFrame.new(x, SOL + h - 0.1, z), Color3.fromRGB(200, 195, 185), Enum.Material.Neon, lampes)
 	deco(l)
 	l.CastShadow = false
 	if nombreSpots % 2 == 0 then
@@ -225,14 +257,16 @@ local function lampe(x: number, z: number)
 	pl.Color = Color3.fromRGB(255, 236, 200)
 	pl.Parent = l
 end
-for x = -200, 200, 25 do
-	lampe(x, -137)
-	lampe(x, 0)
-	lampe(x, 137)
-end
-for _, x in ipairs({ -173, -99, 99, 173 }) do
-	for _, z in ipairs({ -70, 70 }) do
-		lampe(x, z)
+for _, h in ipairs({ HAUT_PLAFOND, HAUT_PLAFOND_2 }) do
+	for x = -200, 200, 25 do
+		lampe(x, -137, h)
+		lampe(x, 0, h)
+		lampe(x, 137, h)
+	end
+	for _, x in ipairs({ -173, -99, 99, 173 }) do
+		for _, z in ipairs({ -70, 70 }) do
+			lampe(x, z, h)
+		end
 	end
 end
 
@@ -254,6 +288,7 @@ local STYLES = {
 	jouets = { Couleur = Color3.fromRGB(255, 205, 40), Sol = Color3.fromRGB(120, 200, 240), SolMat = Enum.Material.SmoothPlastic, Mur = Color3.fromRGB(255, 250, 240) },
 	livres = { Couleur = Color3.fromRGB(130, 210, 150), Sol = Color3.fromRGB(150, 110, 75), SolMat = Enum.Material.WoodPlanks, Mur = Color3.fromRGB(245, 240, 230) },
 	glaces = { Couleur = Color3.fromRGB(120, 220, 230), Sol = BLANC, SolMat = Enum.Material.Marble, Mur = Color3.fromRGB(255, 225, 235) },
+	superette = { Couleur = Color3.fromRGB(70, 185, 90), Sol = Color3.fromRGB(235, 235, 232), SolMat = Enum.Material.SmoothPlastic, Mur = BLANC },
 }
 
 -- Les enseignes (noms inventés). Elles sont réparties dans les allées dans cet ordre.
@@ -265,7 +300,8 @@ local CATALOGUE = {
 	{ "glaces", "GLACES POLAIRES" }, { "coiffeur", "BARBER CLUB" }, { "vetements", "DENIM STREET" },
 	{ "jeux", "PIXEL PLAY" }, { "tech", "PHONE CENTER" }, { "pizza", "PIZZA ROMA" },
 	{ "sport", "DUNE RUNNERS" }, { "vetements", "ÉLÉGANCE" }, { "cafe", "CAFÉ DES DUNES" },
-	{ "tacos", "TACOS LOCO" }, { "vetements", "MAISON DORÉE" },
+	{ "tacos", "TACOS LOCO" }, { "vetements", "MAISON DORÉE" }, { "superette", "MARCHÉ FRAIS" },
+	{ "jeux", "RETRO GAMES" }, { "superette", "ÉPICERIE DU MALL" },
 }
 local prochaineEnseigne = 0
 local function enseigneSuivante(): (string, string)
@@ -295,6 +331,7 @@ type Outils = {
 	ecran: (x: number, y: number, z: number, largeur: number, hauteur: number, couleur: Color3, txt: string?) -> (),
 	style: { [string]: any },
 	nom: string,
+	poste: (x: number, z: number, versX: number, versZ: number, role: string) -> (),
 }
 
 local function chaise(o: Outils, x: number, z: number, couleur: Color3)
@@ -323,7 +360,6 @@ AMENAGEMENTS.coiffeur = function(o)
 		o.meuble("Fauteuil", Vector3.new(3, 1.2, 3), x, 2.1, 19.5, NOIR, Enum.Material.Fabric)
 		o.meuble("DossierFauteuil", Vector3.new(3, 3, 0.6), x, 3.6, 21, NOIR, Enum.Material.Fabric)
 	end
-	o.meuble("Accueil", Vector3.new(6, 3.5, 2.5), 11.5, 1.75, 6, o.style.Couleur, Enum.Material.SmoothPlastic)
 	o.cylindre("Pot", 2, 2.2, -13.5, 1, 4, BLANC, Enum.Material.SmoothPlastic)
 	local plante = o.meuble("Plante", Vector3.new(3, 3, 3), -13.5, 3.4, 4, Color3.fromRGB(60, 150, 70), Enum.Material.Grass)
 	plante.Shape = Enum.PartType.Ball
@@ -343,7 +379,16 @@ AMENAGEMENTS.vetements = function(o)
 	for i = 0, 2 do
 		deco(o.meuble("PilePulls", Vector3.new(1.6, 0.9, 1.6), 8 + i * 2, 2.95, 14, teintes[i + 2], Enum.Material.Fabric))
 	end
-	deco(o.meuble("Miroir", Vector3.new(6, 9, 0.2), 10, 5.5, 22.8, Color3.fromRGB(210, 230, 240), Enum.Material.Glass)).Reflectance = 0.5
+	-- Cabines d'essayage (2 cabines avec rideau)
+	for _, x in ipairs({ 6.5, 11, 15.5 }) do
+		o.meuble("CloisonCabine", Vector3.new(0.3, 8, 4.5), x, 4, 20.75, Color3.fromRGB(235, 230, 220), Enum.Material.SmoothPlastic)
+	end
+	for _, x in ipairs({ 8.75, 13.25 }) do
+		deco(o.meuble("Rideau", Vector3.new(4.2, 7, 0.15), x, 4, 18.6, Color3.fromRGB(120, 40, 60), Enum.Material.Fabric))
+		deco(o.meuble("MiroirCabine", Vector3.new(2.5, 5, 0.1), x, 4.5, 22.85, Color3.fromRGB(210, 230, 240), Enum.Material.Glass)).Reflectance = 0.5
+	end
+	local panneauCabines = deco(o.meuble("PanneauCabines", Vector3.new(8, 1.2, 0.2), 11, 8.8, 18.4, Color3.fromRGB(30, 30, 34), Enum.Material.SmoothPlastic))
+	texte(panneauCabines, Enum.NormalId.Front, "CABINES D'ESSAYAGE", Color3.new(1, 1, 1))
 	mannequin(o, -12, 4, teintes[3])
 	mannequin(o, 12, 4, teintes[4])
 end
@@ -369,6 +414,9 @@ local function fastFood(o: Outils, typeB: string)
 		chaise(o, x - 3.4, 9, o.style.Couleur)
 		chaise(o, x + 3.4, 9, o.style.Couleur)
 	end
+	o.poste(-5, 20.6, 0, -1, "vendeur")
+	o.poste(5, 20.6, 0, -1, "vendeur")
+	o.poste(-4, 15, 0, 1, "client")
 end
 AMENAGEMENTS.burger = function(o) fastFood(o, "burger") end
 AMENAGEMENTS.pizza = function(o) fastFood(o, "pizza") end
@@ -382,6 +430,8 @@ AMENAGEMENTS.cafe = function(o)
 		o.cylindre("TableRonde", 3, 3.4, pos.X, 1.5, pos.Y, BLANC, Enum.Material.Marble)
 		chaise(o, pos.X + 3, pos.Y, Color3.fromRGB(110, 75, 50))
 	end
+	o.poste(15.2, 15, -1, 0, "vendeur")
+	o.poste(9, 12, 1, 0, "client")
 end
 
 AMENAGEMENTS.jeux = function(o)
@@ -397,7 +447,12 @@ AMENAGEMENTS.jeux = function(o)
 	o.meuble("Presentoir", Vector3.new(8, 3, 4), 0, 1.5, 15, Color3.fromRGB(45, 45, 60), Enum.Material.SmoothPlastic)
 	deco(o.meuble("Console", Vector3.new(1.6, 0.5, 1.1), -2, 3.25, 15, BLANC, Enum.Material.SmoothPlastic))
 	deco(o.meuble("Console", Vector3.new(1.6, 0.5, 1.1), 2, 3.25, 15, NOIR, Enum.Material.SmoothPlastic))
-	libre(o.meuble("FauteuilGamer", Vector3.new(2.4, 3.4, 2.4), 9, 1.7, 6, Color3.fromRGB(200, 30, 50), Enum.Material.Fabric))
+	libre(o.meuble("FauteuilGamer", Vector3.new(2.4, 3.4, 2.4), -8, 1.7, 6, Color3.fromRGB(200, 30, 50), Enum.Material.Fabric))
+	-- Bornes de démo avec écran
+	for _, x in ipairs({ -4, 4 }) do
+		o.meuble("BorneDemo", Vector3.new(2.4, 4, 1.5), x, 2, 20.5, Color3.fromRGB(30, 30, 40), Enum.Material.SmoothPlastic)
+		deco(o.meuble("EcranDemo", Vector3.new(2, 1.4, 0.1), x, 4.6, 19.7, Color3.fromRGB(80, 200, 255), Enum.Material.Neon))
+	end
 end
 
 AMENAGEMENTS.tech = function(o)
@@ -422,8 +477,8 @@ AMENAGEMENTS.sport = function(o)
 		end
 	end
 	o.meuble("Banc", Vector3.new(8, 1.5, 2.5), 0, 0.75, 14, Color3.fromRGB(200, 170, 120), Enum.Material.WoodPlanks)
-	for _, x in ipairs({ -11, 11 }) do
-		local ballon = libre(o.meuble("Ballon", Vector3.new(2, 2, 2), x, 1, 9, Color3.fromRGB(240, 120, 40), Enum.Material.SmoothPlastic))
+	for _, x in ipairs({ -11, -6 }) do
+		local ballon = libre(o.meuble("Ballon", Vector3.new(2, 2, 2), x, 1, 16, Color3.fromRGB(240, 120, 40), Enum.Material.SmoothPlastic))
 		ballon.Shape = Enum.PartType.Ball
 	end
 	mannequin(o, -12, 4, Color3.fromRGB(255, 95, 45))
@@ -493,6 +548,43 @@ AMENAGEMENTS.glaces = function(o)
 		o.cylindre("TableRonde", 3, 3.4, x, 1.5, 8, BLANC, Enum.Material.Marble)
 		chaise(o, x, 11, Color3.fromRGB(255, 180, 200))
 	end
+	o.poste(0, 19.8, 0, -1, "vendeur")
+	o.poste(3, 14.2, 0, 1, "client")
+end
+
+AMENAGEMENTS.superette = function(o)
+	-- Rayons de produits
+	for _, x in ipairs({ -11, -3 }) do
+		o.meuble("Rayon", Vector3.new(3, 6.5, 10), x, 3.25, 14, Color3.fromRGB(200, 205, 210), Enum.Material.Metal)
+		for etage = 0, 2 do
+			for _, cote in ipairs({ -1, 1 }) do
+				deco(o.meuble("Produits", Vector3.new(0.4, 1.4, 4.6), x + cote * 1.65, 1.2 + etage * 2, 11.6, couleurAuHasard(), Enum.Material.SmoothPlastic))
+				deco(o.meuble("Produits", Vector3.new(0.4, 1.4, 4.6), x + cote * 1.65, 1.2 + etage * 2, 16.4, couleurAuHasard(), Enum.Material.SmoothPlastic))
+			end
+		end
+	end
+	-- Frigos à boissons vitrés au fond
+	o.meuble("Frigos", Vector3.new(20, 8, 2.5), -4, 4, 22.6, BLANC, Enum.Material.SmoothPlastic)
+	local vitreFrigo = deco(o.meuble("PortesFrigo", Vector3.new(19, 6.5, 0.15), -4, 4.2, 21.3, Color3.fromRGB(170, 215, 255), Enum.Material.Neon))
+	vitreFrigo.Transparency = 0.35
+	for etage = 0, 2 do
+		for k = 0, 5 do
+			deco(o.cylindre("Bouteille", 1.2, 0.5, -12.5 + k * 3.4, 1.8 + etage * 2.1, 21.8, couleurAuHasard(), Enum.Material.Glass))
+		end
+	end
+	-- Étal de fruits
+	o.meuble("Cagette", Vector3.new(5, 2.5, 4), 11, 1.25, 17, Color3.fromRGB(170, 120, 70), Enum.Material.WoodPlanks)
+	local fruits = { Color3.fromRGB(255, 150, 30), Color3.fromRGB(200, 30, 40), Color3.fromRGB(120, 200, 60), Color3.fromRGB(250, 220, 50) }
+	for k = 0, 5 do
+		local f = deco(o.meuble("Fruit", Vector3.new(1.1, 1.1, 1.1), 9.5 + (k % 3) * 1.5, 3, 16.3 + math.floor(k / 3) * 1.4, fruits[(k % 4) + 1], Enum.Material.SmoothPlastic))
+		f.Shape = Enum.PartType.Ball
+	end
+	-- Caisse avec tapis roulant
+	o.meuble("Caisse", Vector3.new(3, 3.2, 8), 11.5, 1.6, 7, Color3.fromRGB(60, 65, 75), Enum.Material.SmoothPlastic)
+	deco(o.meuble("Tapis", Vector3.new(2.6, 0.15, 5), 11.5, 3.25, 6, Color3.fromRGB(20, 20, 20), Enum.Material.Fabric))
+	deco(o.meuble("Caisseenregistreuse", Vector3.new(1.5, 1, 1.4), 11.5, 3.7, 9.6, Color3.fromRGB(30, 30, 34), Enum.Material.SmoothPlastic))
+	o.poste(14, 9.5, -1, 0, "vendeur")
+	o.poste(8.5, 5, 1, 0, "client")
 end
 
 ---------------------------------------------------------------------
@@ -549,6 +641,7 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 	lumiere.Range = 20
 	lumiere.Brightness = 0.6
 	lumiere.Color = Color3.fromRGB(255, 245, 230)
+	lumiere.Enabled = compteurBoutiques % 2 == 1 -- 1 boutique sur 2 (bon pour les petits téléphones)
 	lumiere.Parent = plafonnier
 
 	-- Aménagement intérieur
@@ -563,6 +656,23 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 			p.Shape = Enum.PartType.Cylinder
 			return p
 		end,
+		-- Emplacement d'une personne (le script PNJServer y place un vendeur ou un client)
+		poste = function(x, z, versX, versZ, role)
+			local pied = ici(x, 0, z).Position
+			local regard = ici(x + versX, 0, z + versZ).Position
+			local p = Instance.new("Part")
+			p.Name = "PostePNJ"
+			p.Size = Vector3.new(1, 0.1, 1)
+			p.CFrame = CFrame.lookAt(pied, regard)
+			p.Transparency = 1
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p:SetAttribute("Role", role)
+			p:SetAttribute("Couleur", style.Couleur)
+			p.Parent = modele
+		end,
 		ecran = function(x, y, z, largeur, hauteur, couleur, txt)
 			deco(bloc("CadreEcran", Vector3.new(largeur, hauteur, 0.3), ici(x, y, z), NOIR, Enum.Material.SmoothPlastic, modele))
 			local e = deco(bloc("Ecran", Vector3.new(largeur - 0.5, hauteur - 0.5, 0.1), ici(x, y, z - 0.25), couleur, Enum.Material.Neon, modele))
@@ -572,7 +682,36 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 		end,
 	}
 	AMENAGEMENTS[typeB](outils)
+
+	-- La caisse (pour les boutiques qui n'ont pas déjà un comptoir)
+	local AVEC_COMPTOIR = { burger = true, pizza = true, tacos = true, cafe = true, glaces = true, superette = true }
+	if not AVEC_COMPTOIR[typeB] then
+		outils.meuble("Caisse", Vector3.new(5, 3.4, 2.6), 11, 1.7, 9, style.Couleur, Enum.Material.SmoothPlastic)
+		deco(outils.meuble("PlanCaisse", Vector3.new(5.4, 0.25, 3), 11, 3.5, 9, BLANC, Enum.Material.Marble))
+		deco(outils.meuble("Caisseenregistreuse", Vector3.new(1.5, 0.9, 1.3), 12, 4.1, 9.3, Color3.fromRGB(30, 30, 34), Enum.Material.SmoothPlastic))
+		local ecranCaisse = deco(outils.meuble("EcranCaisse", Vector3.new(1.3, 0.9, 0.1), 12, 5, 9.6, Color3.fromRGB(80, 170, 255), Enum.Material.Neon))
+		ecranCaisse.CFrame *= CFrame.Angles(math.rad(-15), 0, 0)
+		deco(outils.meuble("TerminalCarte", Vector3.new(0.5, 0.25, 0.8), 9.8, 3.75, 8.6, Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic))
+		deco(outils.meuble("SacShopping", Vector3.new(1.2, 1.4, 0.6), 9.7, 4.3, 9.4, style.Couleur, Enum.Material.Fabric))
+		outils.poste(11, 11.7, 0, -1, "vendeur")
+		local POSTES_CLIENTS = {
+			vetements = { -9, 14.5, 0, -1 }, jeux = { -12, 12, -1, 0 }, tech = { -8, 16.5, 0, -1 },
+			sport = { 0, 20, 0, 1 }, bijoux = { -9, 9, 0, 1 }, parfum = { 5, 20, 0, 1 },
+			jouets = { 6, 14, 1, 0 }, livres = { -12, 10, -1, 0 }, coiffeur = { 0, 19.5, 0, 1 },
+		}
+		local c = POSTES_CLIENTS[typeB]
+		if c then
+			outils.poste(c[1], c[2], c[3], c[4], if typeB == "coiffeur" then "assis" else "client")
+		end
+		outils.poste(11, 6.2, 0, 1, "client") -- un client qui paie à la caisse
+	end
 	if ferme then
+		-- Boutique fermée : personne dedans
+		for _, d in ipairs(modele:GetChildren()) do
+			if d.Name == "PostePNJ" then
+				d:Destroy()
+			end
+		end
 		local rideau = bloc("RideauMetallique", Vector3.new(LARG_PORTE, HAUT_B - 3, 0.3), ici(0, (HAUT_B - 3) / 2, -0.1), Color3.fromRGB(150, 152, 158), Enum.Material.DiamondPlate, modele)
 		rideau.Transparency = 0.1
 		deco(bloc("Coffre", Vector3.new(LARG_PORTE + 1, 1, 1), ici(0, HAUT_B - 3.5, -0.2), Color3.fromRGB(110, 112, 118), Enum.Material.Metal, modele))
@@ -607,17 +746,18 @@ local MOITIES = {
 }
 
 -- Une rangée de 3 boutiques côte à côte + un bout de mur pour combler
-local function rangee(xFacade: number, dehorsX: number, z1: number, z2: number, epaisseurRangee: number)
+local function rangee(xFacade: number, dehorsX: number, z1: number, z2: number, epaisseurRangee: number, hauteur: number?)
+	local y = hauteur or 0
 	local zCentres = if z1 < 0 then { z1 + 17, z1 + 51, z1 + 85 } else { z2 - 17, z2 - 51, z2 - 85 }
 	for _, z in ipairs(zCentres) do
 		local typeB, nom = enseigneSuivante()
-		boutique(Vector3.new(xFacade, 0, z), Vector3.new(dehorsX, 0, 0), typeB, nom)
+		boutique(Vector3.new(xFacade, y, z), Vector3.new(dehorsX, 0, 0), typeB, nom)
 	end
 	-- Comble l'espace restant (côté allée centrale) avec un mur plein
 	local reste = (z2 - z1) - 3 * LARG_B
 	local zReste = if z1 < 0 then z2 - reste / 2 else z1 + reste / 2
 	local xCentre = xFacade - dehorsX * epaisseurRangee / 2
-	bloc("Mur", Vector3.new(epaisseurRangee, HAUT_B + 10, reste), CFrame.new(xCentre, SOL + (HAUT_B + 10) / 2, zReste), MUR_MALL, Enum.Material.Marble)
+	bloc("Mur", Vector3.new(epaisseurRangee, HAUT_B + 10, reste), CFrame.new(xCentre, y + SOL + (HAUT_B + 10) / 2, zReste), MUR_MALL, Enum.Material.Marble)
 end
 
 -- Îlots centraux : 2 rangées dos à dos (sauf le food court et le garage)
@@ -637,6 +777,79 @@ for i, moitie in ipairs(MOITIES) do
 	end
 	rangee(DX - PROF_B, -1, moitie.z1, moitie.z2, PROF_B)
 end
+
+-- LE 1er ÉTAGE : les mêmes allées, avec d'autres boutiques
+for _, cx in ipairs(ILOTS_X) do
+	for _, moitie in ipairs(MOITIES) do
+		rangee(cx - PROF_B, -1, moitie.z1, moitie.z2, PROF_B, ETAGE)
+		rangee(cx + PROF_B, 1, moitie.z1, moitie.z2, PROF_B, ETAGE)
+	end
+end
+for _, moitie in ipairs(MOITIES) do
+	rangee(-DX + PROF_B, 1, moitie.z1, moitie.z2, PROF_B, ETAGE)
+	rangee(DX - PROF_B, -1, moitie.z1, moitie.z2, PROF_B, ETAGE)
+end
+
+---------------------------------------------------------------------
+-- LES RAMPES pour monter au 1er étage en kart (au-dessus de la place centrale)
+-- Elles partent du sol vers le sud et arrivent sur la passerelle.
+---------------------------------------------------------------------
+local rampes = Instance.new("Folder")
+rampes.Name = "Rampes"
+rampes.Parent = carte
+local RAMPE_BAS_Z, RAMPE_HAUT_Z = 107, PASSERELLE_Z
+local RAMPE_LONGUEUR_SOL = RAMPE_BAS_Z - RAMPE_HAUT_Z
+local PENTE = math.atan2(ETAGE, RAMPE_LONGUEUR_SOL)
+local RAMPE_LONGUEUR = math.sqrt(RAMPE_LONGUEUR_SOL ^ 2 + ETAGE ^ 2)
+local RAMPE_MILIEU_Z = (RAMPE_BAS_Z + RAMPE_HAUT_Z) / 2
+local function rampe(xCentre: number, largeur: number)
+	local milieu = CFrame.new(xCentre, SOL + ETAGE / 2, RAMPE_MILIEU_Z) * CFrame.Angles(PENTE, 0, 0)
+	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR + 1), milieu * CFrame.new(0, -0.5, 0), Color3.fromRGB(175, 178, 186), Enum.Material.DiamondPlate, rampes)
+	r.CastShadow = true
+	-- Bandes jaunes sur les bords + garde-corps vitrés
+	for _, cote in ipairs({ -1, 1 }) do
+		deco(bloc("BandeJaune", Vector3.new(0.6, 0.06, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 - 0.5), 0.03, 0), Color3.fromRGB(250, 200, 20), Enum.Material.SmoothPlastic, rampes))
+		local vitre = bloc("GardeCorps", Vector3.new(0.3, 3.2, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 1.6, 0), Color3.fromRGB(200, 225, 245), Enum.Material.Glass, rampes)
+		vitre.Transparency = 0.55
+		deco(bloc("MainCourante", Vector3.new(0.4, 0.3, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 3.3, 0), Color3.fromRGB(200, 200, 205), Enum.Material.Metal, rampes))
+	end
+	-- Piliers sous la rampe
+	for z = RAMPE_HAUT_Z + 15, RAMPE_BAS_Z - 20, 20 do
+		local hauteurSousRampe = ETAGE * (RAMPE_BAS_Z - z) / RAMPE_LONGUEUR_SOL - 1
+		if hauteurSousRampe > 2 then
+			cylindreDebout("Pilier", hauteurSousRampe, 1.6, Vector3.new(xCentre, SOL + hauteurSousRampe / 2, z), Color3.fromRGB(235, 235, 238), Enum.Material.SmoothPlastic, rampes)
+		end
+	end
+	local panneauR = pancarte("PanneauRampe", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + 4, RAMPE_BAS_Z + 1), Vector3.new(0, 0, 1), "⬆ 1er ÉTAGE", Color3.fromRGB(30, 30, 36), OR, rampes)
+	panneauR.CanCollide = false
+end
+rampe(-22, 10)
+rampe(22, 10)
+
+-- Garde-corps vitrés autour de l'atrium au 1er étage (pour ne pas tomber)
+local function gardeCorps(x1: number, x2: number, z1: number, z2: number)
+	local longueur = math.max(math.abs(x2 - x1), math.abs(z2 - z1))
+	local surX = math.abs(x2 - x1) > math.abs(z2 - z1)
+	local taille = if surX then Vector3.new(longueur, 3.4, 0.3) else Vector3.new(0.3, 3.4, longueur)
+	local centre = Vector3.new((x1 + x2) / 2, SOL + ETAGE + 1.7, (z1 + z2) / 2)
+	local v = bloc("GardeCorps", taille, CFrame.new(centre), Color3.fromRGB(200, 225, 245), Enum.Material.Glass, rampes)
+	v.Transparency = 0.55
+	local tailleMain = if surX then Vector3.new(longueur, 0.3, 0.45) else Vector3.new(0.45, 0.3, longueur)
+	deco(bloc("MainCourante", tailleMain, CFrame.new(centre + Vector3.new(0, 1.85, 0)), OR, Enum.Material.Foil, rampes))
+end
+for _, sens in ipairs({ -1, 1 }) do
+	-- côtés est et ouest de l'atrium (moitiés nord et sud)
+	gardeCorps(sens * ATRIUM_X, sens * ATRIUM_X, -ATRIUM_Z, -PASSERELLE_Z)
+	gardeCorps(sens * ATRIUM_X, sens * ATRIUM_X, PASSERELLE_Z, ATRIUM_Z)
+end
+gardeCorps(-ATRIUM_X, ATRIUM_X, -ATRIUM_Z, -ATRIUM_Z)
+gardeCorps(-ATRIUM_X, ATRIUM_X, ATRIUM_Z, ATRIUM_Z)
+gardeCorps(-ATRIUM_X, ATRIUM_X, -PASSERELLE_Z, -PASSERELLE_Z)
+-- Côté sud de la passerelle : ouvert là où arrivent les rampes
+gardeCorps(-ATRIUM_X, -27, PASSERELLE_Z, PASSERELLE_Z)
+gardeCorps(-17, 17, PASSERELLE_Z, PASSERELLE_Z)
+gardeCorps(27, ATRIUM_X, PASSERELLE_Z, PASSERELLE_Z)
+pancarte("PanneauEtage", Vector3.new(16, 2.4, 0.3), Vector3.new(0, SOL + ETAGE + 6, 0), Vector3.new(0, 0, 1), "1er ÉTAGE ✦ BOUTIQUES", Color3.fromRGB(30, 30, 36), OR, rampes)
 
 -- Façades décoratives : mur nord (hors aquarium) et mur sud (hors entrée)
 for _, x in ipairs({ -185, -145, -105, 105, 145, 185 }) do
@@ -678,7 +891,7 @@ lumiereFontaine.Color = Color3.fromRGB(90, 180, 255)
 lumiereFontaine.Range = 26
 lumiereFontaine.Brightness = 2
 lumiereFontaine.Parent = eauFontaine
-local lustre = cylindreDebout("Lustre", 0.8, 14, Vector3.new(0, SOL + HAUT_PLAFOND - 2, 0), Color3.fromRGB(255, 225, 150), Enum.Material.Neon)
+local lustre = cylindreDebout("Lustre", 0.8, 14, Vector3.new(0, SOL + HAUT_PLAFOND - 3, 0), Color3.fromRGB(255, 225, 150), Enum.Material.Neon)
 deco(lustre)
 local lumiereLustre = Instance.new("PointLight")
 lumiereLustre.Range = 55
@@ -719,16 +932,41 @@ local function kiosque(z: number, nom: string, couleur: Color3)
 	texte(e, Enum.NormalId.Back, nom, couleur)
 end
 
-for _, z in ipairs({ -105, -75, -45, 45, 75, 105 }) do
+for _, z in ipairs({ -105, -75, -45 }) do -- (côté sud : ce sont les rampes)
 	palmier(-28, z)
 	palmier(28, z)
 end
-for _, z in ipairs({ -90, -60, 60, 90 }) do
+for _, z in ipairs({ -90, -60 }) do
 	banc(-28, z)
 	banc(28, z)
 end
 kiosque(-75, "COQUES & CO", Color3.fromRGB(90, 160, 255))
 kiosque(75, "BARBE À PAPA", Color3.fromRGB(255, 150, 200))
+
+-- Des gens assis sur les bancs et un vendeur à chaque kiosque
+local function posteLibre(position: Vector3, versOu: Vector3, role: string, couleur: Color3, hauteurSiege: number?)
+	local p = Instance.new("Part")
+	p.Name = "PostePNJ"
+	p.Size = Vector3.new(1, 0.1, 1)
+	p.CFrame = CFrame.lookAt(position, position + versOu)
+	p.Transparency = 1
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p:SetAttribute("Role", role)
+	p:SetAttribute("Couleur", couleur)
+	if hauteurSiege then
+		p:SetAttribute("HauteurSiege", hauteurSiege)
+	end
+	p.Parent = carte
+end
+for _, z in ipairs({ -91.5, -58.5 }) do
+	posteLibre(Vector3.new(-28, SOL, z), Vector3.new(1, 0, 0), "assis", Color3.fromRGB(90, 120, 200), 1.6)
+	posteLibre(Vector3.new(28, SOL, z), Vector3.new(-1, 0, 0), "assis", Color3.fromRGB(200, 90, 90), 1.6)
+end
+posteLibre(Vector3.new(7.8, SOL, -75), Vector3.new(-1, 0, 0), "vendeur", Color3.fromRGB(90, 160, 255))
+posteLibre(Vector3.new(7.8, SOL, 75), Vector3.new(-1, 0, 0), "vendeur", Color3.fromRGB(255, 150, 200))
 
 ---------------------------------------------------------------------
 -- LA LIGNE DE DÉPART : à l'intérieur du mall, juste après l'entrée, au début

@@ -750,6 +750,8 @@ local function entrerDansKart(siege: Seat)
 		stats = Config.Karts[typeKart],
 		sons = {},
 	}
+	kart.align = chassis:FindFirstChildOfClass("AlignOrientation")
+	normaleSol = Vector3.yAxis
 	kart.trails = effets("TracePneu")
 	kart.fumees = effets("Fumee")
 	kart.eaux = effets("Eclaboussures")
@@ -817,16 +819,20 @@ joueur.CharacterAdded:Connect(brancherPersonnage)
 ---------------------------------------------------------------------
 -- LA CONDUITE (exécutée à chaque image)
 ---------------------------------------------------------------------
-local function surfaceSous(chassis: BasePart): string?
+-- Ce qu'il y a sous le kart : "normal", "mouille" ou nil (en l'air), + la pente du sol
+local function surfaceSous(chassis: BasePart): (string?, Vector3)
 	local resultat = workspace:Raycast(chassis.Position, Vector3.new(0, -3, 0), parametresRayon)
 	if not resultat then
-		return nil -- en l'air
+		return nil, Vector3.yAxis -- en l'air
 	end
 	if resultat.Instance:GetAttribute("Mouille") then
-		return "mouille"
+		return "mouille", resultat.Normal
 	end
-	return "normal"
+	return "normal", resultat.Normal
 end
+
+-- La pente sous le kart (lissée) : permet de monter les rampes du 1er étage
+local normaleSol = Vector3.yAxis
 
 RunService.Heartbeat:Connect(function(dt: number)
 	if not kart then
@@ -848,10 +854,22 @@ RunService.Heartbeat:Connect(function(dt: number)
 	avant = avant.Unit
 	local droite = Vector3.new(-avant.Z, 0, avant.X)
 
-	-- Vitesse actuelle découpée en "vers l'avant" et "sur le côté"
+	-- Le sol sous le kart (et sa pente, pour les rampes)
+	local surface, normale = surfaceSous(ch)
+	local cibleNormale = if surface and normale.Y > 0.6 then normale else Vector3.yAxis
+	normaleSol = normaleSol:Lerp(cibleNormale, math.clamp(dt * 10, 0, 1)).Unit
+	-- L'avant et le côté du kart, couchés le long de la pente
+	local avantPente = (avant - normaleSol * avant:Dot(normaleSol)).Unit
+	local droitePente = (droite - normaleSol * droite:Dot(normaleSol)).Unit
+	if kart.align then
+		kart.align.PrimaryAxis = normaleSol -- le kart s'incline avec la rampe
+	end
+
+	-- Vitesse actuelle découpée en "vers l'avant", "sur le côté" et "contre le sol"
 	local vel = ch.AssemblyLinearVelocity
-	local vAvant = vel:Dot(avant)
-	local vCote = vel:Dot(droite)
+	local vAvant = vel:Dot(avantPente)
+	local vCote = vel:Dot(droitePente)
+	local vSol = vel:Dot(normaleSol)
 	local vitesse = Vector3.new(vel.X, 0, vel.Z).Magnitude
 	local rotationReelle = ch.AssemblyAngularVelocity.Y
 
@@ -902,7 +920,6 @@ RunService.Heartbeat:Connect(function(dt: number)
 		end
 	end
 
-	local surface = surfaceSous(ch)
 	local auSol = surface ~= nil
 	local mouille = surface == "mouille"
 
@@ -945,8 +962,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local rotationCible = -volant * puissance * facteur * sens
 	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 8, 0, 1)
 
-	ch.AssemblyLinearVelocity = avant * vAvant + droite * vCote + Vector3.new(0, vel.Y, 0)
-	ch.AssemblyAngularVelocity = Vector3.new(0, vitesseRotation, 0)
+	ch.AssemblyLinearVelocity = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
+	ch.AssemblyAngularVelocity = normaleSol * vitesseRotation
 
 	-----------------------------------------------------------------
 	-- SCORE DE DRIFT

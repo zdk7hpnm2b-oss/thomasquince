@@ -177,6 +177,14 @@ Config.Securite = {
 }
 
 ---------------------------------------------------------------------
+-- LES GENS DANS LE MALL (vendeurs à la caisse, clients dans les boutiques)
+---------------------------------------------------------------------
+Config.PNJ = {
+	Max = 220, -- nombre maximum de personnes (baisse-le, par ex. à 100, si le jeu rame sur téléphone)
+	ChanceClient = 0.75, -- chance qu'il y ait un client dans une boutique
+}
+
+---------------------------------------------------------------------
 -- LE SOL MOUILLÉ
 ---------------------------------------------------------------------
 Config.Mouille = {
