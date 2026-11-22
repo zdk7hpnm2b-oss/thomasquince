@@ -155,6 +155,27 @@ function Config.NiveauDepuisXP(xp: number): (number, number, number)
 end
 
 ---------------------------------------------------------------------
+-- LA SÉCURITÉ DU MALL (les gardes qui veulent t'arrêter)
+-- Les gardes ne s'occupent que des karts : à pied, tu es un client normal.
+-- Dehors (parking, garage), tu es en sécurité.
+---------------------------------------------------------------------
+Config.Securite = {
+	AgentsAPied = 8, -- nombre de gardes à pied
+	AgentsSegway = 3, -- nombre de gardes en gyropode (plus rapides)
+	VitesseMarche = 9, -- en patrouille
+	VitesseCourse = 27, -- en poursuite (un kart lancé va plus vite : tu peux t'échapper !)
+	VitesseSegway = 40, -- gyropode en poursuite
+	DistanceVue = 75, -- jusqu'où un garde voit
+	AngleVue = 65, -- largeur du regard (degrés de chaque côté)
+	DistanceOuie = 16, -- trop près = il t'entend même de dos
+	DistanceArrestation = 6, -- si un garde arrive aussi près de ton kart : attrapé !
+	TempsPourSemer = 6, -- secondes sans être vu pour semer un garde
+	DureeGlissade = 2.5, -- un garde qui court sur le sol mouillé glisse et tombe
+	BonusSemer = 150, -- XP gagnée quand tu sèmes la sécurité
+	BonusGlissade = 100, -- XP gagnée quand un garde qui te poursuit glisse
+}
+
+---------------------------------------------------------------------
 -- LE SOL MOUILLÉ
 ---------------------------------------------------------------------
 Config.Mouille = {
@@ -211,20 +232,20 @@ Config.Camera = {
 function Config.AppliquerAmbiance(nuit: boolean)
 	-- L'intérieur du mall reste bien éclairé dans les deux cas (comme un vrai
 	-- centre commercial) : c'est surtout le ciel et le parking qui changent.
-	Lighting.EnvironmentDiffuseScale = 0.6
-	Lighting.EnvironmentSpecularScale = 1 -- reflets sur le carrelage
+	-- Lumière naturelle : ni trop sombre, ni éblouissante.
+	Lighting.EnvironmentDiffuseScale = 0.4
+	Lighting.EnvironmentSpecularScale = 0.6 -- reflets légers sur le carrelage
+	Lighting.ExposureCompensation = 0
 	if nuit then
 		Lighting.ClockTime = 21.5
-		Lighting.Brightness = 1.5
-		Lighting.Ambient = Color3.fromRGB(150, 148, 160)
-		Lighting.OutdoorAmbient = Color3.fromRGB(95, 95, 120)
-		Lighting.ExposureCompensation = 0.25
+		Lighting.Brightness = 1
+		Lighting.Ambient = Color3.fromRGB(95, 95, 108)
+		Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 90)
 	else
 		Lighting.ClockTime = 14
-		Lighting.Brightness = 3
-		Lighting.Ambient = Color3.fromRGB(190, 188, 182)
-		Lighting.OutdoorAmbient = Color3.fromRGB(175, 175, 175)
-		Lighting.ExposureCompensation = 0.3
+		Lighting.Brightness = 2
+		Lighting.Ambient = Color3.fromRGB(118, 116, 112)
+		Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
 	end
 	Lighting:SetAttribute("Nuit", nuit)
 end

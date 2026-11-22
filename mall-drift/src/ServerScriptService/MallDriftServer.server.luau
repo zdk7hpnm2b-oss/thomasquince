@@ -30,18 +30,18 @@ Config.AppliquerAmbiance(Config.NuitParDefaut)
 
 if not Lighting:FindFirstChildOfClass("BloomEffect") then
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.6
-	bloom.Size = 26
-	bloom.Threshold = 1.15
+	bloom.Intensity = 0.25
+	bloom.Size = 20
+	bloom.Threshold = 1.6
 	bloom.Parent = Lighting
 end
 if not Lighting:FindFirstChild("CouleursMallDrift") then
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "CouleursMallDrift"
-	cc.Saturation = 0.12
-	cc.Contrast = 0.04
-	cc.Brightness = 0.06 -- un peu plus lumineux
-	cc.TintColor = Color3.fromRGB(255, 252, 245)
+	cc.Saturation = 0.08
+	cc.Contrast = 0.05
+	cc.Brightness = 0
+	cc.TintColor = Color3.fromRGB(255, 252, 246)
 	cc.Parent = Lighting
 end
 
@@ -193,7 +193,7 @@ local puits = Instance.new("Folder")
 puits.Name = "PuitsDeLumiere"
 puits.Parent = carte
 local function puitsDeLumiere(x: number, z: number, taille: Vector3)
-	local p = deco(bloc("PuitsDeLumiere", taille, CFrame.new(x, SOL + HAUT_PLAFOND - 0.05, z), Color3.fromRGB(205, 232, 255), Enum.Material.Neon, puits))
+	local p = deco(bloc("PuitsDeLumiere", taille, CFrame.new(x, SOL + HAUT_PLAFOND - 0.05, z), Color3.fromRGB(150, 180, 205), Enum.Material.Neon, puits))
 	p.CastShadow = false
 	deco(bloc("CadrePuits", taille + Vector3.new(1, -0.05, 1), CFrame.new(x, SOL + HAUT_PLAFOND - 0.02, z), Color3.fromRGB(225, 225, 228), Enum.Material.Metal, puits))
 end
@@ -213,15 +213,15 @@ lampes.Parent = carte
 local nombreSpots = 0
 local function lampe(x: number, z: number)
 	nombreSpots += 1
-	local l = bloc("Spot", Vector3.new(2.2, 0.2, 2.2), CFrame.new(x, SOL + HAUT_PLAFOND - 0.1, z), Color3.fromRGB(255, 248, 232), Enum.Material.Neon, lampes)
+	local l = bloc("Spot", Vector3.new(2.2, 0.2, 2.2), CFrame.new(x, SOL + HAUT_PLAFOND - 0.1, z), Color3.fromRGB(200, 195, 185), Enum.Material.Neon, lampes)
 	deco(l)
 	l.CastShadow = false
 	if nombreSpots % 2 == 0 then
 		return -- 1 spot sur 2 éclaire vraiment (bon pour les petits téléphones)
 	end
 	local pl = Instance.new("PointLight")
-	pl.Range = 32
-	pl.Brightness = 1.2
+	pl.Range = 26
+	pl.Brightness = 0.6
 	pl.Color = Color3.fromRGB(255, 236, 200)
 	pl.Parent = l
 end
@@ -544,10 +544,10 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 	texte(enseigne, Enum.NormalId.Front, nom, style.Couleur)
 
 	-- Lumière intérieure
-	local plafonnier = deco(bloc("Plafonnier", Vector3.new(12, 0.3, 4), ici(0, HAUT_B - 0.2, PROF_B / 2), Color3.fromRGB(255, 250, 240), Enum.Material.Neon, modele))
+	local plafonnier = deco(bloc("Plafonnier", Vector3.new(12, 0.3, 4), ici(0, HAUT_B - 0.2, PROF_B / 2), Color3.fromRGB(215, 210, 200), Enum.Material.Neon, modele))
 	local lumiere = Instance.new("PointLight")
-	lumiere.Range = 24
-	lumiere.Brightness = 1.2
+	lumiere.Range = 20
+	lumiere.Brightness = 0.6
 	lumiere.Color = Color3.fromRGB(255, 245, 230)
 	lumiere.Parent = plafonnier
 
@@ -954,8 +954,8 @@ for x = -60, 60, 40 do
 	for _, z in ipairs({ G_Z1 + 20, G_Z1 + 55 }) do
 		local panneauLumiere = deco(bloc("Eclairage", Vector3.new(14, 0.3, 3), CFrame.new(x, SOL + G_HAUT - 0.3, z), Color3.fromRGB(255, 255, 255), Enum.Material.Neon, garage))
 		local pl = Instance.new("PointLight")
-		pl.Range = 40
-		pl.Brightness = 1.6
+		pl.Range = 34
+		pl.Brightness = 0.8
 		pl.Parent = panneauLumiere
 	end
 end
@@ -1044,6 +1044,23 @@ SortirKart.Parent = remotes
 local DriftTermine = Instance.new("RemoteEvent")
 DriftTermine.Name = "DriftTermine"
 DriftTermine.Parent = remotes
+local Alerte = Instance.new("RemoteEvent") -- utilisé par le script de la sécurité
+Alerte.Name = "Alerte"
+Alerte.Parent = remotes
+
+-- Les autres scripts serveur (la sécurité) peuvent donner de l'XP avec cet événement
+local AjouterXP = Instance.new("BindableEvent")
+AjouterXP.Name = "AjouterXP"
+AjouterXP.Parent = game:GetService("ServerStorage")
+
+-- Groupes de collision : les gardes ne se font pas renverser par les karts
+local PhysicsService = game:GetService("PhysicsService")
+for _, groupe in ipairs({ "Karts", "Gardes" }) do
+	if not PhysicsService:IsCollisionGroupRegistered(groupe) then
+		PhysicsService:RegisterCollisionGroup(groupe)
+	end
+end
+PhysicsService:CollisionGroupSetCollidable("Karts", "Gardes", false)
 remotes.Parent = ReplicatedStorage
 
 ---------------------------------------------------------------------
@@ -1232,6 +1249,11 @@ local function creerKart(joueur: Player, cf: CFrame): Model
 		end
 	end)
 
+	for _, p in ipairs(kart:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.CollisionGroup = "Karts"
+		end
+	end
 	kart.Parent = dossierKarts
 	kartsJoueurs[joueur] = kart
 	return kart
@@ -1313,6 +1335,18 @@ DriftTermine.OnServerEvent:Connect(function(joueur: Player, points: any)
 	if points > profil.Record then
 		profil.Record = points
 	end
+	local niveauApres = niveauDe(profil)
+	majClassement(joueur, profil)
+	ProfilMisAJour:FireClient(joueur, versionPublique(profil), niveauApres > niveauAvant and niveauApres or nil)
+end)
+
+AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
+	local profil = profils[joueur]
+	if not profil or type(quantite) ~= "number" then
+		return
+	end
+	local niveauAvant = niveauDe(profil)
+	profil.XP += math.max(0, math.floor(quantite))
 	local niveauApres = niveauDe(profil)
 	majClassement(joueur, profil)
 	ProfilMisAJour:FireClient(joueur, versionPublique(profil), niveauApres > niveauAvant and niveauApres or nil)

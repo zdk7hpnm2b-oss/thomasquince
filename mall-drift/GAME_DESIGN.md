@@ -121,7 +121,7 @@ Tout ce qui se débloque en jouant reste gratuit. Ce qui est payant est **en plu
 |---|---|---|
 | 1 | Golden Mall, drift, score ★, sol mouillé, éclaboussures, jour/nuit | ✅ |
 | 2 | Niveaux/XP, déblocages, Garage VIP, sauvegarde | ✅ |
-| 3 | Sécurité du mall (agents qui poursuivent, gags, jauge d'alerte) | ⏳ Prochaine étape |
+| 3 | Sécurité du mall (gardes à pied et en gyropode, vision, renforts, arrestation, glissades) | ✅ |
 | 4 | Pièces + améliorations du kart | ⏳ |
 | 5 | Boutique (Robux) : cosmétiques premium, klaxons, Game Pass | ⏳ |
 | 6 | Défis du jour, classements, drift en duo | ⏳ |

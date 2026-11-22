@@ -14,6 +14,11 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **🚨 La sécurité du mall** : 8 gardes à pied et 3 en gyropode font des rondes. S'ils voient ton
+  kart (❗ au-dessus de leur tête), ils te poursuivent et appellent des **renforts** (jusqu'à 🚨🚨🚨).
+  S'ils arrivent tout près de toi : **ATTRAPÉ !**, retour au garage. Reste hors de vue quelques
+  secondes pour les **semer** (+150 XP). Attire-les sur le **sol mouillé** : ils glissent et tombent
+  (+100 XP) 😂. À pied, tu es un client normal ; dehors (parking, garage), tu es à l'abri
 - **Une intro cinématique** (~6 s) à l'arrivée : la caméra tourne autour de la fontaine puis survole
   le parking jusqu'au garage, avec le titre du jeu (bouton « Passer »)
 - **Monter dans son kart en 1 clic** : gros bouton **🏎️ CONDUIRE** ou touche **F**, n'importe où.
@@ -43,14 +48,14 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 6 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 8 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
 
 ## 🧩 Méthode manuelle (si le fichier ne s'ouvre pas)
 
-Il y a **6 fichiers** à copier. Chacun va dans un endroit précis de Studio.
+Il y a **8 fichiers** à copier. Chacun va dans un endroit précis de Studio.
 
 ### Étape 0 — Ouvrir un nouveau jeu
 1. Ouvre **Roblox Studio**, clique sur **Nouveau** puis sur le modèle **Baseplate**.
@@ -67,22 +72,24 @@ Survole **ReplicatedStorage**, clique sur le **+**, choisis **ModuleScript**. Fa
 Pour renommer : clic droit > **Renommer**. Pour coller : double-clic sur le script,
 **efface tout** (Ctrl+A puis Suppr), puis colle.
 
-### Étape 2 — Dans ServerScriptService : 1 Script
-Survole **ServerScriptService**, clique sur **+** et choisis **Script** :
+### Étape 2 — Dans ServerScriptService : 2 Scripts
+Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le 2 fois :
 
 | Nom | Contenu à coller |
 |---|---|
 | `MallDriftServer` | [`src/ServerScriptService/MallDriftServer.server.luau`](src/ServerScriptService/MallDriftServer.server.luau) |
+| `SecuriteServer` | [`src/ServerScriptService/SecuriteServer.server.luau`](src/ServerScriptService/SecuriteServer.server.luau) |
 
-### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 3 LocalScripts
+### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 4 LocalScripts
 Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et choisis
-**LocalScript** (bien **Local**Script !). Fais-le 3 fois :
+**LocalScript** (bien **Local**Script !). Fais-le 4 fois :
 
 | Nom | Contenu à coller |
 |---|---|
 | `KartController` | [`src/StarterPlayerScripts/KartController.client.luau`](src/StarterPlayerScripts/KartController.client.luau) |
 | `GarageUI` | [`src/StarterPlayerScripts/GarageUI.client.luau`](src/StarterPlayerScripts/GarageUI.client.luau) |
 | `Intro` | [`src/StarterPlayerScripts/Intro.client.luau`](src/StarterPlayerScripts/Intro.client.luau) |
+| `SecuriteUI` | [`src/StarterPlayerScripts/SecuriteUI.client.luau`](src/StarterPlayerScripts/SecuriteUI.client.luau) |
 
 ### Étape 4 — Activer la sauvegarde (recommandé)
 1. Enregistre le jeu sur Roblox : **Fichier > Publier sur Roblox**.
@@ -146,9 +153,11 @@ mall-drift/
     │   ├── KartConfig.luau                  (ModuleScript) réglages
     │   └── KartBuilder.luau                 (ModuleScript) fabrique les karts
     ├── ServerScriptService/
-    │   └── MallDriftServer.server.luau      (Script) le mall, le garage, la sauvegarde
+    │   ├── MallDriftServer.server.luau      (Script) le mall, le garage, la sauvegarde
+    │   └── SecuriteServer.server.luau       (Script) les gardes de sécurité
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP
-        └── Intro.client.luau                (LocalScript) intro cinématique
+        ├── Intro.client.luau                (LocalScript) intro cinématique
+        └── SecuriteUI.client.luau           (LocalScript) alertes de la sécurité
 ```
