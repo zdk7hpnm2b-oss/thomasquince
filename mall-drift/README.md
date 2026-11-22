@@ -10,7 +10,11 @@ Ce prototype contient :
   **fontaine**, palmiers, kiosques et bancs, un **aquarium géant** avec des poissons, et un
   **food court**. Mannequins, chaises, cubes et ballons se renversent quand on les percute.
   Les noms de magasins sont inventés, car les vraies marques sont interdites sans autorisation.
-- **Une caméra automatique** qui se place derrière le kart et tourne avec lui (plus besoin du clic droit)
+- **Le style des vidéos TikTok « Drift Kart »** : caméra **GoPro sur la poitrine** en grand angle
+  (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
+  vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
+  avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **Une caméra automatique** qui suit le kart (plus besoin du clic droit). **V** passe de la GoPro à la vue arrière
 - **Le drift** : grosses glissades et 360°, avec un score qui récompense les drifts longs et beaux.
   Les étoiles ★★★ se remplissent, un multiplicateur grimpe jusqu'à x5, chaque 360° donne un
   bonus, et un beau drift donne un boost
@@ -19,7 +23,7 @@ Ce prototype contient :
 - **La progression** : tes points de drift deviennent de l'**XP**, ton **niveau** monte, et chaque
   niveau débloque de nouveaux **karts, couleurs, finitions et autocollants**
 - **Le Garage VIP** : ton kart tourne sur un **plateau** et tu le personnalises toi-même :
-  modèle, carrosserie, finition (brillant, mat, métallisé, nacré, chrome), jantes, siège,
+  modèle, carrosserie, finition (brillant, mat, métallisé, nacré, chrome), **néons** (dont arc-en-ciel), jantes, siège,
   bandes de course, autocollant et numéro
 - **La sauvegarde** : niveau, record et kart personnalisé sont gardés d'une partie à l'autre
 - Le **jour / la nuit**, la **caméra à la première personne** (comme les vidéos TikTok), les
@@ -99,7 +103,7 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 |---|---|---|---|
 | Avancer / reculer / tourner | Flèches ou ZQSD | Stick gauche | Joystick |
 | **DRIFT** | **Maj (Shift)** | R2 / L2 | Bouton DRIFT |
-| Vue arrière / vue pilote | V | Y | Bouton CAM |
+| Caméra GoPro / vue arrière | V | Y | Bouton CAM |
 | Jour / nuit | N | — | — |
 | Remettre le kart droit | R | X | Bouton R |
 | Descendre du kart | Espace | A | Saut |

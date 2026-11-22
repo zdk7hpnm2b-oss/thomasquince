@@ -322,10 +322,10 @@ for _, e in ipairs(kartsTries) do
 end
 
 -- 2) LES COULEURS (carrosserie, jantes, siège, bandes)
-local function choixCouleur(titreSection: string, champ: string)
+local function choixCouleur(titreSection: string, champ: string, liste: { any }?)
 	local entete = section(titreSection)
 	local g = grille(Vector2.new(40, 40))
-	for i, c in ipairs(Config.Couleurs) do
+	for i, c in ipairs(liste or Config.Couleurs) do
 		local b = Instance.new("TextButton")
 		b.LayoutOrder = i
 		b.BackgroundColor3 = c.Couleur
@@ -335,10 +335,22 @@ local function choixCouleur(titreSection: string, champ: string)
 		b.Text = ""
 		coins(b, 20)
 		local trait = contour(b, Color3.new(1, 1, 1), 0)
+		if c.Nom == "Aucun" then
+			b.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
+		elseif c.Nom == "Arc-en-ciel" then
+			local degrade = Instance.new("UIGradient")
+			degrade.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+				ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
+				ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
+			})
+			degrade.Parent = b
+		end
 		b.Parent = g
 		table.insert(miseAJour, function()
 			local bloque = c.Niveau > niveau()
-			b.Text = bloque and "🔒" or ""
+			b.Text = if bloque then "🔒" elseif c.Nom == "Aucun" then "∅" else ""
 			b.BackgroundTransparency = bloque and 0.55 or 0
 			trait.Thickness = persoEdite[champ] == c.Nom and 3 or 0
 		end)
@@ -380,6 +392,7 @@ table.insert(miseAJour, function()
 	enteteFinition.Text = "✨  FINITION  ·  " .. persoEdite.Finition
 end)
 
+choixCouleur("💡  NÉONS SOUS LE KART", "Neon", Config.Neons)
 choixCouleur("🛞  JANTES", "Jantes")
 choixCouleur("💺  SIÈGE", "Siege")
 

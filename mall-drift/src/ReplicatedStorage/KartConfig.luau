@@ -82,6 +82,20 @@ Config.Finitions = {
 	{ Nom = "Chrome", Materiau = Enum.Material.Foil, Reflet = 0.55, Niveau = 12 },
 }
 
+-- Néons sous le kart (ils éclairent le sol, comme dans les vidéos TikTok)
+Config.Neons = {
+	{ Nom = "Aucun", Couleur = Color3.new(0, 0, 0), Niveau = 1 },
+	{ Nom = "Bleu", Couleur = Color3.fromRGB(40, 110, 255), Niveau = 1 },
+	{ Nom = "Violet", Couleur = Color3.fromRGB(170, 60, 255), Niveau = 1 },
+	{ Nom = "Rose", Couleur = Color3.fromRGB(255, 60, 200), Niveau = 2 },
+	{ Nom = "Cyan", Couleur = Color3.fromRGB(40, 230, 255), Niveau = 3 },
+	{ Nom = "Vert", Couleur = Color3.fromRGB(60, 255, 110), Niveau = 4 },
+	{ Nom = "Rouge", Couleur = Color3.fromRGB(255, 40, 50), Niveau = 5 },
+	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 245, 255), Niveau = 6 },
+	{ Nom = "Or", Couleur = Color3.fromRGB(255, 190, 50), Niveau = 9 },
+	{ Nom = "Arc-en-ciel", Couleur = Color3.fromRGB(255, 255, 255), Niveau = 12 }, -- change de couleur en continu
+}
+
 -- Autocollants sur les flancs du kart
 Config.Autocollants = {
 	{ Nom = "Aucun", Texte = "", Niveau = 1 },
@@ -105,6 +119,7 @@ Config.PersoParDefaut = {
 	BandesActives = true,
 	Autocollant = "Étoile",
 	Numero = 7,
+	Neon = "Bleu",
 }
 
 -- Petites fonctions pour retrouver un élément par son nom
@@ -119,6 +134,7 @@ end
 function Config.Couleur(nom: string) return chercher(Config.Couleurs, nom) end
 function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
 function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
+function Config.Neon(nom: string) return chercher(Config.Neons, nom) end
 
 ---------------------------------------------------------------------
 -- PROGRESSION : les drifts donnent de l'XP → le niveau du joueur monte
@@ -184,6 +200,8 @@ Config.NuitParDefaut = true
 -- CAMÉRA (elle suit le kart toute seule)
 ---------------------------------------------------------------------
 Config.Camera = {
+	VueParDefaut = "gopro", -- "gopro" (caméra sur la poitrine, comme les vidéos TikTok) ou "derriere"
+	ChampGoPro = 100, -- grand angle de la GoPro (degrés)
 	Distance = 13, -- distance derrière le kart
 	Hauteur = 5.5, -- hauteur au-dessus du kart
 	Souplesse = 5, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")

@@ -46,6 +46,10 @@ function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
 	if finition and finition.Niveau <= niveau then
 		propre.Finition = perso.Finition
 	end
+	local neon = type(perso.Neon) == "string" and Config.Neon(perso.Neon)
+	if neon and neon.Niveau <= niveau then
+		propre.Neon = perso.Neon
+	end
 	local autocollant = type(perso.Autocollant) == "string" and Config.Autocollant(perso.Autocollant)
 	if autocollant and autocollant.Niveau <= niveau then
 		propre.Autocollant = perso.Autocollant
@@ -68,6 +72,9 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 		return c and c.Couleur or Color3.new(1, 1, 1)
 	end
 	local finition = Config.Finition(perso.Finition) or Config.Finitions[1]
+	local neon = Config.Neon(perso.Neon) or Config.Neons[2]
+	local sansNeon = neon.Nom == "Aucun"
+	modele:SetAttribute("NeonArcEnCiel", neon.Nom == "Arc-en-ciel")
 
 	for _, p in ipairs(modele:GetDescendants()) do
 		if p:IsA("BasePart") then
@@ -83,7 +90,13 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 			elseif role == "Bandes" then
 				p.Color = couleur(perso.Bandes)
 				p.Transparency = perso.BandesActives and 0 or 1
+			elseif role == "Neon" then
+				p.Color = neon.Couleur
+				p.Transparency = sansNeon and 1 or 0
 			end
+		elseif p:IsA("PointLight") and p.Name == "LumiereNeon" then
+			p.Color = neon.Couleur
+			p.Enabled = not sansNeon
 		elseif p:IsA("TextLabel") and p.Name == "Deco" then
 			local autocollant = Config.Autocollant(perso.Autocollant)
 			local symbole = autocollant and autocollant.Texte or ""
@@ -163,6 +176,27 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	piece("PareChoc", Vector3.new(4.6, 0.5, 0.6), CFrame.new(0, 0, -3.2), NOIR)
 	piece("Colonne", Vector3.new(0.3, 0.3, 2), CFrame.new(0, 1.1, -1.6) * CFrame.Angles(math.rad(35), 0, 0), GRIS)
 	piece("Volant", Vector3.new(0.2, 1.7, 1.7), CFrame.new(0, 1.7, -0.9) * CFrame.Angles(math.rad(-35), math.rad(90), 0), OR, nil, Enum.Material.Metal, CYL)
+	-- Petit écran sur la colonne de direction + gants du pilote posés sur le volant
+	piece("EcranVolant", Vector3.new(0.7, 0.45, 0.1), CFrame.new(0, 1.3, -1.3) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(60, 170, 255), nil, Enum.Material.Neon)
+	piece("Gant", Vector3.new(0.45, 0.45, 0.55), CFrame.new(-0.72, 1.85, -0.85) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(30, 30, 30), nil, Enum.Material.Fabric)
+	piece("Gant", Vector3.new(0.45, 0.45, 0.55), CFrame.new(0.72, 1.85, -0.85) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(30, 30, 30), nil, Enum.Material.Fabric)
+
+	-- Néons sous le kart (underglow) + la lumière qu'ils projettent sur le sol
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("Neon", Vector3.new(0.25, 0.12, 5.4), CFrame.new(cote * 1.8, -0.43, 0), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
+		piece("Neon", Vector3.new(3.4, 0.12, 0.25), CFrame.new(0, -0.43, cote * 2.75), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
+	end
+	local attLumiere = Instance.new("Attachment")
+	attLumiere.Name = "SousLeKart"
+	attLumiere.Position = Vector3.new(0, -0.7, 0)
+	attLumiere.Parent = chassis
+	local lumiereNeon = Instance.new("PointLight")
+	lumiereNeon.Name = "LumiereNeon"
+	lumiereNeon.Range = 11
+	lumiereNeon.Brightness = 4
+	lumiereNeon.Shadows = false
+	lumiereNeon.Parent = attLumiere
+
 	piece("Dossier", Vector3.new(2.4, 2, 0.4), CFrame.new(0, 1.6, 2.2) * CFrame.Angles(math.rad(-10), 0, 0), NOIR, "Siege", Enum.Material.Fabric)
 
 	-- Bandes de course sur le capot

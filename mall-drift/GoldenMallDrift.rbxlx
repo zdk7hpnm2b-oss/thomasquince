@@ -82,6 +82,20 @@ Config.Finitions = {
 	{ Nom = "Chrome", Materiau = Enum.Material.Foil, Reflet = 0.55, Niveau = 12 },
 }
 
+-- Néons sous le kart (ils éclairent le sol, comme dans les vidéos TikTok)
+Config.Neons = {
+	{ Nom = "Aucun", Couleur = Color3.new(0, 0, 0), Niveau = 1 },
+	{ Nom = "Bleu", Couleur = Color3.fromRGB(40, 110, 255), Niveau = 1 },
+	{ Nom = "Violet", Couleur = Color3.fromRGB(170, 60, 255), Niveau = 1 },
+	{ Nom = "Rose", Couleur = Color3.fromRGB(255, 60, 200), Niveau = 2 },
+	{ Nom = "Cyan", Couleur = Color3.fromRGB(40, 230, 255), Niveau = 3 },
+	{ Nom = "Vert", Couleur = Color3.fromRGB(60, 255, 110), Niveau = 4 },
+	{ Nom = "Rouge", Couleur = Color3.fromRGB(255, 40, 50), Niveau = 5 },
+	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 245, 255), Niveau = 6 },
+	{ Nom = "Or", Couleur = Color3.fromRGB(255, 190, 50), Niveau = 9 },
+	{ Nom = "Arc-en-ciel", Couleur = Color3.fromRGB(255, 255, 255), Niveau = 12 }, -- change de couleur en continu
+}
+
 -- Autocollants sur les flancs du kart
 Config.Autocollants = {
 	{ Nom = "Aucun", Texte = "", Niveau = 1 },
@@ -105,6 +119,7 @@ Config.PersoParDefaut = {
 	BandesActives = true,
 	Autocollant = "Étoile",
 	Numero = 7,
+	Neon = "Bleu",
 }
 
 -- Petites fonctions pour retrouver un élément par son nom
@@ -119,6 +134,7 @@ end
 function Config.Couleur(nom: string) return chercher(Config.Couleurs, nom) end
 function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
 function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
+function Config.Neon(nom: string) return chercher(Config.Neons, nom) end
 
 ---------------------------------------------------------------------
 -- PROGRESSION : les drifts donnent de l'XP → le niveau du joueur monte
@@ -184,6 +200,8 @@ Config.NuitParDefaut = true
 -- CAMÉRA (elle suit le kart toute seule)
 ---------------------------------------------------------------------
 Config.Camera = {
+	VueParDefaut = "gopro", -- "gopro" (caméra sur la poitrine, comme les vidéos TikTok) ou "derriere"
+	ChampGoPro = 100, -- grand angle de la GoPro (degrés)
 	Distance = 13, -- distance derrière le kart
 	Hauteur = 5.5, -- hauteur au-dessus du kart
 	Souplesse = 5, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
@@ -254,6 +272,10 @@ function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
 	if finition and finition.Niveau <= niveau then
 		propre.Finition = perso.Finition
 	end
+	local neon = type(perso.Neon) == "string" and Config.Neon(perso.Neon)
+	if neon and neon.Niveau <= niveau then
+		propre.Neon = perso.Neon
+	end
 	local autocollant = type(perso.Autocollant) == "string" and Config.Autocollant(perso.Autocollant)
 	if autocollant and autocollant.Niveau <= niveau then
 		propre.Autocollant = perso.Autocollant
@@ -276,6 +298,9 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 		return c and c.Couleur or Color3.new(1, 1, 1)
 	end
 	local finition = Config.Finition(perso.Finition) or Config.Finitions[1]
+	local neon = Config.Neon(perso.Neon) or Config.Neons[2]
+	local sansNeon = neon.Nom == "Aucun"
+	modele:SetAttribute("NeonArcEnCiel", neon.Nom == "Arc-en-ciel")
 
 	for _, p in ipairs(modele:GetDescendants()) do
 		if p:IsA("BasePart") then
@@ -291,7 +316,13 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 			elseif role == "Bandes" then
 				p.Color = couleur(perso.Bandes)
 				p.Transparency = perso.BandesActives and 0 or 1
+			elseif role == "Neon" then
+				p.Color = neon.Couleur
+				p.Transparency = sansNeon and 1 or 0
 			end
+		elseif p:IsA("PointLight") and p.Name == "LumiereNeon" then
+			p.Color = neon.Couleur
+			p.Enabled = not sansNeon
 		elseif p:IsA("TextLabel") and p.Name == "Deco" then
 			local autocollant = Config.Autocollant(perso.Autocollant)
 			local symbole = autocollant and autocollant.Texte or ""
@@ -371,6 +402,27 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	piece("PareChoc", Vector3.new(4.6, 0.5, 0.6), CFrame.new(0, 0, -3.2), NOIR)
 	piece("Colonne", Vector3.new(0.3, 0.3, 2), CFrame.new(0, 1.1, -1.6) * CFrame.Angles(math.rad(35), 0, 0), GRIS)
 	piece("Volant", Vector3.new(0.2, 1.7, 1.7), CFrame.new(0, 1.7, -0.9) * CFrame.Angles(math.rad(-35), math.rad(90), 0), OR, nil, Enum.Material.Metal, CYL)
+	-- Petit écran sur la colonne de direction + gants du pilote posés sur le volant
+	piece("EcranVolant", Vector3.new(0.7, 0.45, 0.1), CFrame.new(0, 1.3, -1.3) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(60, 170, 255), nil, Enum.Material.Neon)
+	piece("Gant", Vector3.new(0.45, 0.45, 0.55), CFrame.new(-0.72, 1.85, -0.85) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(30, 30, 30), nil, Enum.Material.Fabric)
+	piece("Gant", Vector3.new(0.45, 0.45, 0.55), CFrame.new(0.72, 1.85, -0.85) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(30, 30, 30), nil, Enum.Material.Fabric)
+
+	-- Néons sous le kart (underglow) + la lumière qu'ils projettent sur le sol
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("Neon", Vector3.new(0.25, 0.12, 5.4), CFrame.new(cote * 1.8, -0.43, 0), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
+		piece("Neon", Vector3.new(3.4, 0.12, 0.25), CFrame.new(0, -0.43, cote * 2.75), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
+	end
+	local attLumiere = Instance.new("Attachment")
+	attLumiere.Name = "SousLeKart"
+	attLumiere.Position = Vector3.new(0, -0.7, 0)
+	attLumiere.Parent = chassis
+	local lumiereNeon = Instance.new("PointLight")
+	lumiereNeon.Name = "LumiereNeon"
+	lumiereNeon.Range = 11
+	lumiereNeon.Brightness = 4
+	lumiereNeon.Shadows = false
+	lumiereNeon.Parent = attLumiere
+
 	piece("Dossier", Vector3.new(2.4, 2, 0.4), CFrame.new(0, 1.6, 2.2) * CFrame.Angles(math.rad(-10), 0, 0), NOIR, "Siege", Enum.Material.Fabric)
 
 	-- Bandes de course sur le capot
@@ -662,10 +714,20 @@ local ALLEE_SUD = { 124, 150 }
 ---------------------------------------------------------------------
 -- SOL, MURS, VERRIÈRE, LUMIÈRES
 ---------------------------------------------------------------------
-local sol = bloc("SolMarbre", Vector3.new(LARGEUR, 1, PROFONDEUR), CFrame.new(0, SOL - 0.5, 0), MARBRE, Enum.Material.Marble)
-sol.Reflectance = 0.18
-deco(bloc("IncrustationOr", Vector3.new(LARGEUR, 0.05, 1), CFrame.new(0, SOL + 0.03, 0), OR, Enum.Material.Foil))
-deco(bloc("IncrustationOr", Vector3.new(1, 0.05, PROFONDEUR), CFrame.new(0, SOL + 0.03, 0), OR, Enum.Material.Foil))
+-- Grand carrelage clair et brillant (comme dans les vidéos)
+local sol = bloc("SolCarrelage", Vector3.new(LARGEUR, 1, PROFONDEUR), CFrame.new(0, SOL - 0.5, 0), Color3.fromRGB(226, 223, 216), Enum.Material.SmoothPlastic)
+sol.Reflectance = 0.22
+local joints = Instance.new("Folder")
+joints.Name = "JointsCarrelage"
+joints.Parent = carte
+local COULEUR_JOINT = Color3.fromRGB(196, 192, 184)
+local TAILLE_CARREAU = 8
+for x = -DX + TAILLE_CARREAU, DX - TAILLE_CARREAU, TAILLE_CARREAU do
+	deco(bloc("Joint", Vector3.new(0.15, 0.04, PROFONDEUR), CFrame.new(x, SOL + 0.02, 0), COULEUR_JOINT, Enum.Material.SmoothPlastic, joints))
+end
+for z = -DZ + TAILLE_CARREAU, DZ - TAILLE_CARREAU, TAILLE_CARREAU do
+	deco(bloc("Joint", Vector3.new(LARGEUR, 0.04, 0.15), CFrame.new(0, SOL + 0.02, z), COULEUR_JOINT, Enum.Material.SmoothPlastic, joints))
+end
 
 local yMur = SOL + HAUTEUR / 2
 bloc("MurNord", Vector3.new(LARGEUR + 4, HAUTEUR, 2), CFrame.new(0, yMur, -DZ - 1), MUR_MALL, Enum.Material.Marble)
@@ -680,29 +742,47 @@ portes.Transparency = 0.55
 bloc("DessusPortes", Vector3.new(largeurPortes, HAUTEUR - 16, 2), CFrame.new(0, SOL + 16 + (HAUTEUR - 16) / 2, DZ + 1), MUR_MALL, Enum.Material.Marble)
 pancarte("Enseigne", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ - 0.3), Vector3.new(0, 0, -1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
 
-local verriere = bloc("Verriere", Vector3.new(LARGEUR + 4, 1, PROFONDEUR + 4), CFrame.new(0, SOL + HAUTEUR + 1.5, 0), Color3.fromRGB(200, 220, 235), Enum.Material.Glass)
-verriere.Transparency = 0.85
-verriere.CastShadow = false
-deco(verriere)
-for x = -180, 180, 60 do
-	deco(bloc("Poutre", Vector3.new(1.5, 1.5, PROFONDEUR), CFrame.new(x, SOL + HAUTEUR + 0.5, 0), OR, Enum.Material.Foil))
+-- Plafond blanc (au ras du haut des boutiques) avec des puits de lumière
+local HAUT_PLAFOND = 24
+local plafond = bloc("Plafond", Vector3.new(LARGEUR + 4, 1, PROFONDEUR + 4), CFrame.new(0, SOL + HAUT_PLAFOND + 0.5, 0), Color3.fromRGB(245, 244, 240), Enum.Material.SmoothPlastic)
+plafond.CastShadow = false
+local puits = Instance.new("Folder")
+puits.Name = "PuitsDeLumiere"
+puits.Parent = carte
+local function puitsDeLumiere(x: number, z: number, taille: Vector3)
+	local p = deco(bloc("PuitsDeLumiere", taille, CFrame.new(x, SOL + HAUT_PLAFOND - 0.05, z), Color3.fromRGB(205, 232, 255), Enum.Material.Neon, puits))
+	p.CastShadow = false
+	deco(bloc("CadrePuits", taille + Vector3.new(1, -0.05, 1), CFrame.new(x, SOL + HAUT_PLAFOND - 0.02, z), Color3.fromRGB(225, 225, 228), Enum.Material.Metal, puits))
+end
+for x = -175, 175, 50 do
+	puitsDeLumiere(x, 0, Vector3.new(18, 0.1, 7)) -- allée centrale
+	puitsDeLumiere(x, -137, Vector3.new(18, 0.1, 7)) -- allée nord
+	puitsDeLumiere(x, 137, Vector3.new(18, 0.1, 7)) -- allée sud
+end
+for _, z in ipairs({ -110, -60, 60, 110 }) do
+	puitsDeLumiere(0, z, Vector3.new(10, 0.1, 22)) -- place centrale
 end
 
 -- Lumières des allées
 local lampes = Instance.new("Folder")
 lampes.Name = "Lampes"
 lampes.Parent = carte
+local nombreSpots = 0
 local function lampe(x: number, z: number)
-	local l = bloc("Lampe", Vector3.new(5, 0.4, 5), CFrame.new(x, SOL + HAUTEUR - 4, z), Color3.fromRGB(255, 245, 220), Enum.Material.Neon, lampes)
+	nombreSpots += 1
+	local l = bloc("Spot", Vector3.new(2.2, 0.2, 2.2), CFrame.new(x, SOL + HAUT_PLAFOND - 0.1, z), Color3.fromRGB(255, 248, 232), Enum.Material.Neon, lampes)
 	deco(l)
 	l.CastShadow = false
+	if nombreSpots % 2 == 0 then
+		return -- 1 spot sur 2 éclaire vraiment (bon pour les petits téléphones)
+	end
 	local pl = Instance.new("PointLight")
-	pl.Range = 40
-	pl.Brightness = 1.3
+	pl.Range = 32
+	pl.Brightness = 1.2
 	pl.Color = Color3.fromRGB(255, 236, 200)
 	pl.Parent = l
 end
-for x = -180, 180, 60 do
+for x = -200, 200, 25 do
 	lampe(x, -137)
 	lampe(x, 0)
 	lampe(x, 137)
@@ -980,9 +1060,12 @@ end
 local LARG_B, PROF_B, HAUT_B = 34, 24, 14 -- largeur, profondeur, hauteur intérieure
 local LARG_PORTE = 14
 
-local boutiquesConstruites: { { base: CFrame, typeB: string } } = {}
+local boutiquesConstruites: { { base: CFrame, typeB: string, ferme: boolean } } = {}
+local compteurBoutiques = 0
 
 local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: string)
+	compteurBoutiques += 1
+	local ferme = compteurBoutiques % 6 == 0 -- 1 boutique sur 6 a son rideau baissé
 	local style = STYLES[typeB]
 	local base = CFrame.lookAt(devant, devant + dehors)
 	local modele = Instance.new("Model")
@@ -1046,7 +1129,14 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 		end,
 	}
 	AMENAGEMENTS[typeB](outils)
-	table.insert(boutiquesConstruites, { base = base, typeB = typeB })
+	if ferme then
+		local rideau = bloc("RideauMetallique", Vector3.new(LARG_PORTE, HAUT_B - 3, 0.3), ici(0, (HAUT_B - 3) / 2, -0.1), Color3.fromRGB(150, 152, 158), Enum.Material.DiamondPlate, modele)
+		rideau.Transparency = 0.1
+		deco(bloc("Coffre", Vector3.new(LARG_PORTE + 1, 1, 1), ici(0, HAUT_B - 3.5, -0.2), Color3.fromRGB(110, 112, 118), Enum.Material.Metal, modele))
+		plafonnier.Color = Color3.fromRGB(120, 120, 120)
+		lumiere.Brightness = 0.3
+	end
+	table.insert(boutiquesConstruites, { base = base, typeB = typeB, ferme = ferme })
 end
 
 -- Façade décorative plate (contre les murs nord et sud)
@@ -1146,7 +1236,7 @@ lumiereFontaine.Color = Color3.fromRGB(90, 180, 255)
 lumiereFontaine.Range = 26
 lumiereFontaine.Brightness = 2
 lumiereFontaine.Parent = eauFontaine
-local lustre = cylindreDebout("Lustre", 1, 22, Vector3.new(0, SOL + 32, 0), Color3.fromRGB(255, 225, 150), Enum.Material.Neon)
+local lustre = cylindreDebout("Lustre", 0.8, 14, Vector3.new(0, SOL + HAUT_PLAFOND - 2, 0), Color3.fromRGB(255, 225, 150), Enum.Material.Neon)
 deco(lustre)
 local lumiereLustre = Instance.new("PointLight")
 lumiereLustre.Range = 55
@@ -1204,7 +1294,7 @@ kiosque(75, "BARBE À PAPA", Color3.fromRGB(255, 150, 200))
 local aquarium = Instance.new("Model")
 aquarium.Name = "Aquarium"
 aquarium.Parent = carte
-local AQ_LARGEUR, AQ_HAUT = 120, 30
+local AQ_LARGEUR, AQ_HAUT = 120, 18
 local eauAq = bloc("Eau", Vector3.new(AQ_LARGEUR, AQ_HAUT, 8), CFrame.new(0, SOL + AQ_HAUT / 2, -DZ + 4.5), Color3.fromRGB(25, 105, 185), Enum.Material.SmoothPlastic, aquarium)
 eauAq.Transparency = 0.5
 deco(eauAq)
@@ -1217,7 +1307,7 @@ lumiereAq.Color = Color3.fromRGB(80, 170, 255)
 lumiereAq.Range = 40
 lumiereAq.Brightness = 1.5
 lumiereAq.Parent = eauAq
-pancarte("PanneauAquarium", Vector3.new(44, 4, 0.5), Vector3.new(0, SOL + 34, -DZ + 0.3), Vector3.new(0, 0, 1), "AQUARIUM GÉANT", NOIR_LUXE, Color3.fromRGB(120, 210, 255))
+pancarte("PanneauAquarium", Vector3.new(40, 3.5, 0.5), Vector3.new(0, SOL + AQ_HAUT + 3, -DZ + 1), Vector3.new(0, 0, 1), "AQUARIUM GÉANT", NOIR_LUXE, Color3.fromRGB(120, 210, 255))
 local CORAUX = { Color3.fromRGB(255, 110, 120), Color3.fromRGB(255, 170, 60), Color3.fromRGB(190, 90, 220), Color3.fromRGB(80, 220, 160) }
 for _ = 1, 12 do
 	local h = random:NextNumber(2, 6)
@@ -1336,7 +1426,7 @@ panneauJaune(Vector2.new(-99, -46), Vector3.new(0, 0, 1))
 -- Dans le premier salon de coiffure (shampoing renversé !) et un fast-food
 local dejaMouille: { [string]: boolean } = {}
 for _, b in ipairs(boutiquesConstruites) do
-	if (b.typeB == "coiffeur" or b.typeB == "burger") and not dejaMouille[b.typeB] then
+	if (b.typeB == "coiffeur" or b.typeB == "burger") and not b.ferme and not dejaMouille[b.typeB] then
 		dejaMouille[b.typeB] = true
 		local centre = (b.base * CFrame.new(0, 0, 9)).Position
 		flaque(Vector2.new(centre.X, centre.Z), 9, 7)
@@ -2107,21 +2197,28 @@ end
 ---------------------------------------------------------------------
 -- CAMÉRA AUTOMATIQUE : elle se place toute seule derrière le kart
 -- et tourne avec lui (plus besoin du clic droit).
--- V = alterner entre « derrière le kart » et « vue pilote »
+-- V = alterner entre la « GoPro » (sur la poitrine du pilote, comme les
+-- vidéos TikTok) et la vue « derrière le kart »
 ---------------------------------------------------------------------
-local modeCamera = "derriere" -- ou "pilote"
+local modeCamera = Config.Camera.VueParDefaut or "gopro" -- "gopro" ou "derriere"
 local directionCamera = Vector3.new(0, 0, -1)
 local rayonCamera = RaycastParams.new()
 rayonCamera.FilterType = Enum.RaycastFilterType.Exclude
 
+-- En vue GoPro, on cache la tête et le buste (la caméra est dessus) mais on
+-- garde les bras et les jambes visibles, comme dans les vraies vidéos.
+local PARTIES_CACHEES = { Head = true, UpperTorso = true, Torso = true, HumanoidRootPart = true }
 local function cacherPilote(cacher: boolean)
 	local perso = joueur.Character
 	if not perso then
 		return
 	end
 	for _, p in ipairs(perso:GetDescendants()) do
-		if p:IsA("BasePart") or p:IsA("Decal") then
-			(p :: any).LocalTransparencyModifier = cacher and 1 or 0
+		if p:IsA("BasePart") then
+			local aCacher = PARTIES_CACHEES[p.Name] or p:FindFirstAncestorOfClass("Accessory") ~= nil
+			p.LocalTransparencyModifier = (cacher and aCacher) and 1 or 0
+		elseif p:IsA("Decal") then
+			p.LocalTransparencyModifier = cacher and 1 or 0
 		end
 	end
 end
@@ -2138,10 +2235,17 @@ local function mettreAJourCamera(dt: number)
 	end
 	avant = avant.Unit
 
-	if modeCamera == "pilote" then
+	if modeCamera == "gopro" then
 		cacherPilote(true)
-		local oeil = (ch.CFrame * CFrame.new(0, 3.3, 0.8)).Position
-		camera.CFrame = CFrame.lookAt(oeil, oeil + avant * 10 - Vector3.new(0, 0.6, 0))
+		-- GoPro fixée sur la poitrine : on voit le volant, les mains, les jambes et le sol
+		local vitesseG = Vector3.new(ch.AssemblyLinearVelocity.X, 0, ch.AssemblyLinearVelocity.Z)
+		local glisse = vitesseG:Dot(Vector3.new(-avant.Z, 0, avant.X)) -- vitesse sur le côté
+		local inclinaison = math.clamp(-glisse * 0.006, -0.12, 0.12) -- la caméra penche dans les drifts
+		local tremble = math.clamp(vitesseG.Magnitude, 0, 80) * 0.0009
+		local secousse = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * tremble
+		local plat = CFrame.lookAt(ch.Position, ch.Position + avant)
+		local oeil = plat * CFrame.new(0, 2.9, 0.15) + secousse
+		camera.CFrame = CFrame.lookAt(oeil.Position, (plat * CFrame.new(0, 0.2, -7)).Position) * CFrame.Angles(0, 0, inclinaison)
 		return
 	end
 
@@ -2193,11 +2297,11 @@ end
 
 local function actionCamera(_, etat: Enum.UserInputState)
 	if etat == Enum.UserInputState.Begin then
-		modeCamera = if modeCamera == "derriere" then "pilote" else "derriere"
+		modeCamera = if modeCamera == "derriere" then "gopro" else "derriere"
 		if modeCamera == "derriere" then
 			cacherPilote(false)
 		end
-		message(if modeCamera == "pilote" then "VUE PILOTE 🎥" else "VUE ARRIÈRE 🎥", Color3.new(1, 1, 1), 0.8)
+		message(if modeCamera == "gopro" then "*CAMÉRA GOPRO* 🎥" else "*VUE ARRIÈRE* 🎥", Color3.new(1, 1, 1), 0.8)
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -2500,10 +2604,65 @@ RunService.Heartbeat:Connect(function(dt: number)
 	end
 
 	-- Sensation de vitesse : le champ de vision s'élargit quand on va vite
-	local fovCible = 70 + math.clamp(vitesse, 0, 80) * 0.3 + (tempsBoost > 0 and 8 or 0)
+	local fovBase = if modeCamera == "gopro" then Config.Camera.ChampGoPro else 70
+	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (tempsBoost > 0 and 6 or 0)
 	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
+end)
+
+---------------------------------------------------------------------
+-- NÉONS ARC-EN-CIEL : ils changent de couleur en continu
+---------------------------------------------------------------------
+local kartsArcEnCiel: { { parties: { BasePart }, lumieres: { PointLight } } } = {}
+local prochainScan = 0
+
+local function scannerArcEnCiel()
+	kartsArcEnCiel = {}
+	local candidats = {}
+	local dossier = workspace:FindFirstChild("KartsJoueurs")
+	if dossier then
+		for _, m in ipairs(dossier:GetChildren()) do
+			table.insert(candidats, m)
+		end
+	end
+	local apercuGarage = workspace:FindFirstChild("ApercuGarage")
+	if apercuGarage then
+		table.insert(candidats, apercuGarage)
+	end
+	for _, m in ipairs(candidats) do
+		if m:GetAttribute("NeonArcEnCiel") then
+			local entree = { parties = {}, lumieres = {} }
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Neon" then
+					table.insert(entree.parties, d)
+				elseif d:IsA("PointLight") and d.Name == "LumiereNeon" then
+					table.insert(entree.lumieres, d)
+				end
+			end
+			table.insert(kartsArcEnCiel, entree)
+		end
+	end
+end
+
+RunService.Heartbeat:Connect(function()
+	local maintenant = os.clock()
+	if maintenant > prochainScan then
+		prochainScan = maintenant + 1
+		scannerArcEnCiel()
+	end
+	if #kartsArcEnCiel == 0 then
+		return
+	end
+	local couleur = Color3.fromHSV((maintenant * 0.25) % 1, 0.9, 1)
+	for _, k in ipairs(kartsArcEnCiel) do
+		for _, p in ipairs(k.parties) do
+			p.Color = couleur
+		end
+		for _, l in ipairs(k.lumieres) do
+			l.Color = couleur
+		end
+	end
 end)
 ]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX8"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
 	GarageUI  (LocalScript)
@@ -2829,10 +2988,10 @@ for _, e in ipairs(kartsTries) do
 end
 
 -- 2) LES COULEURS (carrosserie, jantes, siège, bandes)
-local function choixCouleur(titreSection: string, champ: string)
+local function choixCouleur(titreSection: string, champ: string, liste: { any }?)
 	local entete = section(titreSection)
 	local g = grille(Vector2.new(40, 40))
-	for i, c in ipairs(Config.Couleurs) do
+	for i, c in ipairs(liste or Config.Couleurs) do
 		local b = Instance.new("TextButton")
 		b.LayoutOrder = i
 		b.BackgroundColor3 = c.Couleur
@@ -2842,10 +3001,22 @@ local function choixCouleur(titreSection: string, champ: string)
 		b.Text = ""
 		coins(b, 20)
 		local trait = contour(b, Color3.new(1, 1, 1), 0)
+		if c.Nom == "Aucun" then
+			b.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
+		elseif c.Nom == "Arc-en-ciel" then
+			local degrade = Instance.new("UIGradient")
+			degrade.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+				ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
+				ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
+			})
+			degrade.Parent = b
+		end
 		b.Parent = g
 		table.insert(miseAJour, function()
 			local bloque = c.Niveau > niveau()
-			b.Text = bloque and "🔒" or ""
+			b.Text = if bloque then "🔒" elseif c.Nom == "Aucun" then "∅" else ""
 			b.BackgroundTransparency = bloque and 0.55 or 0
 			trait.Thickness = persoEdite[champ] == c.Nom and 3 or 0
 		end)
@@ -2887,6 +3058,7 @@ table.insert(miseAJour, function()
 	enteteFinition.Text = "✨  FINITION  ·  " .. persoEdite.Finition
 end)
 
+choixCouleur("💡  NÉONS SOUS LE KART", "Neon", Config.Neons)
 choixCouleur("🛞  JANTES", "Jantes")
 choixCouleur("💺  SIÈGE", "Siege")
 

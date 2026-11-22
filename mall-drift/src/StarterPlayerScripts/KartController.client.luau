@@ -352,21 +352,28 @@ end
 ---------------------------------------------------------------------
 -- CAMÉRA AUTOMATIQUE : elle se place toute seule derrière le kart
 -- et tourne avec lui (plus besoin du clic droit).
--- V = alterner entre « derrière le kart » et « vue pilote »
+-- V = alterner entre la « GoPro » (sur la poitrine du pilote, comme les
+-- vidéos TikTok) et la vue « derrière le kart »
 ---------------------------------------------------------------------
-local modeCamera = "derriere" -- ou "pilote"
+local modeCamera = Config.Camera.VueParDefaut or "gopro" -- "gopro" ou "derriere"
 local directionCamera = Vector3.new(0, 0, -1)
 local rayonCamera = RaycastParams.new()
 rayonCamera.FilterType = Enum.RaycastFilterType.Exclude
 
+-- En vue GoPro, on cache la tête et le buste (la caméra est dessus) mais on
+-- garde les bras et les jambes visibles, comme dans les vraies vidéos.
+local PARTIES_CACHEES = { Head = true, UpperTorso = true, Torso = true, HumanoidRootPart = true }
 local function cacherPilote(cacher: boolean)
 	local perso = joueur.Character
 	if not perso then
 		return
 	end
 	for _, p in ipairs(perso:GetDescendants()) do
-		if p:IsA("BasePart") or p:IsA("Decal") then
-			(p :: any).LocalTransparencyModifier = cacher and 1 or 0
+		if p:IsA("BasePart") then
+			local aCacher = PARTIES_CACHEES[p.Name] or p:FindFirstAncestorOfClass("Accessory") ~= nil
+			p.LocalTransparencyModifier = (cacher and aCacher) and 1 or 0
+		elseif p:IsA("Decal") then
+			p.LocalTransparencyModifier = cacher and 1 or 0
 		end
 	end
 end
@@ -383,10 +390,17 @@ local function mettreAJourCamera(dt: number)
 	end
 	avant = avant.Unit
 
-	if modeCamera == "pilote" then
+	if modeCamera == "gopro" then
 		cacherPilote(true)
-		local oeil = (ch.CFrame * CFrame.new(0, 3.3, 0.8)).Position
-		camera.CFrame = CFrame.lookAt(oeil, oeil + avant * 10 - Vector3.new(0, 0.6, 0))
+		-- GoPro fixée sur la poitrine : on voit le volant, les mains, les jambes et le sol
+		local vitesseG = Vector3.new(ch.AssemblyLinearVelocity.X, 0, ch.AssemblyLinearVelocity.Z)
+		local glisse = vitesseG:Dot(Vector3.new(-avant.Z, 0, avant.X)) -- vitesse sur le côté
+		local inclinaison = math.clamp(-glisse * 0.006, -0.12, 0.12) -- la caméra penche dans les drifts
+		local tremble = math.clamp(vitesseG.Magnitude, 0, 80) * 0.0009
+		local secousse = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * tremble
+		local plat = CFrame.lookAt(ch.Position, ch.Position + avant)
+		local oeil = plat * CFrame.new(0, 2.9, 0.15) + secousse
+		camera.CFrame = CFrame.lookAt(oeil.Position, (plat * CFrame.new(0, 0.2, -7)).Position) * CFrame.Angles(0, 0, inclinaison)
 		return
 	end
 
@@ -438,11 +452,11 @@ end
 
 local function actionCamera(_, etat: Enum.UserInputState)
 	if etat == Enum.UserInputState.Begin then
-		modeCamera = if modeCamera == "derriere" then "pilote" else "derriere"
+		modeCamera = if modeCamera == "derriere" then "gopro" else "derriere"
 		if modeCamera == "derriere" then
 			cacherPilote(false)
 		end
-		message(if modeCamera == "pilote" then "VUE PILOTE 🎥" else "VUE ARRIÈRE 🎥", Color3.new(1, 1, 1), 0.8)
+		message(if modeCamera == "gopro" then "*CAMÉRA GOPRO* 🎥" else "*VUE ARRIÈRE* 🎥", Color3.new(1, 1, 1), 0.8)
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -745,8 +759,63 @@ RunService.Heartbeat:Connect(function(dt: number)
 	end
 
 	-- Sensation de vitesse : le champ de vision s'élargit quand on va vite
-	local fovCible = 70 + math.clamp(vitesse, 0, 80) * 0.3 + (tempsBoost > 0 and 8 or 0)
+	local fovBase = if modeCamera == "gopro" then Config.Camera.ChampGoPro else 70
+	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (tempsBoost > 0 and 6 or 0)
 	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
+end)
+
+---------------------------------------------------------------------
+-- NÉONS ARC-EN-CIEL : ils changent de couleur en continu
+---------------------------------------------------------------------
+local kartsArcEnCiel: { { parties: { BasePart }, lumieres: { PointLight } } } = {}
+local prochainScan = 0
+
+local function scannerArcEnCiel()
+	kartsArcEnCiel = {}
+	local candidats = {}
+	local dossier = workspace:FindFirstChild("KartsJoueurs")
+	if dossier then
+		for _, m in ipairs(dossier:GetChildren()) do
+			table.insert(candidats, m)
+		end
+	end
+	local apercuGarage = workspace:FindFirstChild("ApercuGarage")
+	if apercuGarage then
+		table.insert(candidats, apercuGarage)
+	end
+	for _, m in ipairs(candidats) do
+		if m:GetAttribute("NeonArcEnCiel") then
+			local entree = { parties = {}, lumieres = {} }
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Neon" then
+					table.insert(entree.parties, d)
+				elseif d:IsA("PointLight") and d.Name == "LumiereNeon" then
+					table.insert(entree.lumieres, d)
+				end
+			end
+			table.insert(kartsArcEnCiel, entree)
+		end
+	end
+end
+
+RunService.Heartbeat:Connect(function()
+	local maintenant = os.clock()
+	if maintenant > prochainScan then
+		prochainScan = maintenant + 1
+		scannerArcEnCiel()
+	end
+	if #kartsArcEnCiel == 0 then
+		return
+	end
+	local couleur = Color3.fromHSV((maintenant * 0.25) % 1, 0.9, 1)
+	for _, k in ipairs(kartsArcEnCiel) do
+		for _, p in ipairs(k.parties) do
+			p.Color = couleur
+		end
+		for _, l in ipairs(k.lumieres) do
+			l.Color = couleur
+		end
+	end
 end)

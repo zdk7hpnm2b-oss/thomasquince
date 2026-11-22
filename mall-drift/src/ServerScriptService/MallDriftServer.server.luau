@@ -148,10 +148,20 @@ local ALLEE_SUD = { 124, 150 }
 ---------------------------------------------------------------------
 -- SOL, MURS, VERRIÈRE, LUMIÈRES
 ---------------------------------------------------------------------
-local sol = bloc("SolMarbre", Vector3.new(LARGEUR, 1, PROFONDEUR), CFrame.new(0, SOL - 0.5, 0), MARBRE, Enum.Material.Marble)
-sol.Reflectance = 0.18
-deco(bloc("IncrustationOr", Vector3.new(LARGEUR, 0.05, 1), CFrame.new(0, SOL + 0.03, 0), OR, Enum.Material.Foil))
-deco(bloc("IncrustationOr", Vector3.new(1, 0.05, PROFONDEUR), CFrame.new(0, SOL + 0.03, 0), OR, Enum.Material.Foil))
+-- Grand carrelage clair et brillant (comme dans les vidéos)
+local sol = bloc("SolCarrelage", Vector3.new(LARGEUR, 1, PROFONDEUR), CFrame.new(0, SOL - 0.5, 0), Color3.fromRGB(226, 223, 216), Enum.Material.SmoothPlastic)
+sol.Reflectance = 0.22
+local joints = Instance.new("Folder")
+joints.Name = "JointsCarrelage"
+joints.Parent = carte
+local COULEUR_JOINT = Color3.fromRGB(196, 192, 184)
+local TAILLE_CARREAU = 8
+for x = -DX + TAILLE_CARREAU, DX - TAILLE_CARREAU, TAILLE_CARREAU do
+	deco(bloc("Joint", Vector3.new(0.15, 0.04, PROFONDEUR), CFrame.new(x, SOL + 0.02, 0), COULEUR_JOINT, Enum.Material.SmoothPlastic, joints))
+end
+for z = -DZ + TAILLE_CARREAU, DZ - TAILLE_CARREAU, TAILLE_CARREAU do
+	deco(bloc("Joint", Vector3.new(LARGEUR, 0.04, 0.15), CFrame.new(0, SOL + 0.02, z), COULEUR_JOINT, Enum.Material.SmoothPlastic, joints))
+end
 
 local yMur = SOL + HAUTEUR / 2
 bloc("MurNord", Vector3.new(LARGEUR + 4, HAUTEUR, 2), CFrame.new(0, yMur, -DZ - 1), MUR_MALL, Enum.Material.Marble)
@@ -166,29 +176,47 @@ portes.Transparency = 0.55
 bloc("DessusPortes", Vector3.new(largeurPortes, HAUTEUR - 16, 2), CFrame.new(0, SOL + 16 + (HAUTEUR - 16) / 2, DZ + 1), MUR_MALL, Enum.Material.Marble)
 pancarte("Enseigne", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ - 0.3), Vector3.new(0, 0, -1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
 
-local verriere = bloc("Verriere", Vector3.new(LARGEUR + 4, 1, PROFONDEUR + 4), CFrame.new(0, SOL + HAUTEUR + 1.5, 0), Color3.fromRGB(200, 220, 235), Enum.Material.Glass)
-verriere.Transparency = 0.85
-verriere.CastShadow = false
-deco(verriere)
-for x = -180, 180, 60 do
-	deco(bloc("Poutre", Vector3.new(1.5, 1.5, PROFONDEUR), CFrame.new(x, SOL + HAUTEUR + 0.5, 0), OR, Enum.Material.Foil))
+-- Plafond blanc (au ras du haut des boutiques) avec des puits de lumière
+local HAUT_PLAFOND = 24
+local plafond = bloc("Plafond", Vector3.new(LARGEUR + 4, 1, PROFONDEUR + 4), CFrame.new(0, SOL + HAUT_PLAFOND + 0.5, 0), Color3.fromRGB(245, 244, 240), Enum.Material.SmoothPlastic)
+plafond.CastShadow = false
+local puits = Instance.new("Folder")
+puits.Name = "PuitsDeLumiere"
+puits.Parent = carte
+local function puitsDeLumiere(x: number, z: number, taille: Vector3)
+	local p = deco(bloc("PuitsDeLumiere", taille, CFrame.new(x, SOL + HAUT_PLAFOND - 0.05, z), Color3.fromRGB(205, 232, 255), Enum.Material.Neon, puits))
+	p.CastShadow = false
+	deco(bloc("CadrePuits", taille + Vector3.new(1, -0.05, 1), CFrame.new(x, SOL + HAUT_PLAFOND - 0.02, z), Color3.fromRGB(225, 225, 228), Enum.Material.Metal, puits))
+end
+for x = -175, 175, 50 do
+	puitsDeLumiere(x, 0, Vector3.new(18, 0.1, 7)) -- allée centrale
+	puitsDeLumiere(x, -137, Vector3.new(18, 0.1, 7)) -- allée nord
+	puitsDeLumiere(x, 137, Vector3.new(18, 0.1, 7)) -- allée sud
+end
+for _, z in ipairs({ -110, -60, 60, 110 }) do
+	puitsDeLumiere(0, z, Vector3.new(10, 0.1, 22)) -- place centrale
 end
 
 -- Lumières des allées
 local lampes = Instance.new("Folder")
 lampes.Name = "Lampes"
 lampes.Parent = carte
+local nombreSpots = 0
 local function lampe(x: number, z: number)
-	local l = bloc("Lampe", Vector3.new(5, 0.4, 5), CFrame.new(x, SOL + HAUTEUR - 4, z), Color3.fromRGB(255, 245, 220), Enum.Material.Neon, lampes)
+	nombreSpots += 1
+	local l = bloc("Spot", Vector3.new(2.2, 0.2, 2.2), CFrame.new(x, SOL + HAUT_PLAFOND - 0.1, z), Color3.fromRGB(255, 248, 232), Enum.Material.Neon, lampes)
 	deco(l)
 	l.CastShadow = false
+	if nombreSpots % 2 == 0 then
+		return -- 1 spot sur 2 éclaire vraiment (bon pour les petits téléphones)
+	end
 	local pl = Instance.new("PointLight")
-	pl.Range = 40
-	pl.Brightness = 1.3
+	pl.Range = 32
+	pl.Brightness = 1.2
 	pl.Color = Color3.fromRGB(255, 236, 200)
 	pl.Parent = l
 end
-for x = -180, 180, 60 do
+for x = -200, 200, 25 do
 	lampe(x, -137)
 	lampe(x, 0)
 	lampe(x, 137)
@@ -466,9 +494,12 @@ end
 local LARG_B, PROF_B, HAUT_B = 34, 24, 14 -- largeur, profondeur, hauteur intérieure
 local LARG_PORTE = 14
 
-local boutiquesConstruites: { { base: CFrame, typeB: string } } = {}
+local boutiquesConstruites: { { base: CFrame, typeB: string, ferme: boolean } } = {}
+local compteurBoutiques = 0
 
 local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: string)
+	compteurBoutiques += 1
+	local ferme = compteurBoutiques % 6 == 0 -- 1 boutique sur 6 a son rideau baissé
 	local style = STYLES[typeB]
 	local base = CFrame.lookAt(devant, devant + dehors)
 	local modele = Instance.new("Model")
@@ -532,7 +563,14 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 		end,
 	}
 	AMENAGEMENTS[typeB](outils)
-	table.insert(boutiquesConstruites, { base = base, typeB = typeB })
+	if ferme then
+		local rideau = bloc("RideauMetallique", Vector3.new(LARG_PORTE, HAUT_B - 3, 0.3), ici(0, (HAUT_B - 3) / 2, -0.1), Color3.fromRGB(150, 152, 158), Enum.Material.DiamondPlate, modele)
+		rideau.Transparency = 0.1
+		deco(bloc("Coffre", Vector3.new(LARG_PORTE + 1, 1, 1), ici(0, HAUT_B - 3.5, -0.2), Color3.fromRGB(110, 112, 118), Enum.Material.Metal, modele))
+		plafonnier.Color = Color3.fromRGB(120, 120, 120)
+		lumiere.Brightness = 0.3
+	end
+	table.insert(boutiquesConstruites, { base = base, typeB = typeB, ferme = ferme })
 end
 
 -- Façade décorative plate (contre les murs nord et sud)
@@ -632,7 +670,7 @@ lumiereFontaine.Color = Color3.fromRGB(90, 180, 255)
 lumiereFontaine.Range = 26
 lumiereFontaine.Brightness = 2
 lumiereFontaine.Parent = eauFontaine
-local lustre = cylindreDebout("Lustre", 1, 22, Vector3.new(0, SOL + 32, 0), Color3.fromRGB(255, 225, 150), Enum.Material.Neon)
+local lustre = cylindreDebout("Lustre", 0.8, 14, Vector3.new(0, SOL + HAUT_PLAFOND - 2, 0), Color3.fromRGB(255, 225, 150), Enum.Material.Neon)
 deco(lustre)
 local lumiereLustre = Instance.new("PointLight")
 lumiereLustre.Range = 55
@@ -690,7 +728,7 @@ kiosque(75, "BARBE À PAPA", Color3.fromRGB(255, 150, 200))
 local aquarium = Instance.new("Model")
 aquarium.Name = "Aquarium"
 aquarium.Parent = carte
-local AQ_LARGEUR, AQ_HAUT = 120, 30
+local AQ_LARGEUR, AQ_HAUT = 120, 18
 local eauAq = bloc("Eau", Vector3.new(AQ_LARGEUR, AQ_HAUT, 8), CFrame.new(0, SOL + AQ_HAUT / 2, -DZ + 4.5), Color3.fromRGB(25, 105, 185), Enum.Material.SmoothPlastic, aquarium)
 eauAq.Transparency = 0.5
 deco(eauAq)
@@ -703,7 +741,7 @@ lumiereAq.Color = Color3.fromRGB(80, 170, 255)
 lumiereAq.Range = 40
 lumiereAq.Brightness = 1.5
 lumiereAq.Parent = eauAq
-pancarte("PanneauAquarium", Vector3.new(44, 4, 0.5), Vector3.new(0, SOL + 34, -DZ + 0.3), Vector3.new(0, 0, 1), "AQUARIUM GÉANT", NOIR_LUXE, Color3.fromRGB(120, 210, 255))
+pancarte("PanneauAquarium", Vector3.new(40, 3.5, 0.5), Vector3.new(0, SOL + AQ_HAUT + 3, -DZ + 1), Vector3.new(0, 0, 1), "AQUARIUM GÉANT", NOIR_LUXE, Color3.fromRGB(120, 210, 255))
 local CORAUX = { Color3.fromRGB(255, 110, 120), Color3.fromRGB(255, 170, 60), Color3.fromRGB(190, 90, 220), Color3.fromRGB(80, 220, 160) }
 for _ = 1, 12 do
 	local h = random:NextNumber(2, 6)
@@ -822,7 +860,7 @@ panneauJaune(Vector2.new(-99, -46), Vector3.new(0, 0, 1))
 -- Dans le premier salon de coiffure (shampoing renversé !) et un fast-food
 local dejaMouille: { [string]: boolean } = {}
 for _, b in ipairs(boutiquesConstruites) do
-	if (b.typeB == "coiffeur" or b.typeB == "burger") and not dejaMouille[b.typeB] then
+	if (b.typeB == "coiffeur" or b.typeB == "burger") and not b.ferme and not dejaMouille[b.typeB] then
 		dejaMouille[b.typeB] = true
 		local centre = (b.base * CFrame.new(0, 0, 9)).Position
 		flaque(Vector2.new(centre.X, centre.Z), 9, 7)
