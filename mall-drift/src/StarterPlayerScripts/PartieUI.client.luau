@@ -205,6 +205,48 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 ---------------------------------------------------------------------
+-- LE BOUTON « LANCER UNE PARTIE » (en bas à droite)
+-- En arrivant, on est libre : garage, personnalisation, balade. On clique ici
+-- quand on veut jouer à Police vs Fugitifs.
+---------------------------------------------------------------------
+local boutonPartie = Instance.new("TextButton")
+boutonPartie.Name = "LancerPartie"
+boutonPartie.AnchorPoint = Vector2.new(1, 1)
+boutonPartie.Size = UDim2.new(0, 280, 0, 58)
+boutonPartie.Position = UDim2.new(1, -20, 1, -40)
+boutonPartie.Font = Enum.Font.GothamBlack
+boutonPartie.TextScaled = true
+boutonPartie.TextColor3 = Color3.new(1, 1, 1)
+boutonPartie.ZIndex = 5
+boutonPartie.Parent = gui
+Instance.new("UICorner", boutonPartie).CornerRadius = UDim.new(0, 14)
+local bordBouton = Instance.new("UIStroke")
+bordBouton.Thickness = 3
+bordBouton.Color = Color3.new(1, 1, 1)
+bordBouton.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+bordBouton.Parent = boutonPartie
+local margeBouton = Instance.new("UIPadding")
+margeBouton.PaddingTop = UDim.new(0, 10)
+margeBouton.PaddingBottom = UDim.new(0, 10)
+margeBouton.PaddingLeft = UDim.new(0, 10)
+margeBouton.PaddingRight = UDim.new(0, 10)
+margeBouton.Parent = boutonPartie
+
+local function majBoutonPartie()
+	local pret = joueur:GetAttribute("Pret") == true
+	boutonPartie.Visible = joueur:GetAttribute("Role") == nil and joueur:GetAttribute("IntroFinie") == true
+	boutonPartie.Text = if pret then "✅ PRÊT · ANNULER" else "🎮 LANCER UNE PARTIE"
+	boutonPartie.BackgroundColor3 = if pret then Color3.fromRGB(40, 150, 80) else Color3.fromRGB(110, 60, 220)
+end
+for _, nom in ipairs({ "Pret", "Role", "IntroFinie" }) do
+	joueur:GetAttributeChangedSignal(nom):Connect(majBoutonPartie)
+end
+majBoutonPartie()
+boutonPartie.Activated:Connect(function()
+	Partie:FireServer({ type = "pret", valeur = not (joueur:GetAttribute("Pret") == true) })
+end)
+
+---------------------------------------------------------------------
 -- Messages du serveur
 ---------------------------------------------------------------------
 Partie.OnClientEvent:Connect(function(info)
@@ -213,13 +255,17 @@ Partie.OnClientEvent:Connect(function(info)
 	end
 	if info.type == "etat" then
 		if info.etat == "attente" then
-			texteBarre.Text = ("🎮 MODE LIBRE · En attente de joueurs (%d/%d) pour Police vs Fugitifs"):format(info.joueurs or 1, info.min or 2)
+			texteBarre.Text = if joueur:GetAttribute("Pret")
+				then ("✅ Prêt ! En attente de joueurs (%d/%d prêts)"):format(info.joueurs or 0, info.min or 2)
+				else ("🎮 MODE LIBRE · Police vs Fugitifs : %d/%d joueurs prêts"):format(info.joueurs or 0, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
 			nombreBots = info.bots or 0
 			comptePage.Text = ("🎲 Tirage au sort dans %d s"):format(info.temps or 0)
 			majListe()
-			texteBarre.Text = ("🚓 POLICE vs FUGITIFS 🏃 · prochaine manche dans %d s"):format(info.temps or 0)
+			texteBarre.Text = if joueur:GetAttribute("Pret")
+				then ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0)
+				else ("🎮 Une partie va commencer dans %d s · clique sur LANCER UNE PARTIE pour la rejoindre"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)
 		elseif info.etat == "manche" then

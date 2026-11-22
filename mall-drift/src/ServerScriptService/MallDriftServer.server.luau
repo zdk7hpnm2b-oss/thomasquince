@@ -1836,10 +1836,17 @@ end
 ---------------------------------------------------------------------
 -- LES KARTS DES JOUEURS
 ---------------------------------------------------------------------
--- Assoit le joueur dans son kart (plusieurs essais si le premier rate)
+-- Assoit le joueur dans son kart (plusieurs essais si le premier rate).
+-- On téléporte d'abord le personnage à côté du kart : sinon l'ordinateur du joueur
+-- peut garder son personnage là où il était… et y ramener le kart !
 local function asseoir(joueur: Player, kart: Model)
 	task.spawn(function()
 		local siege = kart:FindFirstChild("Siege") :: Seat?
+		local perso = joueur.Character
+		if siege and perso and perso.Parent then
+			perso:PivotTo(siege.CFrame * CFrame.new(0, 3, 0))
+			task.wait(0.2)
+		end
 		for _ = 1, 6 do
 			local perso = joueur.Character
 			local humanoide = perso and perso:FindFirstChildOfClass("Humanoid")

@@ -2481,10 +2481,17 @@ end
 ---------------------------------------------------------------------
 -- LES KARTS DES JOUEURS
 ---------------------------------------------------------------------
--- Assoit le joueur dans son kart (plusieurs essais si le premier rate)
+-- Assoit le joueur dans son kart (plusieurs essais si le premier rate).
+-- On téléporte d'abord le personnage à côté du kart : sinon l'ordinateur du joueur
+-- peut garder son personnage là où il était… et y ramener le kart !
 local function asseoir(joueur: Player, kart: Model)
 	task.spawn(function()
 		local siege = kart:FindFirstChild("Siege") :: Seat?
+		local perso = joueur.Character
+		if siege and perso and perso.Parent then
+			perso:PivotTo(siege.CFrame * CFrame.new(0, 3, 0))
+			task.wait(0.2)
+		end
 		for _ = 1, 6 do
 			local perso = joueur.Character
 			local humanoide = perso and perso:FindFirstChildOfClass("Humanoid")
@@ -2851,8 +2858,10 @@ print("[Golden Mall] Le Golden Mall de Dubaï est prêt ! Garage VIP ouvert.")
 	À placer dans : ServerScriptService   — nom conseillé : ManchesServer
 
 	LE MODE EN LIGNE « POLICE CONTRE FUGITIFS »
-	  1. ATTENTE : il faut au moins Config.Partie.JoueursMin participants
-	     (s'il manque du monde, des BOTS DE TEST complètent : Config.Partie.BotsTest)
+	  1. ATTENTE : en arrivant, on est LIBRE (garage, personnalisation, balade).
+	     Les joueurs qui veulent jouer cliquent sur « LANCER UNE PARTIE » (ils sont
+	     « prêts »). Il faut au moins Config.Partie.JoueursMin joueurs prêts
+	     (s'il en manque, des BOTS DE TEST complètent : Config.Partie.BotsTest)
 	  2. PAGE D'ATTENTE : les joueurs ne roulent pas, ils attendent sur une page
 	     (caméra qui survole le mall) avec un compte à rebours
 	  3. TIRAGE AU SORT : la moitié des participants devient POLICE, l'autre FUGITIFS
@@ -3383,6 +3392,7 @@ local function jouerManche(participants: { Participant })
 			RetirerKart:Invoke(j)
 			remettreAZero(j)
 			j:SetAttribute("EnSalle", nil)
+			j:SetAttribute("Pret", false) -- pour rejouer, on reclique sur « LANCER UNE PARTIE »
 			task.spawn(function()
 				j:LoadCharacter() -- réapparition au garage
 			end)
@@ -3401,9 +3411,26 @@ for _, joueur in ipairs(Players:GetPlayers()) do
 end
 workspace:SetAttribute("MancheEnCours", false)
 
+-- Le bouton « LANCER UNE PARTIE » (côté joueur) : on devient « prêt » ou non
+Partie.OnServerEvent:Connect(function(joueur: Player, info)
+	if type(info) == "table" and info.type == "pret" and joueur:GetAttribute("Role") == nil then
+		joueur:SetAttribute("Pret", info.valeur == true)
+	end
+end)
+
+local function joueursPrets(): { Player }
+	local liste = {}
+	for _, j in ipairs(Players:GetPlayers()) do
+		if j:GetAttribute("Pret") and j.Character then
+			table.insert(liste, j)
+		end
+	end
+	return liste
+end
+
 -- Combien de bots faut-il pour compléter ?
 local function botsNecessaires(): number
-	local n = #Players:GetPlayers()
+	local n = #joueursPrets()
 	if n == 0 or n >= JOUEURS_MIN then
 		return 0
 	end
@@ -3411,7 +3438,7 @@ local function botsNecessaires(): number
 end
 
 local function assezDeMonde(): boolean
-	local n = #Players:GetPlayers()
+	local n = #joueursPrets()
 	return n > 0 and n + botsNecessaires() >= JOUEURS_MIN
 end
 
@@ -3419,8 +3446,11 @@ task.spawn(function()
 	while true do
 		-- Attente de joueurs
 		while not assezDeMonde() do
-			envoyerATous({ type = "etat", etat = "attente", joueurs = #Players:GetPlayers(), min = JOUEURS_MIN })
-			task.wait(2)
+			for _, j in ipairs(Players:GetPlayers()) do
+				mettreEnSalle(j, false)
+			end
+			envoyerATous({ type = "etat", etat = "attente", joueurs = #joueursPrets(), min = JOUEURS_MIN })
+			task.wait(1)
 		end
 		-- Page d'attente : plus personne ne roule, compte à rebours avant le tirage
 		local annule = false
@@ -3430,7 +3460,8 @@ task.spawn(function()
 				break
 			end
 			for _, j in ipairs(Players:GetPlayers()) do
-				mettreEnSalle(j, true) -- (y compris ceux qui viennent d'arriver)
+				-- seuls les joueurs « prêts » vont sur la page d'attente
+				mettreEnSalle(j, j:GetAttribute("Pret") == true)
 			end
 			envoyerATous({ type = "etat", etat = "intermission", temps = t, bots = botsNecessaires() })
 			task.wait(1)
@@ -3442,7 +3473,7 @@ task.spawn(function()
 		end
 		if not annule then
 			local participants: { Participant } = {}
-			for _, j in ipairs(Players:GetPlayers()) do
+			for _, j in ipairs(joueursPrets()) do
 				if j.Character then
 					table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
 					mettreEnSalle(j, true)
@@ -6101,20 +6132,6 @@ local function activerToucheConduire(actif: boolean)
 end
 activerToucheConduire(true)
 
--- Filet de sécurité : si les commandes sont restées bloquées par erreur
--- (intro ou menu du garage), on les réactive.
-task.spawn(function()
-	while true do
-		task.wait(1)
-		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") and not joueur:GetAttribute("EnSalle") then
-			controles:Enable()
-			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
-				camera.CameraType = Enum.CameraType.Custom
-			end
-		end
-	end
-end)
-
 local function sortirDuKart()
 	if not kart then
 		return
@@ -6701,6 +6718,27 @@ RunService.RenderStepped:Connect(function()
 		m.part.CFrame = r.CFrame * CFrame.new(0, r.Size.Y / 2 + 0.04, z)
 	end
 end)
+
+---------------------------------------------------------------------
+-- Filet de sécurité : si les commandes sont restées bloquées par erreur
+-- (intro ou menu du garage), on les réactive.
+task.spawn(function()
+	while true do
+		task.wait(1)
+		-- Rattrapage : assis dans un kart, mais la conduite n'est pas active
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		local siegeActuel = h and h.SeatPart
+		if not kart and siegeActuel and siegeActuel:IsA("Seat") and siegeActuel.Parent and siegeActuel.Parent:GetAttribute("KartType") then
+			entrerDansKart(siegeActuel)
+		end
+		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") and not joueur:GetAttribute("EnSalle") then
+			controles:Enable()
+			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
+				camera.CameraType = Enum.CameraType.Custom
+			end
+		end
+	end
+end)
 ]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
 	PartieUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : PartieUI
@@ -6908,6 +6946,48 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 ---------------------------------------------------------------------
+-- LE BOUTON « LANCER UNE PARTIE » (en bas à droite)
+-- En arrivant, on est libre : garage, personnalisation, balade. On clique ici
+-- quand on veut jouer à Police vs Fugitifs.
+---------------------------------------------------------------------
+local boutonPartie = Instance.new("TextButton")
+boutonPartie.Name = "LancerPartie"
+boutonPartie.AnchorPoint = Vector2.new(1, 1)
+boutonPartie.Size = UDim2.new(0, 280, 0, 58)
+boutonPartie.Position = UDim2.new(1, -20, 1, -40)
+boutonPartie.Font = Enum.Font.GothamBlack
+boutonPartie.TextScaled = true
+boutonPartie.TextColor3 = Color3.new(1, 1, 1)
+boutonPartie.ZIndex = 5
+boutonPartie.Parent = gui
+Instance.new("UICorner", boutonPartie).CornerRadius = UDim.new(0, 14)
+local bordBouton = Instance.new("UIStroke")
+bordBouton.Thickness = 3
+bordBouton.Color = Color3.new(1, 1, 1)
+bordBouton.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+bordBouton.Parent = boutonPartie
+local margeBouton = Instance.new("UIPadding")
+margeBouton.PaddingTop = UDim.new(0, 10)
+margeBouton.PaddingBottom = UDim.new(0, 10)
+margeBouton.PaddingLeft = UDim.new(0, 10)
+margeBouton.PaddingRight = UDim.new(0, 10)
+margeBouton.Parent = boutonPartie
+
+local function majBoutonPartie()
+	local pret = joueur:GetAttribute("Pret") == true
+	boutonPartie.Visible = joueur:GetAttribute("Role") == nil and joueur:GetAttribute("IntroFinie") == true
+	boutonPartie.Text = if pret then "✅ PRÊT · ANNULER" else "🎮 LANCER UNE PARTIE"
+	boutonPartie.BackgroundColor3 = if pret then Color3.fromRGB(40, 150, 80) else Color3.fromRGB(110, 60, 220)
+end
+for _, nom in ipairs({ "Pret", "Role", "IntroFinie" }) do
+	joueur:GetAttributeChangedSignal(nom):Connect(majBoutonPartie)
+end
+majBoutonPartie()
+boutonPartie.Activated:Connect(function()
+	Partie:FireServer({ type = "pret", valeur = not (joueur:GetAttribute("Pret") == true) })
+end)
+
+---------------------------------------------------------------------
 -- Messages du serveur
 ---------------------------------------------------------------------
 Partie.OnClientEvent:Connect(function(info)
@@ -6916,13 +6996,17 @@ Partie.OnClientEvent:Connect(function(info)
 	end
 	if info.type == "etat" then
 		if info.etat == "attente" then
-			texteBarre.Text = ("🎮 MODE LIBRE · En attente de joueurs (%d/%d) pour Police vs Fugitifs"):format(info.joueurs or 1, info.min or 2)
+			texteBarre.Text = if joueur:GetAttribute("Pret")
+				then ("✅ Prêt ! En attente de joueurs (%d/%d prêts)"):format(info.joueurs or 0, info.min or 2)
+				else ("🎮 MODE LIBRE · Police vs Fugitifs : %d/%d joueurs prêts"):format(info.joueurs or 0, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
 			nombreBots = info.bots or 0
 			comptePage.Text = ("🎲 Tirage au sort dans %d s"):format(info.temps or 0)
 			majListe()
-			texteBarre.Text = ("🚓 POLICE vs FUGITIFS 🏃 · prochaine manche dans %d s"):format(info.temps or 0)
+			texteBarre.Text = if joueur:GetAttribute("Pret")
+				then ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0)
+				else ("🎮 Une partie va commencer dans %d s · clique sur LANCER UNE PARTIE pour la rejoindre"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)
 		elseif info.etat == "manche" then

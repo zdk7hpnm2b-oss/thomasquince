@@ -689,20 +689,6 @@ local function activerToucheConduire(actif: boolean)
 end
 activerToucheConduire(true)
 
--- Filet de sécurité : si les commandes sont restées bloquées par erreur
--- (intro ou menu du garage), on les réactive.
-task.spawn(function()
-	while true do
-		task.wait(1)
-		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") and not joueur:GetAttribute("EnSalle") then
-			controles:Enable()
-			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
-				camera.CameraType = Enum.CameraType.Custom
-			end
-		end
-	end
-end)
-
 local function sortirDuKart()
 	if not kart then
 		return
@@ -1287,5 +1273,26 @@ RunService.RenderStepped:Connect(function()
 		local d = (m.decalage + t * vitesse) % longueur
 		local z = if monte then longueur / 2 - d else -longueur / 2 + d
 		m.part.CFrame = r.CFrame * CFrame.new(0, r.Size.Y / 2 + 0.04, z)
+	end
+end)
+
+---------------------------------------------------------------------
+-- Filet de sécurité : si les commandes sont restées bloquées par erreur
+-- (intro ou menu du garage), on les réactive.
+task.spawn(function()
+	while true do
+		task.wait(1)
+		-- Rattrapage : assis dans un kart, mais la conduite n'est pas active
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		local siegeActuel = h and h.SeatPart
+		if not kart and siegeActuel and siegeActuel:IsA("Seat") and siegeActuel.Parent and siegeActuel.Parent:GetAttribute("KartType") then
+			entrerDansKart(siegeActuel)
+		end
+		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") and not joueur:GetAttribute("EnSalle") then
+			controles:Enable()
+			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
+				camera.CameraType = Enum.CameraType.Custom
+			end
+		end
 	end
 end)

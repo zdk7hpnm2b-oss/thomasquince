@@ -3,8 +3,10 @@
 	À placer dans : ServerScriptService   — nom conseillé : ManchesServer
 
 	LE MODE EN LIGNE « POLICE CONTRE FUGITIFS »
-	  1. ATTENTE : il faut au moins Config.Partie.JoueursMin participants
-	     (s'il manque du monde, des BOTS DE TEST complètent : Config.Partie.BotsTest)
+	  1. ATTENTE : en arrivant, on est LIBRE (garage, personnalisation, balade).
+	     Les joueurs qui veulent jouer cliquent sur « LANCER UNE PARTIE » (ils sont
+	     « prêts »). Il faut au moins Config.Partie.JoueursMin joueurs prêts
+	     (s'il en manque, des BOTS DE TEST complètent : Config.Partie.BotsTest)
 	  2. PAGE D'ATTENTE : les joueurs ne roulent pas, ils attendent sur une page
 	     (caméra qui survole le mall) avec un compte à rebours
 	  3. TIRAGE AU SORT : la moitié des participants devient POLICE, l'autre FUGITIFS
@@ -535,6 +537,7 @@ local function jouerManche(participants: { Participant })
 			RetirerKart:Invoke(j)
 			remettreAZero(j)
 			j:SetAttribute("EnSalle", nil)
+			j:SetAttribute("Pret", false) -- pour rejouer, on reclique sur « LANCER UNE PARTIE »
 			task.spawn(function()
 				j:LoadCharacter() -- réapparition au garage
 			end)
@@ -553,9 +556,26 @@ for _, joueur in ipairs(Players:GetPlayers()) do
 end
 workspace:SetAttribute("MancheEnCours", false)
 
+-- Le bouton « LANCER UNE PARTIE » (côté joueur) : on devient « prêt » ou non
+Partie.OnServerEvent:Connect(function(joueur: Player, info)
+	if type(info) == "table" and info.type == "pret" and joueur:GetAttribute("Role") == nil then
+		joueur:SetAttribute("Pret", info.valeur == true)
+	end
+end)
+
+local function joueursPrets(): { Player }
+	local liste = {}
+	for _, j in ipairs(Players:GetPlayers()) do
+		if j:GetAttribute("Pret") and j.Character then
+			table.insert(liste, j)
+		end
+	end
+	return liste
+end
+
 -- Combien de bots faut-il pour compléter ?
 local function botsNecessaires(): number
-	local n = #Players:GetPlayers()
+	local n = #joueursPrets()
 	if n == 0 or n >= JOUEURS_MIN then
 		return 0
 	end
@@ -563,7 +583,7 @@ local function botsNecessaires(): number
 end
 
 local function assezDeMonde(): boolean
-	local n = #Players:GetPlayers()
+	local n = #joueursPrets()
 	return n > 0 and n + botsNecessaires() >= JOUEURS_MIN
 end
 
@@ -571,8 +591,11 @@ task.spawn(function()
 	while true do
 		-- Attente de joueurs
 		while not assezDeMonde() do
-			envoyerATous({ type = "etat", etat = "attente", joueurs = #Players:GetPlayers(), min = JOUEURS_MIN })
-			task.wait(2)
+			for _, j in ipairs(Players:GetPlayers()) do
+				mettreEnSalle(j, false)
+			end
+			envoyerATous({ type = "etat", etat = "attente", joueurs = #joueursPrets(), min = JOUEURS_MIN })
+			task.wait(1)
 		end
 		-- Page d'attente : plus personne ne roule, compte à rebours avant le tirage
 		local annule = false
@@ -582,7 +605,8 @@ task.spawn(function()
 				break
 			end
 			for _, j in ipairs(Players:GetPlayers()) do
-				mettreEnSalle(j, true) -- (y compris ceux qui viennent d'arriver)
+				-- seuls les joueurs « prêts » vont sur la page d'attente
+				mettreEnSalle(j, j:GetAttribute("Pret") == true)
 			end
 			envoyerATous({ type = "etat", etat = "intermission", temps = t, bots = botsNecessaires() })
 			task.wait(1)
@@ -594,7 +618,7 @@ task.spawn(function()
 		end
 		if not annule then
 			local participants: { Participant } = {}
-			for _, j in ipairs(Players:GetPlayers()) do
+			for _, j in ipairs(joueursPrets()) do
 				if j.Character then
 					table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
 					mettreEnSalle(j, true)
