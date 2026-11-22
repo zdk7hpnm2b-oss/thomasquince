@@ -680,7 +680,7 @@ Config.NuitParDefaut = false -- le jeu démarre de jour (touche N pour passer en
 -- CAMÉRA (elle suit le kart toute seule)
 ---------------------------------------------------------------------
 Config.Camera = {
-	VueParDefaut = "gopro", -- "gopro" (caméra sur la poitrine, comme les vidéos TikTok) ou "derriere"
+	VueParDefaut = "derriere", -- "derriere" (3e personne, derrière le kart) ou "gopro" (caméra sur la poitrine)
 	ChampGoPro = 100, -- grand angle de la GoPro (degrés)
 	Distance = 13, -- distance derrière le kart
 	Hauteur = 5.5, -- hauteur au-dessus du kart

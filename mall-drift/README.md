@@ -171,7 +171,7 @@ nombre max de joueurs = **20**.
 |---|---|---|---|
 | Avancer / reculer / tourner | Flèches ou ZQSD | Stick gauche | Joystick |
 | **DRIFT** | **Maj (Shift)** | R2 / L2 | Bouton DRIFT |
-| Caméra GoPro / vue arrière | V | Y | Bouton CAM |
+| Vue arrière (3e personne) / caméra GoPro | V | Y | Bouton CAM |
 | Jour / nuit | N | — | — |
 | Remettre le kart droit | R | X | Bouton R |
 | **Prendre son kart (ligne de départ)** | **F** | Y | Bouton 🏎️ CONDUIRE |
