@@ -73,7 +73,7 @@ function Ui.Label(props: { [string]: any }): TextLabel
 	l.TextScaled = true
 	l.RichText = true
 	for k, v in props do
-		if k ~= "Parent" then
+		if k ~= "Parent" and k ~= "NoStroke" then
 			(l :: any)[k] = v
 		end
 	end

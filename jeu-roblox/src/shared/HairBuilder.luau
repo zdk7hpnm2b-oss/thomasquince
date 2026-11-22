@@ -346,20 +346,20 @@ end
 
 -- Score (0..1) entre une demande et une coiffure réalisée
 function HairBuilder.Score(request: Config.Look, look: Config.Look): number
-	local score = 0
+	local points = 0 -- sur 100 (entiers : pas d'erreur d'arrondi)
 	if request.style == look.style then
-		score += 0.4
+		points += 40
 	end
 	if request.length == look.length then
-		score += 0.2
+		points += 20
 	end
 	if request.color == look.color then
-		score += 0.3
+		points += 30
 	end
 	if request.acc == look.acc then
-		score += 0.1
+		points += 10
 	end
-	return score
+	return points / 100
 end
 
 function HairBuilder.Describe(look: Config.Look): string

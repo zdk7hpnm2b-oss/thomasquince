@@ -107,3 +107,11 @@ src/server/Rewards.luau     Quotidien, cadeaux, codes, amis/groupe, classement
 src/client/Main.client.luau Interface, atelier, effets, tag VIP
 src/client/Ui.luau          Composants d'interface
 ```
+
+## 🧪 Tests
+
+Les modules partagés (coiffures, formatage, équilibrage, interface) se testent hors de Studio avec [Lune](https://lune-org.github.io) :
+
+```bash
+lune run tests/modules.luau .
+```
