@@ -19,6 +19,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
@@ -824,6 +825,38 @@ joueur.CharacterAdded:Connect(brancherPersonnage)
 ---------------------------------------------------------------------
 -- Ce qu'il y a sous le kart : "normal", "mouille" ou nil (en l'air), + la pente du sol
 -- + la pièce touchée (pour savoir si c'est un tapis roulant)
+-- Lecture directe du clavier et de la manette (en plus des commandes Roblox),
+-- pour que le kart réponde toujours, même si le module de commandes est coupé
+local function toucheBas(...): boolean
+	for _, touche in ipairs({ ... }) do
+		if UserInputService:IsKeyDown(touche) then
+			return true
+		end
+	end
+	return false
+end
+local function lireCommandesDirectes(): (number, number)
+	if UserInputService:GetFocusedTextBox() then
+		return 0, 0 -- on écrit dans le chat : pas de conduite
+	end
+	local K = Enum.KeyCode
+	local gaz = (if toucheBas(K.W, K.Z, K.Up) then 1 else 0) - (if toucheBas(K.S, K.Down) then 1 else 0)
+	local volant = (if toucheBas(K.D, K.Right) then 1 else 0) - (if toucheBas(K.A, K.Q, K.Left) then 1 else 0)
+	for _, etat in ipairs(UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1)) do
+		if etat.KeyCode == K.Thumbstick1 and etat.Position.Magnitude > 0.2 then
+			volant = if math.abs(etat.Position.X) > math.abs(volant) then etat.Position.X else volant
+			gaz = if math.abs(etat.Position.Y) > math.abs(gaz) then etat.Position.Y else gaz
+		elseif etat.KeyCode == K.ButtonR2 and etat.Position.Z > 0.2 and gaz == 0 then
+			gaz = etat.Position.Z
+		end
+	end
+	return gaz, volant
+end
+
+-- Diagnostic : si le kart ne bouge pas alors que tu accélères, on t'explique pourquoi
+local tempsBloque = 0
+local diagnosticAffiche = false
+
 local function surfaceSous(chassis: BasePart): (string?, Vector3, BasePart?)
 	local resultat = workspace:Raycast(chassis.Position, Vector3.new(0, -3, 0), parametresRayon)
 	if not resultat then
@@ -886,6 +919,13 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local mv = controles:GetMoveVector()
 	local gaz = math.clamp(-mv.Z, -1, 1)
 	local volant = math.clamp(mv.X, -1, 1)
+	local gazDirect, volantDirect = lireCommandesDirectes()
+	if math.abs(gazDirect) > math.abs(gaz) then
+		gaz = gazDirect
+	end
+	if math.abs(volantDirect) > math.abs(volant) then
+		volant = volantDirect
+	end
 	if depart then
 		local t = os.clock() - depart.debut
 		local tCompte = t - DUREE_ANIM_DEPART -- 0 = début du compte à rebours
@@ -1104,6 +1144,26 @@ RunService.Heartbeat:Connect(function(dt: number)
 	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
+
+	-- Diagnostic : on accélère depuis 2,5 s mais le kart ne bouge pas
+	if math.abs(gaz) > 0.5 and vitesse < 1.5 and not (depart and depart.etape < 4) then
+		tempsBloque += dt
+	else
+		tempsBloque = 0
+	end
+	if tempsBloque > 2.5 and not diagnosticAffiche then
+		diagnosticAffiche = true
+		local controleServeur = ch.ReceiveAge > 0 -- (0 = c'est bien ton ordinateur qui contrôle le kart)
+		local raison = if ch.Anchored then "le kart est bloqué (ancré)"
+			elseif not auSol then "le kart ne touche pas le sol"
+			elseif controleServeur then "le serveur n'a pas donné le contrôle du kart"
+			else "obstacle devant le kart ?"
+		message("⚠ KART BLOQUÉ : " .. raison .. " · appuie sur R", Color3.fromRGB(255, 120, 80), 5)
+		warn(("[Diagnostic kart] bloqué : %s (ReceiveAge=%.2f, au sol=%s, ancré=%s)"):format(raison, ch.ReceiveAge, tostring(auSol), tostring(ch.Anchored)))
+		task.delay(6, function()
+			diagnosticAffiche = false
+		end)
+	end
 end)
 
 ---------------------------------------------------------------------

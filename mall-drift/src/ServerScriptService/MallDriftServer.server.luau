@@ -2076,6 +2076,31 @@ RetirerKart.Parent = game:GetService("ServerStorage")
 
 SortirKart.OnServerEvent:Connect(sortirKart)
 
+-- Toutes les secondes : chaque joueur au volant doit avoir le contrôle physique
+-- de son kart (sinon il ne peut pas avancer). On le lui redonne si besoin.
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for joueur, kart in pairs(kartsJoueurs) do
+			local chassis = kart.Parent and kart.PrimaryPart
+			local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+			if chassis and h and h.SeatPart and h.SeatPart:IsDescendantOf(kart) and not chassis.Anchored then
+				local ok, proprietaire = pcall(function()
+					return chassis:GetNetworkOwner()
+				end)
+				if ok and proprietaire ~= joueur then
+					local reussi, erreur = pcall(function()
+						chassis:SetNetworkOwner(joueur)
+					end)
+					if not reussi then
+						warn(("[Golden Mall] Impossible de donner le kart à %s : %s"):format(joueur.Name, tostring(erreur)))
+					end
+				end
+			end
+		end
+	end
+end)
+
 Personnaliser.OnServerEvent:Connect(function(joueur: Player, perso: any)
 	local profil = profils[joueur]
 	if not profil or tropRapide(joueur, "perso", 0.3) then
