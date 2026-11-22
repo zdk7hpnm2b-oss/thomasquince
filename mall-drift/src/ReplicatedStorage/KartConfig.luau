@@ -29,25 +29,25 @@ Config.Karts = {
 		Nom = "Kart Basique", Niveau = 1, Ordre = 1,
 		Description = "Équilibré, parfait pour apprendre.",
 		VitesseMax = 50, Acceleration = 32, Freinage = 70,
-		Rotation = 2.4, RotationDrift = 1.7, Adherence = 9, AdherenceDrift = 1.4, Boost = 16,
+		Rotation = 2.5, RotationDrift = 1.9, Adherence = 4, AdherenceDrift = 0.6, Boost = 16,
 	},
 	Chariot = {
 		Nom = "Chariot Turbo", Niveau = 3, Ordre = 2,
 		Description = "Un caddie motorisé. Glisse énormément !",
 		VitesseMax = 46, Acceleration = 30, Freinage = 60,
-		Rotation = 3.1, RotationDrift = 2.1, Adherence = 6, AdherenceDrift = 0.9, Boost = 15,
+		Rotation = 3.1, RotationDrift = 2.2, Adherence = 2.8, AdherenceDrift = 0.35, Boost = 15,
 	},
 	Bolide = {
 		Nom = "Bolide Sport", Niveau = 6, Ordre = 3,
 		Description = "Rapide et précis, avec un aileron.",
 		VitesseMax = 66, Acceleration = 42, Freinage = 80,
-		Rotation = 2.5, RotationDrift = 1.9, Adherence = 10, AdherenceDrift = 1.1, Boost = 22,
+		Rotation = 2.6, RotationDrift = 2.0, Adherence = 4.5, AdherenceDrift = 0.5, Boost = 22,
 	},
 	ProDubai = {
 		Nom = "Kart Pro Dubaï", Niveau = 10, Ordre = 4,
 		Description = "Le kart des champions. Finitions dorées.",
 		VitesseMax = 74, Acceleration = 48, Freinage = 85,
-		Rotation = 2.7, RotationDrift = 2.0, Adherence = 11, AdherenceDrift = 1.0, Boost = 26,
+		Rotation = 2.8, RotationDrift = 2.1, Adherence = 5, AdherenceDrift = 0.45, Boost = 26,
 	},
 }
 
@@ -142,7 +142,7 @@ end
 -- LE SOL MOUILLÉ
 ---------------------------------------------------------------------
 Config.Mouille = {
-	Adherence = 0.25, -- adhérence x0.25 = 4x plus glissant
+	Adherence = 0.3, -- adhérence x0.3 = encore 3x plus glissant
 	Acceleration = 0.5, -- on accélère 2x moins bien sur l'eau
 	BonusPoints = 1.5, -- un drift sur l'eau rapporte x1,5
 }
@@ -179,6 +179,16 @@ Config.Sons = {
 -- JOUR / NUIT
 ---------------------------------------------------------------------
 Config.NuitParDefaut = true
+
+---------------------------------------------------------------------
+-- CAMÉRA (elle suit le kart toute seule)
+---------------------------------------------------------------------
+Config.Camera = {
+	Distance = 13, -- distance derrière le kart
+	Hauteur = 5.5, -- hauteur au-dessus du kart
+	Souplesse = 5, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
+	SuiviGlisse = 0.35, -- 0 = regarde où pointe le kart, 1 = regarde où il glisse
+}
 
 function Config.AppliquerAmbiance(nuit: boolean)
 	if nuit then

@@ -4,9 +4,13 @@ Drifte en kart dans un **centre commercial géant à Dubaï**, fais monter ton n
 et personnalise ton kart dans le **Garage VIP**.
 
 Ce prototype contient :
-- **Le Golden Mall** : marbre et incrustations dorées, **fontaine géante** avec jet d'eau,
-  **aquarium géant** avec des poissons qui nagent, palmiers, colonnes dorées, lustre,
-  boutiques de luxe, **fenêtre sur la piste de ski**, food court (chaises qu'on peut renverser)
+- **Le Golden Mall** : des allées bordées de **48 boutiques où l'on entre en kart**, chacune avec
+  un intérieur simple mais réaliste (coiffeur, vêtements, fast-food, jeux vidéo, téléphonie,
+  sport, bijouterie, parfumerie, jouets, librairie, glacier, café), une place centrale avec
+  **fontaine**, palmiers, kiosques et bancs, un **aquarium géant** avec des poissons, et un
+  **food court**. Mannequins, chaises, cubes et ballons se renversent quand on les percute.
+  Les noms de magasins sont inventés, car les vraies marques sont interdites sans autorisation.
+- **Une caméra automatique** qui se place derrière le kart et tourne avec lui (plus besoin du clic droit)
 - **Le drift** : grosses glissades et 360°, avec un score qui récompense les drifts longs et beaux.
   Les étoiles ★★★ se remplissent, un multiplicateur grimpe jusqu'à x5, chaque 360° donne un
   bonus, et un beau drift donne un boost
@@ -95,7 +99,7 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 |---|---|---|---|
 | Avancer / reculer / tourner | Flèches ou ZQSD | Stick gauche | Joystick |
 | **DRIFT** | **Maj (Shift)** | R2 / L2 | Bouton DRIFT |
-| Caméra 1re personne | V | Y | Bouton CAM |
+| Vue arrière / vue pilote | V | Y | Bouton CAM |
 | Jour / nuit | N | — | — |
 | Remettre le kart droit | R | X | Bouton R |
 | Descendre du kart | Espace | A | Saut |
@@ -114,6 +118,7 @@ mouillé autour de la fontaine, c'est encore plus facile, et ça rapporte **x1,5
 - **Une couleur se débloque plus tôt ou plus tard** : change son `Niveau` dans `Config.Couleurs`
 - **Ajouter une couleur** : ajoute une ligne dans `Config.Couleurs`, elle apparaît toute seule au garage
 - **Commencer le jour** : `Config.NuitParDefaut = false`
+- **Caméra** : `Config.Camera` (distance, hauteur, souplesse du suivi)
 - **Ajouter des sons** : dans Studio, **Boîte à outils (Toolbox) > Audio**, cherche « tire screech »,
   « engine », « splash », puis colle l'identifiant dans `Config.Sons`
 

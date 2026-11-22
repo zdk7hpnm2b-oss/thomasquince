@@ -349,22 +349,100 @@ local function actionDrift(_, etat: Enum.UserInputState)
 	return Enum.ContextActionResult.Sink
 end
 
--- Remet la caméra en vue de derrière (3e personne)
-local function cameraDerriere()
-	joueur.CameraMode = Enum.CameraMode.Classic
-	joueur.CameraMinZoomDistance = 12 -- force la caméra à reculer…
-	task.delay(0.1, function()
-		joueur.CameraMinZoomDistance = 0.5 -- …puis on peut de nouveau zoomer librement
-	end)
+---------------------------------------------------------------------
+-- CAMÉRA AUTOMATIQUE : elle se place toute seule derrière le kart
+-- et tourne avec lui (plus besoin du clic droit).
+-- V = alterner entre « derrière le kart » et « vue pilote »
+---------------------------------------------------------------------
+local modeCamera = "derriere" -- ou "pilote"
+local directionCamera = Vector3.new(0, 0, -1)
+local rayonCamera = RaycastParams.new()
+rayonCamera.FilterType = Enum.RaycastFilterType.Exclude
+
+local function cacherPilote(cacher: boolean)
+	local perso = joueur.Character
+	if not perso then
+		return
+	end
+	for _, p in ipairs(perso:GetDescendants()) do
+		if p:IsA("BasePart") or p:IsA("Decal") then
+			(p :: any).LocalTransparencyModifier = cacher and 1 or 0
+		end
+	end
+end
+
+local function mettreAJourCamera(dt: number)
+	if not kart or not kart.chassis.Parent then
+		return
+	end
+	local ch = kart.chassis
+	local reglages = Config.Camera
+	local avant = Vector3.new(ch.CFrame.LookVector.X, 0, ch.CFrame.LookVector.Z)
+	if avant.Magnitude < 0.1 then
+		return
+	end
+	avant = avant.Unit
+
+	if modeCamera == "pilote" then
+		cacherPilote(true)
+		local oeil = (ch.CFrame * CFrame.new(0, 3.3, 0.8)).Position
+		camera.CFrame = CFrame.lookAt(oeil, oeil + avant * 10 - Vector3.new(0, 0.6, 0))
+		return
+	end
+
+	-- Direction suivie : surtout l'avant du kart, un peu le sens de la glisse (on voit le drift)
+	local vel = Vector3.new(ch.AssemblyLinearVelocity.X, 0, ch.AssemblyLinearVelocity.Z)
+	local cible = avant
+	if vel.Magnitude > 8 then
+		local sens = if vel:Dot(avant) < 0 then avant else vel.Unit
+		cible = (avant * (1 - reglages.SuiviGlisse) + sens * reglages.SuiviGlisse)
+		if cible.Magnitude < 0.1 then
+			cible = avant
+		end
+		cible = cible.Unit
+	end
+	local lissage = 1 - math.exp(-reglages.Souplesse * dt)
+	local nouvelle = directionCamera:Lerp(cible, lissage)
+	if nouvelle.Magnitude > 0.1 then
+		directionCamera = nouvelle.Unit
+	end
+
+	local vitesse = vel.Magnitude
+	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.04
+	local pivot = ch.Position + Vector3.new(0, 2.5, 0)
+	local voulu = ch.Position - directionCamera * distance + Vector3.new(0, reglages.Hauteur, 0)
+	-- Si un mur est entre le kart et la caméra, on rapproche la caméra
+	rayonCamera.FilterDescendantsInstances = { kart.modele, joueur.Character }
+	local obstacle = workspace:Raycast(pivot, voulu - pivot, rayonCamera)
+	if obstacle and obstacle.Instance.CanCollide then
+		voulu = obstacle.Position + (pivot - voulu).Unit * 1
+	end
+	camera.CFrame = CFrame.lookAt(voulu, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0))
+end
+
+local function demarrerCamera()
+	if kart then
+		local lv = kart.chassis.CFrame.LookVector
+		directionCamera = Vector3.new(lv.X, 0, lv.Z).Unit
+	end
+	camera.CameraType = Enum.CameraType.Scriptable
+	RunService:UnbindFromRenderStep("MallDriftCamera")
+	RunService:BindToRenderStep("MallDriftCamera", Enum.RenderPriority.Camera.Value + 1, mettreAJourCamera)
+end
+
+local function arreterCamera()
+	RunService:UnbindFromRenderStep("MallDriftCamera")
+	cacherPilote(false)
+	camera.CameraType = Enum.CameraType.Custom
 end
 
 local function actionCamera(_, etat: Enum.UserInputState)
 	if etat == Enum.UserInputState.Begin then
-		if joueur.CameraMode == Enum.CameraMode.LockFirstPerson then
-			cameraDerriere()
-		else
-			joueur.CameraMode = Enum.CameraMode.LockFirstPerson
+		modeCamera = if modeCamera == "derriere" then "pilote" else "derriere"
+		if modeCamera == "derriere" then
+			cacherPilote(false)
 		end
+		message(if modeCamera == "pilote" then "VUE PILOTE 🎥" else "VUE ARRIÈRE 🎥", Color3.new(1, 1, 1), 0.8)
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -412,9 +490,7 @@ local function sortirDuKart()
 	ContextActionService:UnbindAction("MallDrift_Camera")
 	ContextActionService:UnbindAction("MallDrift_Nuit")
 	ContextActionService:UnbindAction("MallDrift_Redresser")
-	if joueur.CameraMode == Enum.CameraMode.LockFirstPerson then
-		cameraDerriere()
-	end
+	arreterCamera()
 	camera.FieldOfView = 70
 	driftAppuye = false
 	hud.Visible = false
@@ -464,6 +540,7 @@ local function entrerDansKart(siege: Seat)
 	ContextActionService:SetPosition("MallDrift_Redresser", UDim2.new(1, -290, 1, -150))
 
 	hud.Visible = true
+	demarrerCamera()
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
 
