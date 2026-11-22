@@ -343,7 +343,7 @@ end
 
 local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et travaille tes drifts. La police du mall (des bots) te poursuit !", Color3.fromRGB(80, 220, 120))
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
-local carteBattle, titreBattle, descBattle = carteMode("🔥", "DRIFT BATTLE", "3 minutes, pas de police : fais le plus de points de drift ! Seul, c'est un défi.", Color3.fromRGB(255, 90, 170))
+local carteBattle, titreBattle, descBattle = carteMode("🔥", "DRIFT BATTLE", "1 minute, pas de police : fais le plus de points de drift ! Seul, c'est un défi.", Color3.fromRGB(255, 90, 170))
 local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
 
 local boutonFermerMenu = Instance.new("TextButton")
@@ -366,7 +366,7 @@ local function majMenu()
 	titreBattle.Text = if preteBattle then "QUITTER LA FILE" else "DRIFT BATTLE"
 	descBattle.Text = if preteBattle
 		then "Tu es dans la file du Drift Battle. Clique pour la quitter."
-		else "3 minutes, pas de police : fais le plus de points de drift ! Seul, c'est un défi."
+		else "1 minute, pas de police : fais le plus de points de drift ! Seul, c'est un défi."
 	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true)
 	if enManche then
 		fondMenu.Visible = false
@@ -452,7 +452,7 @@ Partie.OnClientEvent:Connect(function(info)
 			majListe()
 			local enBattle = info.mode == "battle"
 			sousTitrePage.Text = if enBattle then "🔥 DRIFT BATTLE 🔥" else "🚓 POLICE  vs  FUGITIFS 🏃"
-			aidePage.Text = if enBattle then "3 minutes pour faire le plus de points de drift. Les plus longs drifts rapportent le plus !"
+			aidePage.Text = if enBattle then "1 minute pour faire le plus de points de drift. Les plus longs drifts rapportent le plus !"
 				else "Le tirage au sort décide de ton équipe. Les fugitifs partent au sud, la police au nord !"
 			texteBarre.Text = if joueur:GetAttribute("Pret") or joueur:GetAttribute("PretBattle")
 				then (if enBattle then ("🔥 DRIFT BATTLE · départ dans %d s"):format(info.temps or 0) else ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0))
@@ -487,7 +487,7 @@ Partie.OnClientEvent:Connect(function(info)
 		end)
 	elseif info.type == "battle" then
 		montrerCarte(("🔥 DRIFT BATTLE · %d joueur%s"):format(info.nb or 1, if (info.nb or 1) > 1 then "s" else ""), "🔥 DRIFT BATTLE",
-			("%d minutes pour faire le plus de points de drift. Enchaîne les longs drifts et les 360 !"):format(math.floor((info.duree or 180) / 60)),
+			("%d secondes pour faire le plus de points de drift. Enchaîne les longs drifts et les 360 !"):format(info.duree or 60),
 			Color3.fromRGB(255, 90, 170), 3.5)
 	elseif info.type == "finBattle" then
 		local premier = info.classement and info.classement[1]

@@ -194,7 +194,7 @@ Config.Partie = {
 	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
 	XPRoiDuDrift = 150, -- bonus pour le joueur qui a fait le plus de points de drift dans la manche
 	-- DRIFT BATTLE : pas de police, celui qui fait le plus de points de drift gagne
-	DureeBattle = 180, -- 3 minutes
+	DureeBattle = 60, -- 1 minute (mets 30 pour des parties encore plus courtes)
 	BattleJoueursMin = 1, -- seul, ça devient un défi contre le chrono
 	XPPodium = { 300, 200, 100 }, -- XP pour le 1er, le 2e et le 3e
 	-- BOTS DE TEST : s'il manque des joueurs, des bots complètent la partie

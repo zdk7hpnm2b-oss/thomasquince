@@ -627,7 +627,7 @@ workspace:SetAttribute("MancheEnCours", false)
 -- DRIFT BATTLE : pas de police. Tout le monde part de la ligne de départ et
 -- fait le plus de points de drift possible. Podium et XP à la fin.
 ---------------------------------------------------------------------
-local DUREE_BATTLE = P.DureeBattle or 180
+local DUREE_BATTLE = P.DureeBattle or 60
 local BATTLE_MIN = P.BattleJoueursMin or 1
 
 local function jouerBattle(joueurs: { Player })
