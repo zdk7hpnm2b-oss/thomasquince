@@ -805,7 +805,8 @@ local RAMPE_LONGUEUR = math.sqrt(RAMPE_LONGUEUR_SOL ^ 2 + ETAGE ^ 2)
 local RAMPE_MILIEU_Z = (RAMPE_BAS_Z + RAMPE_HAUT_Z) / 2
 local function rampe(xCentre: number, largeur: number, monte: boolean)
 	local milieu = CFrame.new(xCentre, SOL + ETAGE / 2, RAMPE_MILIEU_Z) * CFrame.Angles(PENTE, 0, 0)
-	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR + 1), milieu * CFrame.new(0, -0.5, 0), Color3.fromRGB(70, 72, 80), Enum.Material.DiamondPlate, rampes)
+	-- Longueur exacte : le haut arrive pile au niveau de la passerelle (pas de marche qui bloque)
+	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR), milieu * CFrame.new(0, -0.52, 0), Color3.fromRGB(70, 72, 80), Enum.Material.DiamondPlate, rampes)
 	r.CastShadow = true
 	-- Le sens du tapis : vers le haut (LookVector = vers le 1er étage) ou vers le bas
 	r:SetAttribute("Tapis", if monte then milieu.LookVector else -milieu.LookVector)
@@ -1075,6 +1076,9 @@ end
 ---------------------------------------------------------------------
 local COULEUR_EAU = Color3.fromRGB(110, 170, 225)
 
+-- Étage où l'on pose les flaques et les obstacles (0 = rez-de-chaussée, ETAGE = 1er étage)
+local NIVEAU = 0
+
 local function flaque(centre: Vector2, tailleX: number, tailleZ: number)
 	local zone = Instance.new("Model")
 	zone.Name = "SolMouille"
@@ -1087,10 +1091,10 @@ local function flaque(centre: Vector2, tailleX: number, tailleZ: number)
 		p.CastShadow = false
 		p:SetAttribute("Mouille", true) -- le kart détecte cet attribut
 	end
-	morceau(bloc("Eau", Vector3.new(tailleX, 0.1, tailleZ), CFrame.new(centre.X, SOL + 0.09, centre.Y), COULEUR_EAU, Enum.Material.Glass, zone))
+	morceau(bloc("Eau", Vector3.new(tailleX, 0.1, tailleZ), CFrame.new(centre.X, SOL + NIVEAU + 0.09, centre.Y), COULEUR_EAU, Enum.Material.Glass, zone))
 	for _ = 1, 3 do
 		local d = random:NextNumber(3, 6)
-		morceau(cylindreDebout("EauRonde", 0.1, d, Vector3.new(centre.X + random:NextNumber(-tailleX / 2, tailleX / 2), SOL + 0.1, centre.Y + random:NextNumber(-tailleZ / 2, tailleZ / 2)), COULEUR_EAU, Enum.Material.Glass, zone))
+		morceau(cylindreDebout("EauRonde", 0.1, d, Vector3.new(centre.X + random:NextNumber(-tailleX / 2, tailleX / 2), SOL + NIVEAU + 0.1, centre.Y + random:NextNumber(-tailleZ / 2, tailleZ / 2)), COULEUR_EAU, Enum.Material.Glass, zone))
 	end
 end
 
@@ -1100,8 +1104,8 @@ local function panneauJaune(position: Vector2, versOu: Vector3)
 	local pos = Vector3.new(position.X, 0, position.Y)
 	local base = CFrame.lookAt(pos, pos + versOu)
 	local jaune = Color3.fromRGB(255, 205, 0)
-	local devant = bloc("Devant", Vector3.new(2.4, 3.4, 0.15), base * CFrame.new(0, SOL + 1.7, -0.45) * CFrame.Angles(math.rad(15), 0, 0), jaune, Enum.Material.SmoothPlastic, modele)
-	local derriere = bloc("Derriere", Vector3.new(2.4, 3.4, 0.15), base * CFrame.new(0, SOL + 1.7, 0.45) * CFrame.Angles(math.rad(-15), 0, 0), jaune, Enum.Material.SmoothPlastic, modele)
+	local devant = bloc("Devant", Vector3.new(2.4, 3.4, 0.15), base * CFrame.new(0, SOL + NIVEAU + 1.7, -0.45) * CFrame.Angles(math.rad(15), 0, 0), jaune, Enum.Material.SmoothPlastic, modele)
+	local derriere = bloc("Derriere", Vector3.new(2.4, 3.4, 0.15), base * CFrame.new(0, SOL + NIVEAU + 1.7, 0.45) * CFrame.Angles(math.rad(-15), 0, 0), jaune, Enum.Material.SmoothPlastic, modele)
 	texte(devant, Enum.NormalId.Front, "⚠\nATTENTION\nSOL GLISSANT", Color3.fromRGB(20, 20, 20))
 	texte(derriere, Enum.NormalId.Back, "⚠\nATTENTION\nSOL GLISSANT", Color3.fromRGB(20, 20, 20))
 	for _, p in ipairs({ devant, derriere }) do
@@ -1116,8 +1120,8 @@ local function panneauJaune(position: Vector2, versOu: Vector3)
 end
 
 local function seau(position: Vector2)
-	libre(cylindreDebout("Seau", 1.8, 2, Vector3.new(position.X, SOL + 0.9, position.Y), Color3.fromRGB(255, 200, 0)))
-	deco(bloc("Serpilliere", Vector3.new(0.2, 6, 0.2), CFrame.new(position.X + 0.6, SOL + 3.5, position.Y) * CFrame.Angles(0, 0, math.rad(-12)), Color3.fromRGB(80, 140, 230)))
+	libre(cylindreDebout("Seau", 1.8, 2, Vector3.new(position.X, SOL + NIVEAU + 0.9, position.Y), Color3.fromRGB(255, 200, 0)))
+	deco(bloc("Serpilliere", Vector3.new(0.2, 6, 0.2), CFrame.new(position.X + 0.6, SOL + NIVEAU + 3.5, position.Y) * CFrame.Angles(0, 0, math.rad(-12)), Color3.fromRGB(80, 140, 230)))
 end
 
 -- Autour de la fontaine (elle éclabousse !)
@@ -1173,11 +1177,11 @@ local function plot(x: number, z: number)
 	local m = Instance.new("Model")
 	m.Name = "Plot"
 	m.Parent = obstacles
-	local base = libre(bloc("BasePlot", Vector3.new(1.8, 0.25, 1.8), CFrame.new(x, SOL + 0.13, z), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic, m))
-	local cone = cylindreDebout("Cone", 2.2, 1.1, Vector3.new(x, SOL + 1.35, z), ORANGE, Enum.Material.SmoothPlastic, m)
+	local base = libre(bloc("BasePlot", Vector3.new(1.8, 0.25, 1.8), CFrame.new(x, SOL + NIVEAU + 0.13, z), Color3.fromRGB(30, 30, 30), Enum.Material.SmoothPlastic, m))
+	local cone = cylindreDebout("Cone", 2.2, 1.1, Vector3.new(x, SOL + NIVEAU + 1.35, z), ORANGE, Enum.Material.SmoothPlastic, m)
 	cone.Anchored = false
 	attacher(base, cone)
-	local bande = deco(cylindreDebout("BandeBlanche", 0.4, 1.15, Vector3.new(x, SOL + 1.7, z), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, m))
+	local bande = deco(cylindreDebout("BandeBlanche", 0.4, 1.15, Vector3.new(x, SOL + NIVEAU + 1.7, z), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, m))
 	bande.Anchored = false
 	attacher(base, bande)
 end
@@ -1190,7 +1194,7 @@ local function caddie(x: number, z: number, angle: number)
 	local m = Instance.new("Model")
 	m.Name = "Caddie"
 	m.Parent = obstacles
-	local cf = CFrame.new(x, SOL + 0.5, z) * CFrame.Angles(0, math.rad(angle), 0)
+	local cf = CFrame.new(x, SOL + NIVEAU + 0.5, z) * CFrame.Angles(0, math.rad(angle), 0)
 	local base = libre(bloc("Base", Vector3.new(2.2, 0.3, 3.2), cf, Color3.fromRGB(150, 155, 165), Enum.Material.Metal, m))
 	local panier = bloc("Panier", Vector3.new(2.4, 1.8, 3), cf * CFrame.new(0, 1.3, 0), Color3.fromRGB(180, 185, 195), Enum.Material.DiamondPlate, m)
 	panier.Transparency = 0.35
@@ -1218,33 +1222,36 @@ local function palette(x: number, z: number)
 	local m = Instance.new("Model")
 	m.Name = "PalettePromo"
 	m.Parent = obstacles
-	bloc("Palette", Vector3.new(6, 0.5, 6), CFrame.new(x, SOL + 0.25, z), Color3.fromRGB(190, 150, 100), Enum.Material.WoodPlanks, m)
+	bloc("Palette", Vector3.new(6, 0.5, 6), CFrame.new(x, SOL + NIVEAU + 0.25, z), Color3.fromRGB(190, 150, 100), Enum.Material.WoodPlanks, m)
 	for etage = 0, 1 do
 		for _, xz in ipairs({ { -1.4, -1.4 }, { 1.4, -1.4 }, { -1.4, 1.4 }, { 1.4, 1.4 } }) do
-			libre(bloc("Carton", Vector3.new(2.6, 2.6, 2.6), CFrame.new(x + xz[1], SOL + 1.85 + etage * 2.6, z + xz[2]), Color3.fromRGB(200, 160, 110), Enum.Material.Cardboard, m))
+			libre(bloc("Carton", Vector3.new(2.6, 2.6, 2.6), CFrame.new(x + xz[1], SOL + NIVEAU + 1.85 + etage * 2.6, z + xz[2]), Color3.fromRGB(200, 160, 110), Enum.Material.Cardboard, m))
 		end
 	end
-	libre(bloc("Carton", Vector3.new(2.6, 2.6, 2.6), CFrame.new(x, SOL + 6.95, z), Color3.fromRGB(200, 160, 110), Enum.Material.Cardboard, m))
-	pancarte("PanneauPromo", Vector3.new(6, 2.2, 0.3), Vector3.new(x, SOL + 10.5, z), Vector3.new(0, 0, 1), "PROMO -50%", Color3.fromRGB(255, 210, 0), Color3.fromRGB(200, 20, 20), m)
+	libre(bloc("Carton", Vector3.new(2.6, 2.6, 2.6), CFrame.new(x, SOL + NIVEAU + 6.95, z), Color3.fromRGB(200, 160, 110), Enum.Material.Cardboard, m))
+	pancarte("PanneauPromo", Vector3.new(6, 2.2, 0.3), Vector3.new(x, SOL + NIVEAU + 10.5, z), Vector3.new(0, 0, 1), "PROMO -50%", Color3.fromRGB(255, 210, 0), Color3.fromRGB(200, 20, 20), m)
 end
 for _, pos in ipairs({ Vector2.new(-150, -143), Vector2.new(-62, -143), Vector2.new(85, -143), Vector2.new(155, -131) }) do
 	palette(pos.X, pos.Y)
 end
 
 -- 4) Panneaux « SOLDES » sur pied (allée centrale, côté est)
+local function panneauxSoldes(xDepart: number)
 for k = 0, 5 do
-	local x = 85 + k * 17
+	local x = xDepart + k * 17
 	local z = if k % 2 == 0 then 6 else -6
 	local m = Instance.new("Model")
 	m.Name = "PanneauSoldes"
 	m.Parent = obstacles
-	local pied = libre(bloc("Pied", Vector3.new(2, 0.3, 1.4), CFrame.new(x, SOL + 0.15, z), Color3.fromRGB(40, 40, 45), Enum.Material.Metal, m))
-	local affiche = bloc("Affiche", Vector3.new(2.4, 5, 0.15), CFrame.new(x, SOL + 2.8, z) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(230, 30, 60), Enum.Material.SmoothPlastic, m)
+	local pied = libre(bloc("Pied", Vector3.new(2, 0.3, 1.4), CFrame.new(x, SOL + NIVEAU + 0.15, z), Color3.fromRGB(40, 40, 45), Enum.Material.Metal, m))
+	local affiche = bloc("Affiche", Vector3.new(2.4, 5, 0.15), CFrame.new(x, SOL + NIVEAU + 2.8, z) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(230, 30, 60), Enum.Material.SmoothPlastic, m)
 	affiche.Anchored = false
 	attacher(pied, affiche)
 	texte(affiche, Enum.NormalId.Front, "SOLDES\n-70%", Color3.new(1, 1, 1))
 	texte(affiche, Enum.NormalId.Back, "SOLDES\n-70%", Color3.new(1, 1, 1))
 end
+end
+panneauxSoldes(85)
 
 -- 5) Zone de travaux en chicane (allée étroite ouest, x ≈ -173)
 local function barriere(x1: number, x2: number, z: number)
@@ -1254,16 +1261,16 @@ local function barriere(x1: number, x2: number, z: number)
 	m.Parent = obstacles
 	for k = 0, math.floor(longueur / 3) - 1 do
 		local rouge = k % 2 == 0
-		bloc("Planche", Vector3.new(3, 1, 0.3), CFrame.new(x1 + 1.5 + k * 3, SOL + 2.6, z), rouge and Color3.fromRGB(220, 30, 30) or Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, m)
+		bloc("Planche", Vector3.new(3, 1, 0.3), CFrame.new(x1 + 1.5 + k * 3, SOL + NIVEAU + 2.6, z), rouge and Color3.fromRGB(220, 30, 30) or Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, m)
 	end
 	for _, x in ipairs({ x1 + 0.3, x2 - 0.3 }) do
-		bloc("PiedBarriere", Vector3.new(0.4, 3, 1.4), CFrame.new(x, SOL + 1.5, z), Color3.fromRGB(240, 200, 20), Enum.Material.SmoothPlastic, m)
+		bloc("PiedBarriere", Vector3.new(0.4, 3, 1.4), CFrame.new(x, SOL + NIVEAU + 1.5, z), Color3.fromRGB(240, 200, 20), Enum.Material.SmoothPlastic, m)
 	end
 end
 barriere(-186, -174, 52)
 barriere(-172, -160, 70)
 barriere(-186, -174, 88)
-pancarte("PanneauTravaux", Vector3.new(6, 3, 0.3), Vector3.new(-173, SOL + 9, 40), Vector3.new(0, 0, -1), "🚧 TRAVAUX 🚧", Color3.fromRGB(250, 200, 20), Color3.fromRGB(20, 20, 20), obstacles)
+pancarte("PanneauTravaux", Vector3.new(6, 3, 0.3), Vector3.new(-173, SOL + NIVEAU + 9, 40), Vector3.new(0, 0, -1), "🚧 TRAVAUX 🚧", Color3.fromRGB(250, 200, 20), Color3.fromRGB(20, 20, 20), obstacles)
 plot(-166, 52)
 plot(-180, 70)
 
@@ -1272,7 +1279,7 @@ local function autolaveuse(xA: number, xB: number, z: number, duree: number)
 	local m = Instance.new("Model")
 	m.Name = "Autolaveuse"
 	m.Parent = obstacles
-	local depart = CFrame.lookAt(Vector3.new(xA, SOL, z), Vector3.new(xB, SOL, z))
+	local depart = CFrame.lookAt(Vector3.new(xA, SOL + NIVEAU, z), Vector3.new(xB, SOL + NIVEAU, z))
 	local corps = bloc("Corps", Vector3.new(3.2, 3, 5), depart * CFrame.new(0, 1.8, 0), Color3.fromRGB(250, 200, 30), Enum.Material.SmoothPlastic, m)
 	m.PrimaryPart = corps
 	bloc("Siege", Vector3.new(2, 0.6, 1.6), depart * CFrame.new(0, 3.6, 1.2), Color3.fromRGB(30, 30, 30), Enum.Material.Fabric, m)
@@ -1314,8 +1321,28 @@ local function autolaveuse(xA: number, xB: number, z: number, duree: number)
 		end
 	end)
 end
-autolaveuse(-150, 150, 145, 30) -- allée sud
 autolaveuse(-185, -40, -131, 18) -- allée nord
+
+---------------------------------------------------------------------
+-- LE 1er ÉTAGE : obstacles, flaques et autolaveuse
+---------------------------------------------------------------------
+NIVEAU = ETAGE
+for k = 0, 7 do
+	plot(-58 - k * 15, if k % 2 == 0 then 5 else -5) -- slalom, allée centrale ouest
+end
+for _, c in ipairs({ { 60, 135, 25 }, { 130, 140, -40 }, { -120, -134, 60 }, { 170, -140, 10 } }) do
+	caddie(c[1], c[2], c[3])
+end
+palette(-172, 140)
+palette(150, -143)
+panneauxSoldes(45)
+flaque(Vector2.new(170, 0), 26, 10)
+panneauJaune(Vector2.new(155, 4), Vector3.new(-1, 0, 0))
+panneauJaune(Vector2.new(185, -4), Vector3.new(1, 0, 0))
+flaque(Vector2.new(-99, 60), 12, 24)
+panneauJaune(Vector2.new(-99, 46), Vector3.new(0, 0, -1))
+autolaveuse(-150, 150, 137, 30) -- allée sud du 1er étage
+NIVEAU = 0
 
 ---------------------------------------------------------------------
 -- DEHORS : le parking devant l'entrée du mall
@@ -1910,8 +1937,15 @@ local function sortirKart(joueur: Player)
 	end
 	-- Le kart apparaît sur la ligne de départ, à l'intérieur du mall.
 	-- Le script du joueur joue l'animation + le compte à rebours 3, 2, 1, PARTEZ !
+	-- Grille de départ : 24 places (3 rangées de 8) pour jouer jusqu'à 20 en ligne
 	local depart = nil
-	for _, place in ipairs({ Vector2.new(-11, LIGNE_Z + 7), Vector2.new(11, LIGNE_Z + 7), Vector2.new(-11, LIGNE_Z + 15), Vector2.new(11, LIGNE_Z + 15) }) do
+	local places = {}
+	for _, dz in ipairs({ 7, 14, 21 }) do
+		for _, x in ipairs({ -5, 5, -15, 15, -25, 25, -35, 35 }) do
+			table.insert(places, Vector2.new(x, LIGNE_Z + dz))
+		end
+	end
+	for _, place in ipairs(places) do
 		local candidat = Vector3.new(place.X, SOL + 0.6, place.Y)
 		local libre = true
 		for _, k in pairs(kartsJoueurs) do
@@ -1924,7 +1958,7 @@ local function sortirKart(joueur: Player)
 			break
 		end
 	end
-	depart = depart or Vector3.new(-20, SOL + 0.6, LIGNE_Z + 7)
+	depart = depart or Vector3.new(math.random(-35, 35), SOL + 0.6, LIGNE_Z + 24)
 	local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1))) -- face au mall
 	kart:SetAttribute("DepartHall", true)
 	-- La police laisse tranquille pendant l'animation et le compte à rebours

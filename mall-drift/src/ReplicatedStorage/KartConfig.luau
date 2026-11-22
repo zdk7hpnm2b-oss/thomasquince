@@ -160,7 +160,8 @@ end
 -- Dehors (parking, garage), tu es en sécurité.
 ---------------------------------------------------------------------
 Config.Securite = {
-	Policiers = 3, -- nombre de policiers (ils patrouillent à pied)
+	Policiers = 3, -- nombre de policiers au rez-de-chaussée (ils patrouillent à pied)
+	PoliciersEtage = 2, -- nombre de policiers au 1er étage
 	VitessePatrouille = 10, -- à pied, en patrouille
 	TempsMonteeKart = 0.8, -- quand il te voit, il saute dans son kart de police (secondes)
 	VitessePoursuite = 44, -- en kart de police (le kart Basique monte à 50 : ça se joue à peu !)

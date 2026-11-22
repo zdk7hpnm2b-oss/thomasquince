@@ -65,6 +65,14 @@ local RONDES_SEGWAY = {
 	{ Vector2.new(-34.5, -110), Vector2.new(-34.5, 110), Vector2.new(34.5, 110), Vector2.new(34.5, -110) }, -- place centrale (entre palmiers et boutiques)
 }
 
+-- Rondes du 1er étage (x, hauteur du plancher, z)
+local HAUTEUR_ETAGE = SOL + 25
+local RONDES_ETAGE = {
+	{ Vector3.new(-190, HAUTEUR_ETAGE, -137), Vector3.new(190, HAUTEUR_ETAGE, -137) }, -- allée nord
+	{ Vector3.new(-190, HAUTEUR_ETAGE, 130), Vector3.new(190, HAUTEUR_ETAGE, 130) }, -- allée sud
+	{ Vector3.new(-190, HAUTEUR_ETAGE, -8), Vector3.new(-45, HAUTEUR_ETAGE, -8) }, -- allée centrale
+}
+
 local PEAUX = { Color3.fromRGB(255, 220, 185), Color3.fromRGB(225, 175, 130), Color3.fromRGB(165, 115, 80), Color3.fromRGB(100, 70, 50) }
 local BLEU_UNIFORME = Color3.fromRGB(28, 42, 92)
 local NOIR_PANTALON = Color3.fromRGB(28, 28, 34)
@@ -156,7 +164,7 @@ type Garde = {
 
 local gardes: { Garde } = {}
 
-local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): Garde
+local function creerGarde(ronde: { any }, segway: boolean, numero: number): Garde
 	local peau = PEAUX[random:NextInteger(1, #PEAUX)]
 	local description = Instance.new("HumanoidDescription")
 	description.HeadColor = peau
@@ -245,7 +253,11 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 
 	local points = {}
 	for _, v in ipairs(ronde) do
-		table.insert(points, Vector3.new(v.X, SOL + 3, v.Y))
+		if typeof(v) == "Vector3" then
+			table.insert(points, v + Vector3.new(0, 3, 0)) -- point avec sa hauteur (1er étage)
+		else
+			table.insert(points, Vector3.new(v.X, SOL + 3, v.Y))
+		end
 	end
 	modele:PivotTo(CFrame.new(points[1] + Vector3.new(0, 1, 0)))
 	modele.Parent = dossierGardes
@@ -818,4 +830,10 @@ Players.PlayerRemoving:Connect(function(joueur: Player)
 	enArrestation[joueur] = nil
 end)
 
-print(("[Golden Mall] Police en place : %d policiers."):format(R.Policiers))
+for i = 1, (R.PoliciersEtage or 0) do
+	local ronde = RONDES_ETAGE[(i - 1) % #RONDES_ETAGE + 1]
+	local g = creerGarde(ronde, false, 100 + i)
+	task.spawn(cerveau, g)
+end
+
+print(("[Golden Mall] Police en place : %d policiers en bas, %d à l'étage."):format(R.Policiers, R.PoliciersEtage or 0))

@@ -23,7 +23,7 @@ Ce prototype contient :
   courses (ou assis chez le coiffeur), des gens sur les bancs et aux kiosques. Chaque boutique a une
   vraie **caisse** (caisse enregistreuse, écran, terminal de carte) ; les magasins de vêtements ont des
   **cabines d'essayage** ; nouvelle **supérette** avec rayons, frigos à boissons, fruits et caisse à tapis
-- **🚨 La police du mall** : 3 policiers patrouillent **à pied**. Quand l'un d'eux voit ton kart (❗), il
+- **🚨 La police du mall** : 3 policiers au rez-de-chaussée et 2 au 1er étage patrouillent **à pied**. Quand l'un d'eux voit ton kart (❗), il
   **saute dans son kart de police** (gyrophare bleu/rouge, « POLICE » sur les côtés) et te prend en
   chasse, presque aussi vite que toi. Il vise l'endroit où tu vas et appelle ses collègues en
   **renfort** (jusqu'à 🚨🚨🚨). S'il arrive tout près de toi : **ATTRAPÉ !**, retour au garage. Reste
@@ -35,7 +35,8 @@ Ce prototype contient :
   **3, 2, 1… PARTEZ !**
 - **Des obstacles** : slalom de plots, caddies abandonnés, palettes de cartons « PROMO », panneaux
   « SOLDES », zone de travaux en chicane, et deux **autolaveuses** qui circulent en laissant une
-  traînée d'eau glissante derrière elles
+  traînée d'eau glissante derrière elles. Le 1er étage a aussi ses obstacles, flaques et autolaveuse
+- **Prêt pour 20 joueurs** : grille de départ de 24 places (3 rangées de 8)
 - **Une intro cinématique** (~6 s) à l'arrivée : la caméra tourne autour de la fontaine puis survole
   le parking jusqu'au garage, avec le titre du jeu (bouton « Passer »)
 - **Monter dans son kart en 1 clic** : gros bouton **🏎️ CONDUIRE** ou touche **F**, n'importe où.
