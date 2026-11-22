@@ -520,6 +520,7 @@ local function ouvrir()
 	debutTransition = os.clock()
 	transitionRetour = false
 	menuOuvert = true
+	joueur:SetAttribute("MenuGarage", true)
 	controles:Disable()
 	camera.CameraType = Enum.CameraType.Scriptable
 	gui.Enabled = true
@@ -535,6 +536,7 @@ local function fermer(sansTransition: boolean?)
 		return
 	end
 	menuOuvert = false
+	joueur:SetAttribute("MenuGarage", false)
 	gui.Enabled = false
 	controles:Enable()
 	if sansTransition then
@@ -542,6 +544,10 @@ local function fermer(sansTransition: boolean?)
 	else
 		transitionRetour = true
 		debutTransition = os.clock()
+		joueur:SetAttribute("CameraGarage", true)
+		task.delay(0.8, function()
+			joueur:SetAttribute("CameraGarage", false)
+		end)
 	end
 	if profil then
 		majApercu(profil.Perso) -- on remet le kart enregistré sur le plateau

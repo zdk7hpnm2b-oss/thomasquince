@@ -156,7 +156,12 @@ local function finir()
 end
 boutonPasser.Activated:Connect(finir)
 
-task.spawn(function()
+-- Sécurité : quoi qu'il arrive, l'intro se termine au bout de 12 secondes
+task.delay(12, function()
+	finir()
+end)
+
+local function sequence()
 	-- On attend le personnage et la carte
 	local perso = joueur.Character or joueur.CharacterAdded:Wait()
 	local racine = perso:WaitForChild("HumanoidRootPart", 10) :: BasePart?
@@ -183,6 +188,7 @@ task.spawn(function()
 	local finSurvol = Vector3.new(racine.Position.X * 0.3, SOL + 9, porteGarage.Z - 68)
 
 	RunService:BindToRenderStep("IntroCamera", Enum.RenderPriority.Camera.Value + 2, function()
+		local okImage = pcall(function()
 		local t = os.clock() - debut
 		if t < DUREE_FONTAINE then
 			-- 1) On tourne autour de la fontaine, sous le plafond
@@ -205,6 +211,10 @@ task.spawn(function()
 		else
 			finir()
 		end
+		end)
+		if not okImage then
+			finir() -- en cas de souci, on rend la main tout de suite
+		end
 	end)
 
 	-- Les textes
@@ -220,5 +230,13 @@ task.spawn(function()
 	if not termine then
 		disparaitre(titre, 0.6)
 		disparaitre(sousTitre, 0.6)
+	end
+end
+
+task.spawn(function()
+	local ok, erreur = pcall(sequence)
+	if not ok then
+		warn("[Intro] " .. tostring(erreur))
+		finir()
 	end
 end)

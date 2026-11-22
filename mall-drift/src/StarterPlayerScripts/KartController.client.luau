@@ -557,8 +557,8 @@ margeBouton.PaddingBottom = UDim.new(0, 10)
 margeBouton.Parent = boutonConduire
 
 local function demanderKart()
-	if kart then
-		return
+	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") then
+		return -- pas pendant l'intro ni avec le menu du garage ouvert
 	end
 	boutonConduire.Text = "⏳ ..."
 	remotes.SortirKart:FireServer()
@@ -582,6 +582,20 @@ local function activerToucheConduire(actif: boolean)
 	end
 end
 activerToucheConduire(true)
+
+-- Filet de sécurité : si les commandes sont restées bloquées par erreur
+-- (intro ou menu du garage), on les réactive.
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") then
+			controles:Enable()
+			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
+				camera.CameraType = Enum.CameraType.Custom
+			end
+		end
+	end
+end)
 
 local function sortirDuKart()
 	if not kart then

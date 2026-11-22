@@ -929,10 +929,10 @@ local G_CX, G_CZ = (G_X1 + G_X2) / 2, (G_Z1 + G_Z2) / 2
 local G_HAUT = 18
 local LARG_ENTREE = 50
 local VIOLET = Color3.fromRGB(170, 80, 255)
-local MUR_GARAGE = Color3.fromRGB(242, 242, 246)
+local MUR_GARAGE = Color3.fromRGB(48, 48, 56) -- anthracite, façon showroom
 
-local solGarage = bloc("SolGarage", Vector3.new(G_X2 - G_X1, 0.1, G_Z2 - G_Z1), CFrame.new(G_CX, SOL + 0.05, G_CZ), Color3.fromRGB(205, 205, 212), Enum.Material.SmoothPlastic, garage)
-solGarage.Reflectance = 0.3
+local solGarage = bloc("SolGarage", Vector3.new(G_X2 - G_X1, 0.1, G_Z2 - G_Z1), CFrame.new(G_CX, SOL + 0.05, G_CZ), Color3.fromRGB(58, 58, 66), Enum.Material.SmoothPlastic, garage)
+solGarage.Reflectance = 0.35 -- sol époxy brillant
 bloc("MurFondGarage", Vector3.new(G_X2 - G_X1, G_HAUT, 1), CFrame.new(G_CX, SOL + G_HAUT / 2, G_Z2 - 0.5), MUR_GARAGE, Enum.Material.SmoothPlastic, garage)
 bloc("MurOuestGarage", Vector3.new(1, G_HAUT, G_Z2 - G_Z1), CFrame.new(G_X1 + 0.5, SOL + G_HAUT / 2, G_CZ), MUR_GARAGE, Enum.Material.SmoothPlastic, garage)
 bloc("MurEstGarage", Vector3.new(1, G_HAUT, G_Z2 - G_Z1), CFrame.new(G_X2 - 0.5, SOL + G_HAUT / 2, G_CZ), MUR_GARAGE, Enum.Material.SmoothPlastic, garage)
@@ -943,7 +943,7 @@ for _, cote in ipairs({ -1, 1 }) do
 	vitre.Transparency = 0.5
 end
 bloc("LinteauGarage", Vector3.new(G_X2 - G_X1, 4, 1), CFrame.new(G_CX, SOL + G_HAUT - 2, G_Z1), Color3.fromRGB(30, 30, 36), Enum.Material.SmoothPlastic, garage)
-bloc("ToitGarage", Vector3.new(G_X2 - G_X1 + 2, 1, G_Z2 - G_Z1 + 2), CFrame.new(G_CX, SOL + G_HAUT + 0.5, G_CZ), Color3.fromRGB(250, 250, 250), Enum.Material.SmoothPlastic, garage).CastShadow = false
+bloc("ToitGarage", Vector3.new(G_X2 - G_X1 + 2, 1, G_Z2 - G_Z1 + 2), CFrame.new(G_CX, SOL + G_HAUT + 0.5, G_CZ), Color3.fromRGB(26, 26, 30), Enum.Material.SmoothPlastic, garage).CastShadow = false
 pancarte("EnseigneGarage", Vector3.new(44, 3.5, 0.5), Vector3.new(G_CX, SOL + G_HAUT - 2, G_Z1 - 0.8), Vector3.new(0, 0, -1), "★ GARAGE VIP ★", Color3.fromRGB(30, 30, 36), Color3.fromRGB(210, 160, 255), garage)
 -- Bandes néon violettes et éclairage bien lumineux
 for _, x in ipairs({ G_X1 + 1.2, G_X2 - 1.2 }) do
@@ -988,14 +988,204 @@ kartExpose("Chariot", "Rouge", "Rose", Vector3.new(-62, SOL, G_Z2 - 16))
 kartExpose("Bolide", "Jaune", "Vert", Vector3.new(-32, SOL, G_Z2 - 12))
 kartExpose("ProDubai", "Or", "Or", Vector3.new(32, SOL, G_Z2 - 12))
 
--- Déco d'atelier : piles de pneus, armoires à outils
-for i = 0, 3 do
-	for h = 0, 3 do
-		deco(cylindreDebout("Pneu", 1.2, 3, Vector3.new(G_X2 - 5, SOL + 0.6 + h * 1.2, G_Z1 + 10 + i * 4), Color3.fromRGB(20, 20, 20), Enum.Material.Rubber, garage))
+---------------------------------------------------------------------
+-- LA DÉCO DU GARAGE VIP
+--   à gauche (ouest) : le salon VIP   ·   à droite (est) : l'atelier mécanique
+--   au fond : écran géant + karts exposés   ·   devant : tapis rouge + drapeaux
+---------------------------------------------------------------------
+local decoGarage = Instance.new("Folder")
+decoGarage.Name = "DecoGarage"
+decoGarage.Parent = garage
+
+local function d(nom: string, taille: Vector3, position: Vector3, couleur: Color3, matiere: Enum.Material?, solide: boolean?): Part
+	local p = bloc(nom, taille, CFrame.new(position), couleur, matiere, decoGarage)
+	if not solide then
+		deco(p)
+	end
+	return p
+end
+local function dCyl(nom: string, hauteur: number, diametre: number, position: Vector3, couleur: Color3, matiere: Enum.Material?, solide: boolean?): Part
+	local p = cylindreDebout(nom, hauteur, diametre, position, couleur, matiere, decoGarage)
+	if not solide then
+		deco(p)
+	end
+	return p
+end
+local function boule(nom: string, diametre: number, position: Vector3, couleur: Color3, matiere: Enum.Material?): Part
+	local p = d(nom, Vector3.new(diametre, diametre, diametre), position, couleur, matiere)
+	p.Shape = Enum.PartType.Ball
+	return p
+end
+
+local CUIR = Color3.fromRGB(24, 24, 28)
+local BOIS = Color3.fromRGB(150, 105, 70)
+local ROUGE_OUTILS = Color3.fromRGB(205, 35, 40)
+local JAUNE_SECURITE = Color3.fromRGB(250, 200, 20)
+local y0 = SOL + 0.1 -- dessus du sol du garage
+
+-- 1) SOL : ligne de départ en damier devant la porte + lignes jaunes des zones
+for i = 0, 12 do
+	for rangee = 0, 1 do
+		local noir = (i + rangee) % 2 == 0
+		d("Damier", Vector3.new(4, 0.06, 2), Vector3.new(-24 + i * 4, y0 + 0.03, G_Z1 + 6 + rangee * 2), noir and Color3.fromRGB(20, 20, 20) or Color3.fromRGB(240, 240, 240))
 	end
 end
-for i = 0, 2 do
-	bloc("ArmoireOutils", Vector3.new(6, 7, 2.5), CFrame.new(70 - i * 7, SOL + 3.5, G_Z2 - 2.5), Color3.fromRGB(210, 40, 45), Enum.Material.Metal, garage)
+for _, x in ipairs({ -45, 45 }) do
+	d("LigneJaune", Vector3.new(0.5, 0.06, G_Z2 - G_Z1 - 12), Vector3.new(x, y0 + 0.03, G_CZ + 2), JAUNE_SECURITE)
+end
+
+-- 2) MUR DU FOND : écran géant + lames de bois de chaque côté
+d("CadreEcran", Vector3.new(44, 12, 0.6), Vector3.new(0, SOL + 11, G_Z2 - 1.3), Color3.fromRGB(12, 12, 14), Enum.Material.SmoothPlastic)
+local ecranGeant = d("EcranGeant", Vector3.new(42, 10.4, 0.2), Vector3.new(0, SOL + 11, G_Z2 - 1.7), Color3.fromRGB(30, 22, 70), Enum.Material.Neon)
+texte(ecranGeant, Enum.NormalId.Front, "GOLDEN MALL DRIFT\n★ GARAGE VIP ★", OR)
+for x = -86, 86, 2.4 do
+	if math.abs(x) > 24 then
+		d("LameBois", Vector3.new(1.2, 13, 0.4), Vector3.new(x, SOL + 9.5, G_Z2 - 1.2), BOIS, Enum.Material.WoodPlanks)
+	end
+end
+
+-- 3) PLAFOND : poutres métalliques + rubans LED, projecteurs sur le plateau
+for z = G_Z1 + 10, G_Z2 - 10, 20 do
+	d("Poutre", Vector3.new(G_X2 - G_X1, 1.2, 1.2), Vector3.new(0, SOL + G_HAUT - 1.5, z), Color3.fromRGB(70, 70, 78), Enum.Material.Metal)
+	d("RubanLED", Vector3.new(G_X2 - G_X1 - 2, 0.15, 0.3), Vector3.new(0, SOL + G_HAUT - 2.2, z), Color3.fromRGB(220, 200, 255), Enum.Material.Neon)
+end
+for _, decalage in ipairs({ Vector3.new(12, 0, 12), Vector3.new(-12, 0, 12), Vector3.new(12, 0, -12), Vector3.new(-12, 0, -12) }) do
+	local pos = POSITION_PLATEAU + decalage + Vector3.new(0, G_HAUT - 3, 0)
+	local projecteur = bloc("Projecteur", Vector3.new(1.4, 1.4, 2), CFrame.lookAt(pos, POSITION_PLATEAU), Color3.fromRGB(20, 20, 22), Enum.Material.Metal, decoGarage)
+	deco(projecteur)
+	local faisceau = Instance.new("SpotLight")
+	faisceau.Face = Enum.NormalId.Front
+	faisceau.Angle = 45
+	faisceau.Range = 30
+	faisceau.Brightness = 2.5
+	faisceau.Color = Color3.fromRGB(255, 245, 230)
+	faisceau.Parent = projecteur
+end
+
+-- 4) LE SALON VIP (côté ouest)
+local SX, SZ = -68, 272 -- centre du salon
+d("Tapis", Vector3.new(34, 0.06, 28), Vector3.new(SX, y0 + 0.03, SZ), Color3.fromRGB(90, 40, 130), Enum.Material.Fabric)
+-- Canapé en L
+d("CanapeAssise", Vector3.new(16, 2, 4.5), Vector3.new(SX, SOL + 1, SZ + 11), CUIR, Enum.Material.Fabric, true)
+d("CanapeDossier", Vector3.new(16, 3.2, 1.2), Vector3.new(SX, SOL + 2.6, SZ + 13.4), CUIR, Enum.Material.Fabric, true)
+d("CanapeAssise", Vector3.new(4.5, 2, 14), Vector3.new(SX - 14, SOL + 1, SZ + 1), CUIR, Enum.Material.Fabric, true)
+d("CanapeDossier", Vector3.new(1.2, 3.2, 14), Vector3.new(SX - 16.4, SOL + 2.6, SZ + 1), CUIR, Enum.Material.Fabric, true)
+for i = -1, 1 do
+	d("Coussin", Vector3.new(4, 1.6, 0.8), Vector3.new(SX + i * 5, SOL + 2.6, SZ + 12.4), OR, Enum.Material.Fabric)
+end
+-- Table basse en verre
+d("TableVerre", Vector3.new(9, 0.3, 5), Vector3.new(SX, SOL + 1.6, SZ + 2), Color3.fromRGB(200, 220, 235), Enum.Material.Glass, true).Transparency = 0.5
+for _, dx in ipairs({ -4, 4 }) do
+	d("PiedTable", Vector3.new(0.3, 1.5, 4.6), Vector3.new(SX + dx, SOL + 0.8, SZ + 2), OR, Enum.Material.Foil)
+end
+dCyl("Canette", 0.8, 0.45, Vector3.new(SX - 2, SOL + 2.15, SZ + 2), Color3.fromRGB(220, 40, 40), Enum.Material.Metal)
+dCyl("Canette", 0.8, 0.45, Vector3.new(SX + 1.5, SOL + 2.15, SZ + 1.4), Color3.fromRGB(40, 160, 240), Enum.Material.Metal)
+-- Borne d'arcade
+d("Arcade", Vector3.new(3, 6.5, 3), Vector3.new(-86.5, SOL + 3.25, 258), Color3.fromRGB(30, 20, 60), Enum.Material.SmoothPlastic, true)
+local ecranArcade = d("EcranArcade", Vector3.new(0.1, 2.2, 2.4), Vector3.new(-84.95, SOL + 4.6, 258), Color3.fromRGB(60, 200, 255), Enum.Material.Neon)
+texte(ecranArcade, Enum.NormalId.Right, "🏁 DRIFT\nARCADE", Color3.new(1, 1, 1))
+d("NeonArcade", Vector3.new(0.1, 0.2, 3), Vector3.new(-84.95, SOL + 6.4, 258), Color3.fromRGB(255, 60, 200), Enum.Material.Neon)
+-- Frigo à boissons
+d("Frigo", Vector3.new(3, 6, 3), Vector3.new(-86.5, SOL + 3, 264), Color3.fromRGB(235, 235, 240), Enum.Material.SmoothPlastic, true)
+local porteFrigo = d("PorteFrigo", Vector3.new(0.1, 5, 2.6), Vector3.new(-84.95, SOL + 3, 264), Color3.fromRGB(160, 210, 255), Enum.Material.Neon)
+porteFrigo.Transparency = 0.3
+-- Étagère à trophées sur le mur ouest
+for etage = 0, 1 do
+	d("EtagereTrophees", Vector3.new(1.4, 0.3, 18), Vector3.new(-88.6, SOL + 6 + etage * 4, 305), Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
+	for k = 0, 3 do
+		local z = 298 + k * 4.5
+		local y = SOL + 6.15 + etage * 4
+		dCyl("SocleTrophee", 0.5, 1, Vector3.new(-88.6, y + 0.25, z), Color3.fromRGB(20, 20, 20), Enum.Material.Marble)
+		dCyl("CoupeTrophee", 1.4, 0.7, Vector3.new(-88.6, y + 1.2, z), OR, Enum.Material.Foil)
+		boule("CoupeHaut", 1.3, Vector3.new(-88.6, y + 2.2, z), OR, Enum.Material.Foil)
+	end
+end
+pancarte("EnseigneSalon", Vector3.new(16, 3, 0.3), Vector3.new(-89.2, SOL + 13, SZ), Vector3.new(1, 0, 0), "LOUNGE VIP", Color3.fromRGB(20, 20, 24), Color3.fromRGB(210, 160, 255), decoGarage)
+-- Plantes
+for _, pos in ipairs({ Vector3.new(-50, 0, 258), Vector3.new(-50, 0, 289), Vector3.new(-86, 0, 288) }) do
+	dCyl("Pot", 2.4, 2.6, Vector3.new(pos.X, SOL + 1.2, pos.Z), Color3.fromRGB(240, 240, 240), Enum.Material.Marble, true)
+	boule("Feuillage", 3.6, Vector3.new(pos.X, SOL + 3.8, pos.Z), Color3.fromRGB(50, 140, 70), Enum.Material.Grass)
+end
+
+-- 5) L'ATELIER MÉCANIQUE (côté est)
+-- Pont élévateur avec un kart soulevé
+local PX, PZ = 68, 282
+for _, dx in ipairs({ -7, 7 }) do
+	d("PilierPont", Vector3.new(1.6, 12, 1.6), Vector3.new(PX + dx, SOL + 6, PZ), ROUGE_OUTILS, Enum.Material.Metal, true)
+	d("BrasPont", Vector3.new(5.5, 0.5, 0.8), Vector3.new(PX + dx * 0.55, SOL + 4.6, PZ - 1.5), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+	d("BrasPont", Vector3.new(5.5, 0.5, 0.8), Vector3.new(PX + dx * 0.55, SOL + 4.6, PZ + 1.5), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+end
+d("TraverseePont", Vector3.new(15.6, 1, 1.6), Vector3.new(PX, SOL + 12.5, PZ), ROUGE_OUTILS, Enum.Material.Metal)
+do
+	local persoPont = table.clone(Config.PersoParDefaut)
+	persoPont.Carrosserie = "Orange"
+	persoPont.Neon = "Aucun"
+	local kartPont = KartBuilder.Construire(persoPont, CFrame.new(PX, SOL + 5.6, PZ) * CFrame.Angles(0, math.rad(90), 0), true)
+	kartPont.Name = "KartSurLePont"
+	kartPont.Parent = decoGarage
+end
+-- Bandes de sécurité jaunes et noires autour du pont
+for i = 0, 7 do
+	d("BandeDanger", Vector3.new(2, 0.06, 0.8), Vector3.new(PX - 8 + i * 2.3, y0 + 0.03, PZ - 6), i % 2 == 0 and JAUNE_SECURITE or Color3.fromRGB(20, 20, 20))
+	d("BandeDanger", Vector3.new(2, 0.06, 0.8), Vector3.new(PX - 8 + i * 2.3, y0 + 0.03, PZ + 6), i % 2 == 0 and JAUNE_SECURITE or Color3.fromRGB(20, 20, 20))
+end
+-- Servantes d'outils (armoires rouges à tiroirs) contre le mur est
+for k = 0, 2 do
+	local z = 300 + k * 7
+	d("Servante", Vector3.new(3, 5, 6), Vector3.new(87, SOL + 2.5, z), ROUGE_OUTILS, Enum.Material.Metal, true)
+	for t = 0, 3 do
+		d("Tiroir", Vector3.new(0.1, 0.15, 5), Vector3.new(85.45, SOL + 1 + t * 1.1, z), Color3.fromRGB(200, 200, 205), Enum.Material.Metal)
+	end
+end
+-- Établi + panneau à outils
+d("Etabli", Vector3.new(4, 3.5, 12), Vector3.new(86.5, SOL + 1.75, 322), BOIS, Enum.Material.WoodPlanks, true)
+d("PanneauOutils", Vector3.new(0.3, 6, 12), Vector3.new(88.7, SOL + 7.5, 322), Color3.fromRGB(120, 125, 130), Enum.Material.DiamondPlate)
+for k = 0, 4 do
+	d("Outil", Vector3.new(0.2, 2.2 - (k % 2) * 0.6, 0.35), Vector3.new(88.45, SOL + 7.5, 317.5 + k * 2.2), Color3.fromRGB(30, 30, 34), Enum.Material.Metal)
+end
+-- Râtelier à pneus mural
+for etage = 0, 1 do
+	local y = SOL + 3 + etage * 4.5
+	d("RatelierPneus", Vector3.new(2.6, 0.3, 18), Vector3.new(87.6, y, 264), Color3.fromRGB(60, 60, 66), Enum.Material.Metal)
+	for k = 0, 4 do
+		local pneu = bloc("Pneu", Vector3.new(1.1, 3, 3), CFrame.new(87.6, y + 1.65, 257 + k * 3.4) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(22, 22, 22), Enum.Material.Rubber, decoGarage)
+		pneu.Shape = Enum.PartType.Cylinder
+		deco(pneu)
+	end
+end
+-- Fûts d'huile et compresseur
+for k, couleur in ipairs({ Color3.fromRGB(30, 90, 200), ROUGE_OUTILS, JAUNE_SECURITE }) do
+	dCyl("Fut", 3.4, 2.4, Vector3.new(52 + k * 2.7, SOL + 1.7, 258), couleur, Enum.Material.Metal, true)
+end
+d("Compresseur", Vector3.new(3, 2.4, 2), Vector3.new(80, SOL + 1.2, 296), ROUGE_OUTILS, Enum.Material.Metal, true)
+pancarte("EnseigneAtelier", Vector3.new(16, 3, 0.3), Vector3.new(89.2, SOL + 13, 282), Vector3.new(-1, 0, 0), "🔧 ATELIER", Color3.fromRGB(20, 20, 24), JAUNE_SECURITE, decoGarage)
+
+-- 6) BANNIÈRES suspendues
+for _, b in ipairs({ { -38, "VIP" }, { 38, "DRIFT" }, { -14, "★" }, { 14, "★" } }) do
+	local banniere = d("Banniere", Vector3.new(5, 7, 0.15), Vector3.new(b[1], SOL + 12.5, G_Z1 + 14), Color3.fromRGB(70, 30, 120), Enum.Material.Fabric)
+	texte(banniere, Enum.NormalId.Front, b[2], OR)
+	texte(banniere, Enum.NormalId.Back, b[2], OR)
+	d("TringleBanniere", Vector3.new(5.6, 0.25, 0.25), Vector3.new(b[1], SOL + 16.1, G_Z1 + 14), OR, Enum.Material.Foil)
+end
+
+-- 7) DEVANT LE GARAGE : tapis rouge, potelets dorés, drapeaux, néon autour de la porte
+d("TapisRouge", Vector3.new(12, 0.06, 26), Vector3.new(0, SOL + 0.03, G_Z1 - 13), Color3.fromRGB(170, 20, 30), Enum.Material.Fabric)
+for _, x in ipairs({ -7.5, 7.5 }) do
+	for z = G_Z1 - 24, G_Z1 - 4, 10 do
+		dCyl("Potelet", 3, 0.5, Vector3.new(x, SOL + 1.5, z), OR, Enum.Material.Foil)
+		boule("BoulePotelet", 0.8, Vector3.new(x, SOL + 3.1, z), OR, Enum.Material.Foil)
+	end
+	d("Cordon", Vector3.new(0.25, 0.25, 20), Vector3.new(x, SOL + 2.5, G_Z1 - 14), Color3.fromRGB(150, 15, 25), Enum.Material.Fabric)
+end
+for _, x in ipairs({ -34, 34 }) do
+	dCyl("MatDrapeau", 16, 0.5, Vector3.new(x, SOL + 8, G_Z1 - 6), Color3.fromRGB(220, 220, 225), Enum.Material.Metal, true)
+	local drapeau = d("Drapeau", Vector3.new(0.12, 3.5, 6), Vector3.new(x, SOL + 14, G_Z1 - 9.2), Color3.fromRGB(70, 30, 120), Enum.Material.Fabric)
+	texte(drapeau, Enum.NormalId.Left, "GM", OR)
+	texte(drapeau, Enum.NormalId.Right, "GM", OR)
+end
+d("NeonPorte", Vector3.new(LARG_ENTREE + 1, 0.4, 0.3), Vector3.new(0, SOL + G_HAUT - 4.2, G_Z1 - 0.7), VIOLET, Enum.Material.Neon)
+for _, x in ipairs({ -LARG_ENTREE / 2 - 0.4, LARG_ENTREE / 2 + 0.4 }) do
+	d("NeonPorte", Vector3.new(0.4, G_HAUT - 4, 0.3), Vector3.new(x, SOL + (G_HAUT - 4) / 2, G_Z1 - 0.7), VIOLET, Enum.Material.Neon)
 end
 
 -- L'atelier : la borne pour personnaliser son kart (touche E)
@@ -1286,7 +1476,7 @@ local function sortirKart(joueur: Player)
 	local p = racine.Position
 	if p.X > G_X1 and p.X < G_X2 and p.Z > G_Z1 and p.Z < G_Z2 then
 		local depart = nil
-		for _, x in ipairs({ 8, 20, -4, 32 }) do
+		for _, x in ipairs({ 8, 16, 0, 22 }) do -- toutes face à la grande porte (largeur 50)
 			local candidat = Vector3.new(x, SOL + 0.6, G_Z1 + 26)
 			local libre = true
 			for _, k in pairs(kartsJoueurs) do
@@ -1299,7 +1489,7 @@ local function sortirKart(joueur: Player)
 				break
 			end
 		end
-		depart = depart or Vector3.new(44, SOL + 0.6, G_Z1 + 26)
+		depart = depart or Vector3.new(12, SOL + 0.6, G_Z1 + 36)
 		local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1)))
 		kart:SetAttribute("SortieGarage", true)
 		asseoir(joueur, kart)
