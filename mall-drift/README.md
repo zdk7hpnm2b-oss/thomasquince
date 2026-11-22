@@ -16,8 +16,8 @@ Ce prototype contient :
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
 - **☰ Un menu, deux modes de jeu** (il s'ouvre après l'intro, puis avec **☰ MENU** en bas à droite) :
   **🏁 ENTRAÎNEMENT** (drift libre, la police du mall en bots te poursuit), **🌐 JOUER EN LIGNE**
-  (Police contre Fugitifs), **🔥 DRIFT BATTLE** (1 minute, le plus de points de drift gagne, podium et XP ;
-  seul, c'est un défi) et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
+  (Police contre Fugitifs), **🔥 DRIFT BATTLE** (défi solo instantané : petit titre de 2 s, 3-2-1, puis
+  1 minute pour faire le plus de points de drift ; score, record et XP à la fin) et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
   les manches en ligne des autres
 - **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : quand assez de joueurs
   sont dans la file : une **page d'attente**

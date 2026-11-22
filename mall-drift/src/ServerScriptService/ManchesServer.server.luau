@@ -624,87 +624,70 @@ workspace:SetAttribute("MancheEnCours", false)
 
 -- Le bouton « LANCER UNE PARTIE » (côté joueur) : on devient « prêt » ou non
 ---------------------------------------------------------------------
--- DRIFT BATTLE : pas de police. Tout le monde part de la ligne de départ et
--- fait le plus de points de drift possible. Podium et XP à la fin.
+-- DRIFT BATTLE (solo, instantané) : on clique dans le menu → petit titre
+-- de 2 secondes → 3, 2, 1 → 1 minute pour faire le plus de points de drift.
+-- Pas de police. À la fin : score, record, XP, et on continue en entraînement.
 ---------------------------------------------------------------------
 local DUREE_BATTLE = P.DureeBattle or 60
-local BATTLE_MIN = P.BattleJoueursMin or 1
+local scoresBattle: { [Player]: Score } = {}
 
-local function jouerBattle(joueurs: { Player })
-	scoresDrift = {}
-	for _, j in ipairs(joueurs) do
-		j:SetAttribute("Role", "Battle")
-		j.Team = EQUIPE_BATTLE
-		scoresDrift[j] = { total = 0, meilleur = 0 }
-		Partie:FireClient(j, { type = "battle", duree = DUREE_BATTLE, nb = #joueurs })
+local function lancerBattle(joueur: Player)
+	if joueur:GetAttribute("Role") ~= nil or joueur:GetAttribute("EnSalle") then
+		return
 	end
-	task.wait(3.5) -- le temps de lire la carte de présentation
-
-	workspace:SetAttribute("MancheEnCours", true)
-	fermerEntree(true)
-	for _, j in ipairs(joueurs) do
-		if j.Parent then
-			mettreEnSalle(j, false)
-			RetirerKart:Invoke(j)
-			PlacerKart:Invoke(j, true)
-		end
+	joueur:SetAttribute("Pret", false)
+	joueur:SetAttribute("Role", "Battle")
+	joueur.Team = EQUIPE_BATTLE
+	scoresBattle[joueur] = { total = 0, meilleur = 0 }
+	Partie:FireClient(joueur, { type = "battle", duree = DUREE_BATTLE })
+	task.wait(2) -- le petit titre
+	if not joueur.Parent then
+		scoresBattle[joueur] = nil
+		return
 	end
-
-	local fin = os.clock() + DUREE_BATTLE + 7.5
-	while os.clock() < fin do
-		task.wait(1)
-		local encoreLa = false
-		for _, j in ipairs(joueurs) do
-			if j.Parent then
-				encoreLa = true
-			end
-		end
-		if not encoreLa then
-			break
-		end
-		local classement = classementDrifts()
-		local premier = classement[1]
-		for rang, ligne in ipairs(classement) do
-			Partie:FireClient(ligne.joueur, {
-				type = "etat", etat = "battle",
-				temps = math.max(0, math.ceil(fin - os.clock())),
-				premier = premier and premier.nom or "", scorePremier = premier and premier.total or 0,
-				monScore = ligne.total, monRang = rang, nb = #classement,
-			})
-		end
+	RetirerKart:Invoke(joueur)
+	PlacerKart:Invoke(joueur, true, true) -- départ court : juste 3, 2, 1
+	local fin = os.clock() + DUREE_BATTLE + 3
+	while os.clock() < fin and joueur.Parent and joueur:GetAttribute("Role") == "Battle" do
+		task.wait(0.5)
+		local sc = scoresBattle[joueur]
+		Partie:FireClient(joueur, {
+			type = "etat", etat = "battle",
+			temps = math.max(0, math.ceil(fin - os.clock())),
+			monScore = sc and sc.total or 0,
+			record = joueur:GetAttribute("RecordBattle") or 0,
+		})
 	end
-
-	-- Podium et XP
-	local classement = classementDrifts()
-	local podium = P.XPPodium or { 300, 200, 100 }
-	local envoye = {}
-	for i, ligne in ipairs(classement) do
-		envoye[i] = { nom = ligne.nom, total = ligne.total, meilleur = ligne.meilleur }
-		AjouterXP:Fire(ligne.joueur, (P.XPParticipation or 50) + (podium[i] or 0))
+	local sc = scoresBattle[joueur]
+	scoresBattle[joueur] = nil
+	if not joueur.Parent or not sc then
+		return
 	end
-	envoyerATous({ type = "finBattle", classement = envoye })
-	task.wait(7)
-
-	workspace:SetAttribute("MancheEnCours", false)
-	fermerEntree(false)
-	for _, j in ipairs(joueurs) do
-		if j.Parent then
-			RetirerKart:Invoke(j)
-			remettreAZero(j)
-			j:SetAttribute("EnSalle", nil)
-			j:SetAttribute("PretBattle", false)
-			task.spawn(function()
-				j:LoadCharacter()
-			end)
-		end
+	local ancienRecord = joueur:GetAttribute("RecordBattle") or 0
+	local nouveauRecord = sc.total > ancienRecord
+	if nouveauRecord then
+		joueur:SetAttribute("RecordBattle", sc.total)
 	end
-	scoresDrift = {}
+	AjouterXP:Fire(joueur, (P.XPParticipation or 50) + math.floor(sc.total / 20))
+	Partie:FireClient(joueur, { type = "finBattle", total = sc.total, meilleur = sc.meilleur, record = math.max(ancienRecord, sc.total), nouveauRecord = nouveauRecord })
+	-- On continue à rouler, en entraînement
+	joueur:SetAttribute("Role", nil)
+	joueur.Team = EQUIPE_VISITEURS
 end
 
+DriftEnregistre.Event:Connect(function(joueur: Player, points: number)
+	local sc = scoresBattle[joueur]
+	if sc and joueur:GetAttribute("Role") == "Battle" then
+		sc.total += points
+		if points > sc.meilleur then
+			sc.meilleur = points
+		end
+	end
+end)
+
 ---------------------------------------------------------------------
--- Les files d'attente (choisies dans le menu) :
---   « Pret »       = Police contre Fugitifs
---   « PretBattle » = Drift Battle
+-- La file d'attente (choisie dans le menu) : « Pret » = Police contre Fugitifs
+-- (le Drift Battle, lui, se lance tout de suite, en solo)
 ---------------------------------------------------------------------
 Partie.OnServerEvent:Connect(function(joueur: Player, info)
 	if type(info) ~= "table" or joueur:GetAttribute("Role") ~= nil then
@@ -712,14 +695,8 @@ Partie.OnServerEvent:Connect(function(joueur: Player, info)
 	end
 	if info.type == "pret" then
 		joueur:SetAttribute("Pret", info.valeur == true)
-		if info.valeur == true then
-			joueur:SetAttribute("PretBattle", false)
-		end
-	elseif info.type == "pretBattle" then
-		joueur:SetAttribute("PretBattle", info.valeur == true)
-		if info.valeur == true then
-			joueur:SetAttribute("Pret", false)
-		end
+	elseif info.type == "battle" then
+		task.spawn(lancerBattle, joueur)
 	elseif info.type == "garage" then
 		-- Bouton « GARAGE VIP » du menu : retour au garage
 		RetirerKart:Invoke(joueur)
@@ -752,14 +729,11 @@ local function botsNecessaires(): number
 	return math.min(BOTS_TEST, JOUEURS_MIN - n)
 end
 
--- Quel mode peut-on lancer ? ("police", "battle" ou nil)
+-- Peut-on lancer une partie Police contre Fugitifs ?
 local function modeDisponible(): string?
 	local n = #joueursPrets("Pret")
 	if n > 0 and n + botsNecessaires() >= JOUEURS_MIN then
 		return "police"
-	end
-	if #joueursPrets("PretBattle") >= BATTLE_MIN then
-		return "battle"
 	end
 	return nil
 end
@@ -782,11 +756,11 @@ task.spawn(function()
 			for _, j in ipairs(Players:GetPlayers()) do
 				mettreEnSalle(j, false)
 			end
-			envoyerATous({ type = "etat", etat = "attente", joueurs = #joueursPrets("Pret"), min = JOUEURS_MIN, battle = #joueursPrets("PretBattle") })
+			envoyerATous({ type = "etat", etat = "attente", joueurs = #joueursPrets("Pret"), min = JOUEURS_MIN })
 			task.wait(1)
 		end
 		local mode = modeDisponible()
-		local attribut = if mode == "police" then "Pret" else "PretBattle"
+		local attribut = "Pret"
 
 		-- Page d'attente : seuls les joueurs de la file vont dessus
 		local annule = false
@@ -798,7 +772,7 @@ task.spawn(function()
 			for _, j in ipairs(Players:GetPlayers()) do
 				mettreEnSalle(j, j:GetAttribute(attribut) == true)
 			end
-			envoyerATous({ type = "etat", etat = "intermission", temps = t, mode = mode, bots = if mode == "police" then botsNecessaires() else 0 })
+			envoyerATous({ type = "etat", etat = "intermission", temps = t, mode = mode, bots = botsNecessaires() })
 			task.wait(1)
 		end
 		if annule then
@@ -806,20 +780,15 @@ task.spawn(function()
 				mettreEnSalle(j, false)
 			end
 		else
-			local ok, erreur
-			if mode == "police" then
-				local participants: { Participant } = {}
-				for _, j in ipairs(joueursPrets("Pret")) do
-					table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
-					mettreEnSalle(j, true)
-				end
-				for k = 1, botsNecessaires() do
-					table.insert(participants, { nom = NOMS_BOTS[(k - 1) % #NOMS_BOTS + 1], joueur = nil, bot = nil, role = nil, arrete = false })
-				end
-				ok, erreur = pcall(jouerManche, participants)
-			else
-				ok, erreur = pcall(jouerBattle, joueursPrets("PretBattle"))
+			local participants: { Participant } = {}
+			for _, j in ipairs(joueursPrets("Pret")) do
+				table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
+				mettreEnSalle(j, true)
 			end
+			for k = 1, botsNecessaires() do
+				table.insert(participants, { nom = NOMS_BOTS[(k - 1) % #NOMS_BOTS + 1], joueur = nil, bot = nil, role = nil, arrete = false })
+			end
+			local ok, erreur = pcall(jouerManche, participants)
 			if not ok then
 				warn("[Manches] " .. tostring(erreur))
 				workspace:SetAttribute("MancheEnCours", false)
@@ -835,4 +804,4 @@ task.spawn(function()
 	end
 end)
 
-print(("[Golden Mall] Modes en ligne prêts : Police contre Fugitifs (bots de test : %d) et Drift Battle."):format(BOTS_TEST))
+print(("[Golden Mall] Modes prêts : Police contre Fugitifs en ligne (bots de test : %d) et Drift Battle solo."):format(BOTS_TEST))

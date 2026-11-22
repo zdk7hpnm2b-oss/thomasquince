@@ -2001,7 +2001,7 @@ end
 
 -- Mettre le joueur au volant de son kart, sur la bonne place de départ.
 -- avecDepart = true : survol de la map + feux 3, 2, 1, PARTEZ !
-local function placerKart(joueur: Player, avecDepart: boolean): Model?
+local function placerKart(joueur: Player, avecDepart: boolean, departCourt: boolean?): Model?
 	local profil = profils[joueur]
 	if not profil or joueur:GetAttribute("Arrete") then
 		return nil -- (un fugitif arrêté attend la fin de la manche)
@@ -2020,6 +2020,9 @@ local function placerKart(joueur: Player, avecDepart: boolean): Model?
 	local kart = creerKart(joueur, cf, if role == "Police" then persoPolice(profil.Perso) else nil)
 	if avecDepart then
 		kart:SetAttribute("DepartHall", true)
+		if departCourt then
+			kart:SetAttribute("DepartCourt", true) -- juste 3, 2, 1 (sans le survol de la map)
+		end
 	end
 	if role == nil then
 		-- Mode libre : la police du mall laisse tranquille pendant le départ
@@ -2084,8 +2087,8 @@ end
 -- Pour le script des manches (ManchesServer)
 local PlacerKart = Instance.new("BindableFunction")
 PlacerKart.Name = "PlacerKart"
-PlacerKart.OnInvoke = function(joueur: Player, avecDepart: boolean)
-	return placerKart(joueur, avecDepart)
+PlacerKart.OnInvoke = function(joueur: Player, avecDepart: boolean, departCourt: boolean?)
+	return placerKart(joueur, avecDepart, departCourt)
 end
 PlacerKart.Parent = game:GetService("ServerStorage")
 local RetirerKart = Instance.new("BindableFunction")

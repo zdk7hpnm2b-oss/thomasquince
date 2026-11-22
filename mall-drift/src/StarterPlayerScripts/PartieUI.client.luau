@@ -343,7 +343,7 @@ end
 
 local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et travaille tes drifts. La police du mall (des bots) te poursuit !", Color3.fromRGB(80, 220, 120))
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
-local carteBattle, titreBattle, descBattle = carteMode("🔥", "DRIFT BATTLE", "1 minute, pas de police : fais le plus de points de drift ! Seul, c'est un défi.", Color3.fromRGB(255, 90, 170))
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour faire le plus de points de drift. Ça part tout de suite !", Color3.fromRGB(255, 90, 170))
 local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
 
 local boutonFermerMenu = Instance.new("TextButton")
@@ -362,11 +362,7 @@ Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
 local function majMenu()
 	local enManche = joueur:GetAttribute("Role") ~= nil
 	local prete = joueur:GetAttribute("Pret") == true
-	local preteBattle = joueur:GetAttribute("PretBattle") == true
-	titreBattle.Text = if preteBattle then "QUITTER LA FILE" else "DRIFT BATTLE"
-	descBattle.Text = if preteBattle
-		then "Tu es dans la file du Drift Battle. Clique pour la quitter."
-		else "1 minute, pas de police : fais le plus de points de drift ! Seul, c'est un défi."
+	local preteBattle = false
 	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true)
 	if enManche then
 		fondMenu.Visible = false
@@ -378,7 +374,7 @@ local function majMenu()
 	boutonMenu.Text = if prete or preteBattle then "☰ MENU · ✅ EN FILE" else "☰ MENU"
 	boutonMenu.Size = UDim2.new(0, if prete or preteBattle then 300 else 190, 0, 54)
 end
-for _, nom in ipairs({ "Pret", "PretBattle", "Role", "IntroFinie", "EnSalle" }) do
+for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle" }) do
 	joueur:GetAttributeChangedSignal(nom):Connect(majMenu)
 end
 majMenu()
@@ -398,9 +394,6 @@ carteEntrainement.Activated:Connect(function()
 	if joueur:GetAttribute("Pret") then
 		Partie:FireServer({ type = "pret", valeur = false })
 	end
-	if joueur:GetAttribute("PretBattle") then
-		Partie:FireServer({ type = "pretBattle", valeur = false })
-	end
 	-- On part directement sur la ligne de départ (survol + 3, 2, 1, PARTEZ)
 	remotes:WaitForChild("SortirKart"):FireServer()
 end)
@@ -412,9 +405,7 @@ carteEnLigne.Activated:Connect(function()
 end)
 carteBattle.Activated:Connect(function()
 	ouvrirMenu(false)
-	local prete = joueur:GetAttribute("PretBattle") == true
-	Partie:FireServer({ type = "pretBattle", valeur = not prete })
-	ajouterAuFil(if prete then "Tu as quitté la file du Drift Battle." else "🔥 Tu es dans la file du Drift Battle !", Color3.fromRGB(255, 90, 170))
+	Partie:FireServer({ type = "battle" }) -- le défi démarre tout de suite
 end)
 carteGarage.Activated:Connect(function()
 	ouvrirMenu(false)
@@ -443,7 +434,6 @@ Partie.OnClientEvent:Connect(function(info)
 		if info.etat == "attente" then
 			texteBarre.Text = if joueur:GetAttribute("Pret")
 				then ("✅ Prêt ! En attente de joueurs (%d/%d prêts)"):format(info.joueurs or 0, info.min or 2)
-				elseif joueur:GetAttribute("PretBattle") then "🔥 Drift Battle : ça commence dans un instant…"
 				else ("🏁 ENTRAÎNEMENT · Police vs Fugitifs : %d/%d dans la file · ☰ MENU pour jouer en ligne"):format(info.joueurs or 0, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
@@ -454,13 +444,13 @@ Partie.OnClientEvent:Connect(function(info)
 			sousTitrePage.Text = if enBattle then "🔥 DRIFT BATTLE 🔥" else "🚓 POLICE  vs  FUGITIFS 🏃"
 			aidePage.Text = if enBattle then "1 minute pour faire le plus de points de drift. Les plus longs drifts rapportent le plus !"
 				else "Le tirage au sort décide de ton équipe. Les fugitifs partent au sud, la police au nord !"
-			texteBarre.Text = if joueur:GetAttribute("Pret") or joueur:GetAttribute("PretBattle")
+			texteBarre.Text = if joueur:GetAttribute("Pret")
 				then (if enBattle then ("🔥 DRIFT BATTLE · départ dans %d s"):format(info.temps or 0) else ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0))
 				else ("🌐 Une partie en ligne commence dans %d s · ☰ MENU > JOUER EN LIGNE pour la rejoindre"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)
 		elseif info.etat == "battle" then
-			texteBarre.Text = ("🔥 %s   ·   %de / %d   ·   %d pts   ·   1er : %s (%d)"):format(formatTemps(info.temps or 0), info.monRang or 1, info.nb or 1, info.monScore or 0, info.premier or "", info.scorePremier or 0)
+			texteBarre.Text = ("🔥 DRIFT BATTLE · %s   ·   %d pts   ·   record %d"):format(formatTemps(info.temps or 0), info.monScore or 0, info.record or 0)
 			texteBarre.TextColor3 = Color3.fromRGB(255, 120, 190)
 		elseif info.etat == "manche" then
 			texteBarre.Text = ("⏱ %s   ·   🏃 %d/%d fugitifs libres"):format(formatTemps(info.temps or 0), info.restants or 0, info.total or 0)
@@ -486,14 +476,15 @@ Partie.OnClientEvent:Connect(function(info)
 			end
 		end)
 	elseif info.type == "battle" then
-		montrerCarte(("🔥 DRIFT BATTLE · %d joueur%s"):format(info.nb or 1, if (info.nb or 1) > 1 then "s" else ""), "🔥 DRIFT BATTLE",
-			("%d secondes pour faire le plus de points de drift. Enchaîne les longs drifts et les 360 !"):format(info.duree or 60),
-			Color3.fromRGB(255, 90, 170), 3.5)
+		-- Le petit titre de 2 secondes
+		montrerCarte("DÉFI SOLO", "🔥 DRIFT BATTLE",
+			("%d secondes pour faire le plus de points de drift !"):format(info.duree or 60),
+			Color3.fromRGB(255, 90, 170), 2)
 	elseif info.type == "finBattle" then
-		local premier = info.classement and info.classement[1]
-		montrerCarte("🏁 FIN DU DRIFT BATTLE", if premier then ("🏆 %s GAGNE !"):format(string.upper(premier.nom)) else "FIN !",
-			if premier then ("%d points de drift · meilleur drift %d"):format(premier.total, premier.meilleur) else "", Color3.fromRGB(255, 90, 170), 6.5)
-		montrerClassement("🏆 CLASSEMENT DU DRIFT BATTLE", info.classement, 6.5)
+		montrerCarte(if info.nouveauRecord then "🏆 NOUVEAU RECORD !" else ("Ton record : %d pts"):format(info.record or 0),
+			("🔥 %d POINTS"):format(info.total or 0),
+			("Meilleur drift : %d · Tu continues en entraînement !"):format(info.meilleur or 0),
+			if info.nouveauRecord then Color3.fromRGB(255, 205, 70) else Color3.fromRGB(255, 90, 170), 4.5)
 	elseif info.type == "info" then
 		ajouterAuFil(info.texte or "", Color3.fromRGB(255, 215, 80))
 	elseif info.type == "arrestation" then

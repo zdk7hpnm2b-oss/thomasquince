@@ -385,7 +385,7 @@ local SURVOLS = {
 	{ nom = "LE FOOD COURT", de = Vector3.new(-118, 11, 30), vers = Vector3.new(-150, 8, 108), cible = Vector3.new(-136, 3, 72) },
 	{ nom = "LES SOLDES", de = Vector3.new(190, 9, -8), vers = Vector3.new(95, 6, 6), cible = Vector3.new(40, 4, 0) },
 }
-type Depart = { debut: number, etape: number, survol: { [string]: any }, finSurvol: CFrame? }
+type Depart = { debut: number, etape: number, survol: { [string]: any }, finSurvol: CFrame?, court: boolean }
 local depart: Depart? = nil
 local departsJoues: { [Instance]: boolean } = {}
 local dernierRestePolice = -1
@@ -528,7 +528,7 @@ local function mettreAJourCamera(dt: number)
 	end
 	avant = avant.Unit
 
-	if depart and os.clock() - depart.debut < DUREE_ANIM_DEPART then
+	if depart and not depart.court and os.clock() - depart.debut < DUREE_ANIM_DEPART then
 		cacherPilote(false)
 		local t = os.clock() - depart.debut
 		local s = depart.survol
@@ -782,7 +782,8 @@ local function entrerDansKart(siege: Seat)
 	if modele:GetAttribute("DepartHall") and not departsJoues[modele] then
 		departsJoues[modele] = true
 		local survol = SURVOLS[math.random(1, #SURVOLS)]
-		depart = { debut = os.clock(), etape = 0, survol = survol, finSurvol = nil }
+		local court = modele:GetAttribute("DepartCourt") == true -- Drift Battle : juste 3, 2, 1
+		depart = { debut = os.clock(), etape = 0, survol = survol, finSurvol = nil, court = court }
 		dernierRestePolice = -1
 		hud.Visible = false
 		afficherBandes(true)
@@ -790,10 +791,12 @@ local function entrerDansKart(siege: Seat)
 		-- Fondu depuis le noir, puis le survol de la map
 		noirDepart.BackgroundTransparency = 0
 		TweenService:Create(noirDepart, TweenInfo.new(0.6), { BackgroundTransparency = 1 }):Play()
-		message("✦ " .. survol.nom .. " ✦", Color3.fromRGB(255, 215, 80), 2.2)
-		task.delay(DUREE_SURVOL, function()
-			message("★ EN PLACE SUR LA LIGNE ! ★", Color3.new(1, 1, 1), 1)
-		end)
+		if not court then
+			message("✦ " .. survol.nom .. " ✦", Color3.fromRGB(255, 215, 80), 2.2)
+			task.delay(DUREE_SURVOL, function()
+				message("★ EN PLACE SUR LA LIGNE ! ★", Color3.new(1, 1, 1), 1)
+			end)
+		end
 	end
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
@@ -923,7 +926,9 @@ RunService.Heartbeat:Connect(function(dt: number)
 	end
 	if depart then
 		local t = os.clock() - depart.debut
-		local tCompte = t - DUREE_ANIM_DEPART -- 0 = début du compte à rebours
+		-- (départ court du Drift Battle : pas de survol, feux plus rapides)
+		local pas = if depart.court then 0.7 else 1
+		local tCompte = (t - (if depart.court then 0.3 else DUREE_ANIM_DEPART)) / pas -- 0 = début du compte à rebours
 		if tCompte >= 0 and depart.etape == 0 then
 			depart.etape = 1
 			afficherBandes(false)
