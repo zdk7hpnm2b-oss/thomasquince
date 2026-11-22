@@ -34,12 +34,12 @@
       <Item class="ModuleScript" referent="3">
         <Properties>
           <string name="Name">Config</string>
-          <string name="Source"><![CDATA[-- Salon Star : Coiffure Tycoon — configuration centrale.
+          <string name="Source"><![CDATA[-- Barber Legends — configuration centrale.
 -- Tout l'équilibrage (prix, gains, monétisation) se règle ici.
 
 local Config = {}
 
-Config.GameName = "Salon Star"
+Config.GameName = "Barber Legends"
 Config.DataStoreName = "SalonStar_v1"
 Config.LeaderboardStoreName = "SalonStar_TopEarned_v1"
 
@@ -56,6 +56,8 @@ Config.GamePasses = {
 	fastClients = { Id = 0, Name = "Clients Express", Icon = "⚡", Desc = "Les clients arrivent 40% plus vite" },
 	neonColors = { Id = 0, Name = "Couleurs Néon", Icon = "🌈", Desc = "Teintures néon et arc-en-ciel : les clients paient x3" },
 	premiumStyles = { Id = 0, Name = "Coiffures de Luxe", Icon = "💎", Desc = "Coupes Royale et Sirène + Couronne : les mieux payées du jeu" },
+	seasonPass = { Id = 0, Name = "Barber Pass Gold", Icon = "🎟️", Desc = "Débloque la piste Gold de la saison : x3 récompenses + teintures exclusives" },
+	battlePro = { Id = 0, Name = "Battle Pro", Icon = "⚔️", Desc = "Gains de Battle x2 et +15 s de temps pour coiffer" },
 	autoStylist = { Id = 0, Name = "Styliste Star", Icon = "🤖", Desc = "+2 stylistes gratuits qui coiffent pour toi, même hors ligne" },
 	bigTips = { Id = 0, Name = "Gros Pourboires", Icon = "🪙", Desc = "Pourboires x2 sur les coiffures parfaites" },
 }
@@ -69,7 +71,9 @@ Config.Products = {
 	cashHuge = { Id = 0, Name = "Empire", Icon = "🏰", Minutes = 720, Min = 400000, Kind = "cash" },
 	rushHour = { Id = 0, Name = "Heure de Pointe (serveur)", Icon = "🔥", Kind = "rush", Desc = "Tout le serveur : clients x2 et paie x2 pendant 15 min" },
 	celebrity = { Id = 0, Name = "Client Célébrité", Icon = "🌟", Kind = "celebrity", Desc = "Une star arrive dans ton salon et paie x10" },
-	starterPack = { Id = 0, Name = "Pack Débutant", Icon = "🎁", Kind = "starter", Desc = "25 000 $ + Coupe Bouclée + Teintures Fantaisie (une seule fois)" },
+	passSkip = { Id = 0, Name = "+5 paliers de Pass", Icon = "⏩", Kind = "passSkip", Desc = "Avance de 5 paliers dans le Barber Pass" },
+	viralBoost = { Id = 0, Name = "Boost Viral", Icon = "🚀", Kind = "viral", Desc = "Ta prochaine publication BarberTok est épinglée en tête pendant 10 min" },
+	starterPack = { Id = 0, Name = "Pack Débutant", Icon = "🎁", Kind = "starter", Desc = "25 000 $ + Twists + Tondeuse Pro + Teintures Fantaisie (une seule fois)" },
 }
 
 Config.RushDuration = 15 * 60
@@ -78,21 +82,62 @@ Config.RushMultiplier = 2
 ---------------------------------------------------------------------
 -- COIFFURES
 ---------------------------------------------------------------------
-export type StyleDef = { Id: string, Name: string, Icon: string, Value: number, Cost: number, Pass: string? }
+export type StyleDef = { Id: string, Name: string, Icon: string, Value: number, Cost: number, Pass: string?, Fade: boolean?, Trend: boolean?, Gender: string }
 
+-- Fade = true : côtés courts, compatible avec les dégradés.
+-- Trend = true : coupe tendance sur TikTok en 2026 (les clients la demandent 2x plus, badge 🔥).
+-- Gender : "H" homme, "F" femme, "U" mixte (les clients et clientes demandent selon leur genre).
+-- Ordre = du moins cher au plus cher.
 Config.Styles = {
-	{ Id = "pixie", Name = "Garçonne", Icon = "✂️", Value = 1, Cost = 0 },
-	{ Id = "lisse", Name = "Lisse", Icon = "💇", Value = 1.3, Cost = 0 },
-	{ Id = "queue", Name = "Queue de cheval", Icon = "🎀", Value = 1.8, Cost = 350 },
-	{ Id = "boucle", Name = "Bouclée", Icon = "🌀", Value = 2.5, Cost = 1800 },
-	{ Id = "chignon", Name = "Chignon", Icon = "🍩", Value = 3.4, Cost = 7500 },
-	{ Id = "couettes", Name = "Couettes", Icon = "👧", Value = 4.8, Cost = 25000 },
-	{ Id = "tresses", Name = "Tresses", Icon = "🪢", Value = 7, Cost = 90000 },
-	{ Id = "afro", Name = "Afro", Icon = "☁️", Value = 10, Cost = 320000 },
-	{ Id = "crete", Name = "Crête Punk", Icon = "🦔", Value = 15, Cost = 1200000 },
-	{ Id = "sirene", Name = "Sirène", Icon = "🧜", Value = 24, Cost = 0, Pass = "premiumStyles" },
-	{ Id = "royal", Name = "Royale", Icon = "👸", Value = 32, Cost = 0, Pass = "premiumStyles" },
+	{ Id = "pixie", Name = "Coupe courte", Icon = "✂️", Value = 1, Cost = 0, Fade = true, Gender = "U" },
+	{ Id = "buzz", Name = "Buzz cut", Icon = "🪒", Value = 1.1, Cost = 0, Fade = true, Trend = true, Gender = "H" },
+	{ Id = "lisse", Name = "Lisse", Icon = "💇", Value = 1.3, Cost = 0, Gender = "F" },
+	{ Id = "frenchcrop", Name = "French crop", Icon = "🥖", Value = 1.5, Cost = 300, Fade = true, Trend = true, Gender = "H" },
+	{ Id = "queue", Name = "Queue de cheval", Icon = "🎀", Value = 1.8, Cost = 500, Gender = "F" },
+	{ Id = "curtain", Name = "Curtain hair", Icon = "🎭", Value = 2, Cost = 900, Fade = true, Trend = true, Gender = "H" },
+	{ Id = "waves", Name = "Waves 360", Icon = "🌊", Value = 2.2, Cost = 1300, Fade = true, Gender = "H" },
+	{ Id = "pixieboucle", Name = "Pixie bouclé", Icon = "🌸", Value = 2.4, Cost = 1500, Trend = true, Gender = "F" },
+	{ Id = "boucle", Name = "Bouclée", Icon = "🌀", Value = 2.5, Cost = 1800, Gender = "F" },
+	{ Id = "twists", Name = "Twists", Icon = "🧽", Value = 2.8, Cost = 4000, Fade = true, Trend = true, Gender = "U" },
+	{ Id = "edgar", Name = "Edgar cut", Icon = "📏", Value = 3.1, Cost = 6000, Fade = true, Trend = true, Gender = "H" },
+	{ Id = "chignon", Name = "Chignon", Icon = "🍩", Value = 3.4, Cost = 7500, Gender = "F" },
+	{ Id = "frangerideau", Name = "Frange rideau", Icon = "🪟", Value = 3.6, Cost = 9000, Trend = true, Gender = "F" },
+	{ Id = "bob", Name = "Bob italien", Icon = "🇮🇹", Value = 3.8, Cost = 11000, Trend = true, Gender = "F" },
+	{ Id = "cornrows", Name = "Nattes collées", Icon = "〰️", Value = 4.2, Cost = 15000, Fade = true, Gender = "U" },
+	{ Id = "mullet", Name = "Mulet moderne", Icon = "🦅", Value = 4.6, Cost = 22000, Fade = true, Trend = true, Gender = "U" },
+	{ Id = "couettes", Name = "Couettes", Icon = "👧", Value = 5, Cost = 30000, Gender = "F" },
+	{ Id = "wolfcut", Name = "Wolf cut", Icon = "🐺", Value = 5.8, Cost = 45000, Trend = true, Gender = "U" },
+	{ Id = "blowout", Name = "Brushing volume", Icon = "💨", Value = 6.2, Cost = 55000, Trend = true, Gender = "F" },
+	{ Id = "locs", Name = "Dreadlocks", Icon = "🦁", Value = 6.5, Cost = 65000, Fade = true, Gender = "U" },
+	{ Id = "butterfly", Name = "Butterfly cut", Icon = "🦋", Value = 7.5, Cost = 100000, Trend = true, Gender = "F" },
+	{ Id = "tresses", Name = "Tresses", Icon = "🪢", Value = 9, Cost = 150000, Gender = "F" },
+	{ Id = "afro", Name = "Afro", Icon = "☁️", Value = 11, Cost = 350000, Fade = true, Gender = "U" },
+	{ Id = "crete", Name = "Crête Punk", Icon = "🦔", Value = 15, Cost = 1200000, Gender = "U" },
+	{ Id = "sirene", Name = "Sirène", Icon = "🧜", Value = 24, Cost = 0, Pass = "premiumStyles", Gender = "F" },
+	{ Id = "royal", Name = "Royale", Icon = "👸", Value = 32, Cost = 0, Pass = "premiumStyles", Gender = "F" },
 } :: { StyleDef }
+
+-- Dégradés : demandent la « Tondeuse Pro » (sauf « Sans dégradé »).
+-- Bands = transparence de chaque bande, de la tempe vers la nuque.
+-- Burst = le dégradé tourne autour de l'oreille, la nuque reste pleine.
+Config.Fades = {
+	{ Id = "aucun", Name = "Sans dégradé", Icon = "⬛", Mult = 1, Bands = { 0, 0, 0, 0, 0 } },
+	{ Id = "taper", Name = "Taper", Icon = "🔻", Mult = 1.15, Bands = { 0, 0, 0.1, 0.45, 0.9 }, Trend = true },
+	{ Id = "bas", Name = "Dégradé bas", Icon = "▁", Mult = 1.2, Bands = { 0, 0.08, 0.3, 0.6, 0.85 } },
+	{ Id = "moyen", Name = "Dégradé moyen", Icon = "▄", Mult = 1.25, Bands = { 0.1, 0.4, 0.65, 0.85, 0.96 } },
+	{ Id = "haut", Name = "Dégradé haut", Icon = "█", Mult = 1.3, Bands = { 0.45, 0.7, 0.88, 0.97, 1 } },
+	{ Id = "blanc", Name = "Dégradé à blanc", Icon = "⚪", Mult = 1.35, Bands = { 0.55, 0.85, 0.97, 1, 1 }, Trend = true },
+	{ Id = "burst", Name = "Burst fade", Icon = "💥", Mult = 1.4, Bands = { 0.15, 0.55, 0.85, 0.97, 1 }, Burst = true, Trend = true },
+}
+Config.ClippersCost = 2500
+
+Config.Beards = {
+	{ Id = "aucune", Name = "Sans barbe", Icon = "🙂", Mult = 1, Cost = 0 },
+	{ Id = "trois", Name = "Barbe de 3 jours", Icon = "🧔", Mult = 1.1, Cost = 0 },
+	{ Id = "bouc", Name = "Bouc", Icon = "🐐", Mult = 1.2, Cost = 1200 },
+	{ Id = "collier", Name = "Collier", Icon = "📿", Mult = 1.3, Cost = 8000 },
+	{ Id = "pleine", Name = "Barbe pleine", Icon = "🧔‍♂️", Mult = 1.45, Cost = 30000 },
+}
 
 Config.Lengths = {
 	{ Id = 1, Name = "Court", Mult = 1 },
@@ -120,9 +165,14 @@ Config.Colors = {
 	{ Id = "violet", Name = "Lavande", Color = Color3.fromRGB(160, 110, 240), Value = 1.6, Tier = "fantasy" },
 	{ Id = "menthe", Name = "Menthe", Color = Color3.fromRGB(110, 230, 180), Value = 1.6, Tier = "fantasy" },
 	{ Id = "platine", Name = "Platine", Color = Color3.fromRGB(240, 240, 250), Value = 1.6, Tier = "fantasy" },
+	{ Id = "cendre", Name = "Blond cendré", Color = Color3.fromRGB(205, 198, 182), Value = 1.6, Tier = "fantasy" },
+	{ Id = "cerise", Name = "Rouge cerise", Color = Color3.fromRGB(150, 16, 52), Value = 1.6, Tier = "fantasy", Trend = true },
 	{ Id = "neonrose", Name = "Néon Rose", Color = Color3.fromRGB(255, 60, 180), Value = 3, Tier = "neon", Material = Enum.Material.Neon },
 	{ Id = "neoncyan", Name = "Néon Cyan", Color = Color3.fromRGB(40, 240, 255), Value = 3, Tier = "neon", Material = Enum.Material.Neon },
 	{ Id = "or", Name = "Or Pur", Color = Color3.fromRGB(255, 200, 60), Value = 3, Tier = "neon", Material = Enum.Material.Foil },
+	{ Id = "orrose", Name = "Or rose", Color = Color3.fromRGB(240, 170, 160), Value = 3.2, Tier = "season", Material = Enum.Material.Foil },
+	{ Id = "chrome", Name = "Chrome", Color = Color3.fromRGB(215, 220, 230), Value = 3.4, Tier = "season", Material = Enum.Material.Foil },
+	{ Id = "galaxie", Name = "Galaxie", Color = Color3.fromRGB(90, 40, 200), Value = 4, Tier = "season", Material = Enum.Material.Neon },
 	{ Id = "arcenciel", Name = "Arc-en-ciel", Color = Color3.fromRGB(255, 80, 80), Value = 3.5, Tier = "neon", Material = Enum.Material.Neon, Rainbow = true },
 } :: { ColorDef }
 
@@ -133,7 +183,11 @@ Config.Accessories = {
 	{ Id = "aucun", Name = "Aucun", Icon = "🚫", Cost = 0 },
 	{ Id = "noeud", Name = "Nœud", Icon = "🎀", Cost = 0 },
 	{ Id = "barrette", Name = "Barrette", Icon = "📎", Cost = 900 },
+	{ Id = "trait", Name = "Trait rasé", Icon = "⚡", Cost = 2000, Trend = true },
+	{ Id = "pince", Name = "Pince crabe", Icon = "🦀", Cost = 2500, Trend = true },
+	{ Id = "oreille", Name = "Boucle d'oreille", Icon = "💎", Cost = 3500 },
 	{ Id = "fleur", Name = "Fleur", Icon = "🌸", Cost = 6000 },
+	{ Id = "chaine", Name = "Chaîne en or", Icon = "⛓️", Cost = 15000 },
 	{ Id = "couronne", Name = "Couronne", Icon = "👑", Cost = 0, Pass = "premiumStyles" },
 } :: { AccDef }
 
@@ -224,10 +278,64 @@ local function index(list, key)
 end
 
 Config.StyleById = index(Config.Styles, "Id")
+Config.FadeById = index(Config.Fades, "Id")
+Config.BeardById = index(Config.Beards, "Id")
 Config.ColorById = index(Config.Colors, "Id")
 Config.AccById = index(Config.Accessories, "Id")
 
-export type Look = { style: string, length: number, color: string, acc: string }
+export type Look = { style: string, length: number, fade: string, beard: string, color: string, acc: string }
+
+---------------------------------------------------------------------
+-- BARBER PASS (saison de 30 paliers, piste gratuite + piste Gold payante)
+---------------------------------------------------------------------
+Config.Season = 1 -- change ce numéro pour lancer une nouvelle saison (remet les paliers à zéro)
+Config.SeasonName = "Saison 1 : Fresh Cut"
+Config.PassTiers = 30
+Config.PassXpPerTier = 120
+Config.Xp = { Cut = 10, Perfect = 10, Battle = 40, BattleWin = 100, Like = 15, Post = 5 }
+-- Récompenses : argent = X minutes de gains. Teintures « season » débloquées sur la piste Gold.
+Config.PassRewards = {}
+for tier = 1, 30 do
+	local free = { Kind = "cash", Minutes = 2 + tier }
+	local gold = { Kind = "cash", Minutes = (2 + tier) * 3 }
+	if tier == 10 then
+		gold = { Kind = "color", Id = "orrose" }
+	elseif tier == 20 then
+		gold = { Kind = "color", Id = "chrome" }
+	elseif tier == 30 then
+		gold = { Kind = "color", Id = "galaxie" }
+	end
+	if tier % 5 == 0 then
+		free.Minutes *= 3
+	end
+	Config.PassRewards[tier] = { Free = free, Gold = gold }
+end
+
+---------------------------------------------------------------------
+-- BARBERTOK (réseau social du jeu : avant/après, likes, abonnés)
+---------------------------------------------------------------------
+Config.BarberTok = {
+	MinScoreToPost = 0.9, -- coupe de client publiée si ressemblance >= 90 %
+	PostCooldown = 45, -- secondes entre deux publications d'un même joueur
+	MaxPosts = 30,
+	ViralLikes = 3, -- likes minimum pour devenir viral (ou la moitié du serveur)
+	ViralBonusMinutes = 10,
+	FollowerBoost = 0.002, -- +0.2 % d'argent par abonné…
+	FollowerBoostMax = 0.5, -- …jusqu'à +50 %
+}
+
+---------------------------------------------------------------------
+-- BATTLE DE BARBIERS (sur la scène, toutes les quelques minutes)
+---------------------------------------------------------------------
+Config.Battle = {
+	Interval = 210, -- secondes entre deux battles
+	Lobby = 25, -- temps pour s'inscrire
+	Duration = 70, -- temps pour coiffer
+	Vote = 15, -- vote du public
+	MaxPlayers = 4,
+	PrizeMinutes = 15, -- prix du vainqueur = 15 min de gains…
+	PrizeMin = 3000, -- …avec un minimum
+}
 
 return Config
 ]]></string>
@@ -245,7 +353,7 @@ local Config = require(script.Parent.Config)
 
 local HairBuilder = {}
 
-local DEFAULT_LOOK = { style = "lisse", length = 2, color = "brun", acc = "aucun" }
+local DEFAULT_LOOK = { style = "pixie", length = 2, fade = "aucun", beard = "aucune", color = "brun", acc = "aucun" }
 
 local function darken(c: Color3, f: number): Color3
 	return Color3.new(c.R * f, c.G * f, c.B * f)
@@ -258,6 +366,8 @@ type Ctx = {
 	color: Color3,
 	material: Enum.Material,
 	rainbow: boolean,
+	topOnly: boolean, -- coupe à dégradé : on ne construit que le dessus, les côtés sont des bandes
+	fade: string,
 }
 
 local function addPart(ctx: Ctx, kind: string, size: Vector3, offset: CFrame, color: Color3?, material: Enum.Material?, noRainbow: boolean?): BasePart
@@ -311,7 +421,9 @@ end
 
 -- Le dessus du crâne (présent dans presque toutes les coupes)
 local function cap(ctx, tight: boolean?)
-	if tight then
+	if ctx.topOnly then
+		E(ctx, Vector3.new(1.26, 0.62, 1.3), 0, 0.4, 0.06)
+	elseif tight then
 		E(ctx, Vector3.new(1.27, 0.72, 1.3), 0, 0.3, 0.06)
 	else
 		E(ctx, Vector3.new(1.34, 0.8, 1.38), 0, 0.32, 0.07)
@@ -325,15 +437,10 @@ end
 local Styles = {}
 
 function Styles.pixie(ctx, length)
-	cap(ctx, true)
-	E(ctx, Vector3.new(1.05, 0.28, 0.45), 0.12, 0.45, -0.48, -15, 0, -8)
-	if length >= 2 then
-		E(ctx, Vector3.new(1.2, 0.5, 0.5), 0, 0.05, 0.5)
-	end
-	if length >= 3 then
-		E(ctx, Vector3.new(0.3, 0.6, 0.6), 0.6, 0.0, 0.0)
-		E(ctx, Vector3.new(0.3, 0.6, 0.6), -0.6, 0.0, 0.0)
-	end
+	cap(ctx)
+	-- Le volume du dessus grandit avec la longueur
+	E(ctx, Vector3.new(1.1, 0.25 + 0.12 * length, 1.1), 0, 0.62 + 0.04 * length, 0.02)
+	E(ctx, Vector3.new(1.0, 0.24, 0.45), 0.12, 0.5, -0.46, -15, 0, -8)
 end
 
 function Styles.lisse(ctx, length)
@@ -417,11 +524,17 @@ end
 
 function Styles.afro(ctx, length)
 	local d = 1.75 + 0.3 * length
-	E(ctx, Vector3.new(d, d * 0.9, d), 0, 0.45, 0.18)
+	local y = 0.45
+	if ctx.fade ~= "aucun" then
+		-- Afro avec dégradé : plus compact et remonté
+		d *= 0.82
+		y = 0.62
+	end
+	E(ctx, Vector3.new(d, d * 0.9, d), 0, y, 0.18)
 	for i = 0, 13 do
 		local a = (i / 14) * math.pi * 2
 		local b = (i % 2 == 0) and 0.2 or 0.55
-		B(ctx, 0.55, math.sin(a) * d * 0.45, 0.45 + b * d * 0.35, math.cos(a) * d * 0.45 + 0.18)
+		B(ctx, 0.55, math.sin(a) * d * 0.45, y + b * d * 0.35, math.cos(a) * d * 0.45 + 0.18)
 	end
 end
 
@@ -431,6 +544,197 @@ function Styles.crete(ctx, length)
 	for i = 0, 5 do
 		local z = -0.5 + i * 0.22
 		addPart(ctx, "wedge", Vector3.new(0.22, h * (1 - math.abs(i - 2.5) * 0.08), 0.42), CFrame.new(0, 0.6 + h / 2, z) * CFrame.Angles(math.rad(-20), 0, 0))
+	end
+end
+
+function Styles.buzz(ctx, _length)
+	local p = E(ctx, Vector3.new(1.25, 0.6, 1.29), 0, 0.4, 0.06)
+	p.Transparency = 0.1
+end
+
+function Styles.waves(ctx, length)
+	cap(ctx)
+	-- Ondulations concentriques sur le dessus
+	for i = 1, 3 + length do
+		local t = i / (4 + length)
+		local r = 1.24 * (1 - t * 0.8)
+		addPart(ctx, "ellipsoid", Vector3.new(r, 0.04, r * 1.03), CFrame.new(0, 0.4 + 0.3 * math.sqrt(1 - (1 - t) ^ 2) + 0.02, 0.06), darken(ctx.color, 0.6))
+	end
+end
+
+function Styles.twists(ctx, length)
+	cap(ctx)
+	-- Petites mèches torsadées (éponge) sur tout le dessus
+	local h = ({ 1, 2, 3 })[length]
+	for ring = 0, 3 do
+		local r = ring * 0.17
+		local count = ring == 0 and 1 or ring * 6
+		for i = 0, count - 1 do
+			local a = (i / count) * math.pi * 2 + ring * 0.4
+			local x, z = math.sin(a) * r, math.cos(a) * r + 0.06
+			local y = 0.62 + 0.28 * math.sqrt(math.max(0, 1 - (r / 0.62) ^ 2))
+			for k = 0, h - 1 do
+				B(ctx, 0.22 - k * 0.02, x * (1 + k * 0.08), y + k * 0.15, z * (1 + k * 0.08))
+			end
+		end
+	end
+end
+
+function Styles.cornrows(ctx, length)
+	cap(ctx)
+	for i = -3, 3 do
+		local x = i * 0.15
+		local y = 0.62 + 0.18 * (1 - (x / 0.6) ^ 2)
+		addPart(ctx, "cylinder", Vector3.new(1.1, 0.11, 0.11), CFrame.new(x, y, 0.08) * CFrame.Angles(0, math.rad(90), 0), darken(ctx.color, 0.65))
+	end
+	if length >= 2 then
+		for _, side in { -1, 1 } do
+			for k = 1, length * 2 do
+				B(ctx, 0.2, side * 0.18, 0.15 - k * 0.22, 0.62)
+			end
+		end
+	end
+end
+
+function Styles.locs(ctx, length)
+	cap(ctx)
+	local L = ({ 0.7, 1.4, 2.2 })[length]
+	for i = 0, 15 do
+		local a = math.rad(-150 + i * 20) -- autour de la tête, pas devant le visage
+		local x, z = math.sin(a) * 0.5, math.cos(a) * 0.5 + 0.1
+		local tilt = CFrame.Angles(math.cos(a) * 0.15, 0, -math.sin(a) * 0.15)
+		addPart(ctx, "cylinder", Vector3.new(L, 0.17, 0.17), CFrame.new(x * 1.15, 0.62 - L / 2, z * 1.15) * tilt * CFrame.Angles(0, 0, math.rad(90)))
+	end
+	for i = 0, 9 do
+		local a = i / 10 * math.pi * 2
+		addPart(ctx, "cylinder", Vector3.new(0.5, 0.17, 0.17), CFrame.new(math.sin(a) * 0.3, 0.8, math.cos(a) * 0.3 + 0.06) * CFrame.Angles(0, -a, math.rad(90 + 35)))
+	end
+end
+
+-- ===== Tendances 2026 =====
+
+function Styles.frenchcrop(ctx, length)
+	cap(ctx)
+	-- Dessus texturé en petites mèches irrégulières + frange courte droite
+	for i = 0, 15 do
+		local a = i * 2.4
+		local r = 0.12 + (i % 4) * 0.11
+		B(ctx, 0.26 + 0.03 * length, math.sin(a) * r, 0.7 + 0.05 * length - r * 0.25, math.cos(a) * r + 0.08)
+	end
+	E(ctx, Vector3.new(1.0, 0.2, 0.28), 0, 0.5, -0.54, -10, 0, 0)
+end
+
+function Styles.edgar(ctx, length)
+	cap(ctx)
+	-- Dessus plat et frange coupée bien droite (la ligne « Edgar »)
+	E(ctx, Vector3.new(1.18, 0.35 + 0.08 * length, 1.2), 0, 0.68, 0.04)
+	addPart(ctx, "block", Vector3.new(1.08, 0.24, 0.16), CFrame.new(0, 0.48, -0.58))
+end
+
+function Styles.curtain(ctx, length)
+	cap(ctx)
+	E(ctx, Vector3.new(1.15, 0.4, 1.15), 0, 0.68, 0.06)
+	-- Raie au milieu : deux mèches qui retombent sur les côtés du front
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.55, 0.5 + 0.15 * length, 0.26), side * 0.33, 0.36 - 0.05 * length, -0.55, 0, side * -10, side * 28)
+	end
+end
+
+function Styles.mullet(ctx, length)
+	cap(ctx)
+	for i = 0, 9 do
+		local a = i * 2.4
+		local r = 0.1 + (i % 3) * 0.14
+		B(ctx, 0.32, math.sin(a) * r, 0.72 - r * 0.2, math.cos(a) * r + 0.05)
+	end
+	-- Court devant, long derrière
+	local L = ({ 0.8, 1.3, 1.9 })[length]
+	E(ctx, Vector3.new(0.95, L, 0.42), 0, 0.15 - L / 2, 0.55)
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.3, L * 0.8, 0.3), side * 0.36, 0.1 - L * 0.4, 0.48, 0, 0, side * 8)
+	end
+end
+
+function Styles.wolfcut(ctx, length)
+	cap(ctx)
+	-- Coupe dégradée en couches « shaggy » + frange rideau
+	local rows = length + 1
+	for row = 0, rows do
+		for i = 0, 9 do
+			local a = math.rad(-140 + i * 31)
+			local r = 0.66 + row * 0.02
+			E(ctx, Vector3.new(0.34, 0.55, 0.3), math.sin(a) * r, 0.35 - row * 0.34, math.cos(a) * r + 0.06, 0, math.deg(a), (i % 2 == 0) and 12 or -12)
+		end
+	end
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.5, 0.55, 0.24), side * 0.3, 0.32, -0.55, 0, 0, side * 25)
+	end
+end
+
+function Styles.butterfly(ctx, length)
+	cap(ctx)
+	-- Couches volumineuses qui s'envolent vers l'extérieur
+	local L = ({ 1.0, 1.7, 2.5 })[length]
+	E(ctx, Vector3.new(1.35, L, 0.6), 0, 0.42 - L / 2, 0.42)
+	for layer = 0, length do
+		local y = 0.3 - layer * 0.5
+		for _, side in { -1, 1 } do
+			E(ctx, Vector3.new(0.42, 0.7, 0.85), side * (0.66 + layer * 0.05), y, 0.08, 0, 0, side * (18 + layer * 6))
+		end
+	end
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.5, 0.6, 0.25), side * 0.34, 0.3, -0.54, 0, 0, side * 30)
+	end
+end
+
+function Styles.bob(ctx, length)
+	cap(ctx)
+	local H = 0.9 + 0.12 * length
+	E(ctx, Vector3.new(1.42, H, 0.72), 0, 0.45 - H / 2, 0.32)
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.38, H, 1.05), side * 0.62, 0.45 - H / 2, -0.04)
+		-- pointes légèrement recourbées vers la mâchoire
+		E(ctx, Vector3.new(0.3, 0.18, 0.5), side * 0.55, 0.45 - H + 0.05, -0.3, 0, 0, side * -30)
+	end
+	if length >= 2 then
+		addPart(ctx, "block", Vector3.new(1.0, 0.2, 0.14), CFrame.new(0, 0.44, -0.58))
+	end
+end
+
+function Styles.pixieboucle(ctx, length)
+	cap(ctx, true)
+	for i = 0, 13 + length * 3 do
+		local a = i * 2.4
+		local r = 0.2 + (i % 4) * 0.12
+		B(ctx, 0.3 + 0.03 * length, math.sin(a) * r, 0.62 - r * 0.25 + (i % 2) * 0.06, math.cos(a) * r + 0.06)
+	end
+	for _, side in { -1, 1 } do
+		B(ctx, 0.3, side * 0.6, 0.15, 0.05)
+	end
+end
+
+function Styles.frangerideau(ctx, length)
+	Styles.lisse(ctx, length)
+	-- Frange rideau : ouverte au milieu, plus longue sur les côtés
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.5, 0.42, 0.22), side * 0.3, 0.34, -0.58, 0, 0, side * 22)
+	end
+end
+
+function Styles.blowout(ctx, length)
+	cap(ctx)
+	-- Brushing ultra volumineux style années 90 : grosses boucles vers l'extérieur
+	local L = ({ 1.1, 1.7, 2.3 })[length]
+	E(ctx, Vector3.new(1.5, 0.6, 1.5), 0, 0.62, 0.08)
+	for i = 0, 11 do
+		local a = math.rad(-150 + i * 27)
+		for k = 0, length do
+			local y = 0.3 - k * (L / (length + 1))
+			B(ctx, 0.62, math.sin(a) * (0.72 + k * 0.06), y, math.cos(a) * (0.72 + k * 0.06) + 0.06)
+		end
+	end
+	for _, side in { -1, 1 } do
+		E(ctx, Vector3.new(0.55, 0.5, 0.3), side * 0.36, 0.42, -0.55, 0, 0, side * 32)
 	end
 end
 
@@ -472,6 +776,81 @@ function Styles.royal(ctx, length)
 	sparkle.Parent = glow
 end
 
+-- Côtés et nuque : 5 bandes dont la transparence crée le dégradé.
+local function fadeBands(ctx, fadeId: string)
+	local fade = Config.FadeById[fadeId] or Config.FadeById.aucun
+	local r = 0.635
+	local bandH = 0.13
+	local steps = 13
+	local span = math.rad(250) -- de tempe à tempe en passant par la nuque
+	for b, transparency in fade.Bands do
+		if transparency < 0.99 then
+			local y = 0.2 - (b - 0.5) * bandH
+			local rr = r * (1 - 0.04 * b) -- la tête se resserre vers la nuque
+			for i = 0, steps - 1 do
+				local a = -span / 2 + (i + 0.5) * span / steps
+				local t = transparency
+				if fade.Burst then
+					-- Burst : fort autour de l'oreille, nul à la nuque
+					t = transparency * math.clamp(math.abs(math.sin(a)) * 1.3, 0, 1)
+				end
+				if t >= 0.99 then
+					continue
+				end
+				local w = 2 * rr * math.sin(span / steps / 2) + 0.03
+				local p = addPart(ctx, "block", Vector3.new(w, bandH + 0.01, 0.06), CFrame.new(math.sin(a) * rr, y, math.cos(a) * rr + 0.04) * CFrame.Angles(0, a, 0))
+				p.Transparency = t
+				p.CastShadow = false
+			end
+		end
+	end
+	-- Contour net (line-up) au front et aux tempes
+	if fadeId ~= "aucun" then
+		local edge = darken(ctx.color, 0.5)
+		addPart(ctx, "block", Vector3.new(0.92, 0.05, 0.05), CFrame.new(0, 0.38, -0.6) * CFrame.Angles(math.rad(-12), 0, 0), edge, Enum.Material.SmoothPlastic, true)
+		for _, side in { -1, 1 } do
+			addPart(ctx, "block", Vector3.new(0.05, 0.2, 0.3), CFrame.new(side * 0.58, 0.3, -0.42) * CFrame.Angles(0, side * math.rad(25), 0), edge, Enum.Material.SmoothPlastic, true)
+		end
+	end
+end
+
+local Beards = {}
+
+local function mustache(ctx, c)
+	addPart(ctx, "ellipsoid", Vector3.new(0.5, 0.1, 0.16), CFrame.new(0, -0.14, -0.6), c, Enum.Material.SmoothPlastic, true)
+end
+
+function Beards.trois(ctx, c)
+	local p = addPart(ctx, "ellipsoid", Vector3.new(1.2, 0.62, 1.12), CFrame.new(0, -0.3, -0.04), c, Enum.Material.SmoothPlastic, true)
+	p.Transparency = 0.55
+	p.CastShadow = false
+end
+
+function Beards.bouc(ctx, c)
+	mustache(ctx, c)
+	addPart(ctx, "ellipsoid", Vector3.new(0.42, 0.38, 0.3), CFrame.new(0, -0.48, -0.5), c, Enum.Material.SmoothPlastic, true)
+end
+
+function Beards.collier(ctx, c)
+	for i = 0, 10 do
+		local a = math.rad(-95 + i * 19)
+		local y = -0.45 + 0.25 * math.abs(math.sin(a)) ^ 2
+		addPart(ctx, "block", Vector3.new(0.2, 0.16, 0.1), CFrame.new(math.sin(a) * 0.6, y, -math.cos(a) * 0.55 + 0.02) * CFrame.Angles(0, -a, 0), c, Enum.Material.SmoothPlastic, true)
+	end
+	for _, side in { -1, 1 } do
+		addPart(ctx, "block", Vector3.new(0.08, 0.5, 0.22), CFrame.new(side * 0.61, -0.02, -0.02), c, Enum.Material.SmoothPlastic, true)
+	end
+end
+
+function Beards.pleine(ctx, c)
+	mustache(ctx, c)
+	addPart(ctx, "ellipsoid", Vector3.new(1.24, 0.82, 1.02), CFrame.new(0, -0.48, -0.12), c, Enum.Material.SmoothPlastic, true)
+	addPart(ctx, "ellipsoid", Vector3.new(0.75, 0.5, 0.5), CFrame.new(0, -0.78, -0.38), c, Enum.Material.SmoothPlastic, true)
+	for _, side in { -1, 1 } do
+		addPart(ctx, "block", Vector3.new(0.1, 0.55, 0.32), CFrame.new(side * 0.6, -0.02, -0.02), c, Enum.Material.SmoothPlastic, true)
+	end
+end
+
 local Accessories = {}
 
 function Accessories.noeud(ctx)
@@ -494,6 +873,36 @@ function Accessories.fleur(ctx)
 	addPart(ctx, "ball", Vector3.new(0.14, 0.14, 0.14), center * CFrame.new(0, 0, -0.04), Color3.fromRGB(255, 220, 80), Enum.Material.Neon)
 end
 
+function Accessories.chaine(ctx)
+	local gold = Color3.fromRGB(255, 205, 80)
+	for i = 0, 17 do
+		local a = i / 18 * math.pi * 2
+		local drop = math.max(0, -math.cos(a)) * 0.35 -- pend vers l'avant
+		addPart(ctx, "ball", Vector3.new(0.13, 0.13, 0.13), CFrame.new(math.sin(a) * 0.55, -0.95 - drop, math.cos(a) * 0.45), gold, Enum.Material.Foil, true)
+	end
+end
+
+function Accessories.trait(ctx)
+	-- Trait rasé (design de barbier) sur le côté : couleur de la peau
+	local skin = ctx.head.Color
+	for k = 0, 1 do
+		addPart(ctx, "block", Vector3.new(0.05, 0.035, 0.42), CFrame.new(0.655, 0.2 - k * 0.1, 0.1 + k * 0.06) * CFrame.Angles(math.rad(-15 - k * 10), 0, 0), skin, Enum.Material.SmoothPlastic, true)
+	end
+end
+
+function Accessories.pince(ctx)
+	-- Pince crabe écaille à l'arrière
+	local c = Color3.fromRGB(120, 72, 40)
+	addPart(ctx, "block", Vector3.new(0.5, 0.18, 0.14), CFrame.new(0, 0.42, 0.74), c, Enum.Material.Glass, true)
+	for i = -2, 2 do
+		addPart(ctx, "wedge", Vector3.new(0.06, 0.22, 0.12), CFrame.new(i * 0.1, 0.24, 0.72) * CFrame.Angles(math.rad(180), 0, 0), c, Enum.Material.Glass, true)
+	end
+end
+
+function Accessories.oreille(ctx)
+	addPart(ctx, "ball", Vector3.new(0.12, 0.12, 0.12), CFrame.new(0.64, -0.08, 0.02), Color3.fromRGB(230, 245, 255), Enum.Material.Neon, true)
+end
+
 function Accessories.couronne(ctx)
 	local gold = Color3.fromRGB(255, 200, 60)
 	local y = 0.78
@@ -511,6 +920,8 @@ function HairBuilder.Normalize(look: any): Config.Look
 	return {
 		style = Config.StyleById[look.style] and look.style or DEFAULT_LOOK.style,
 		length = (look.length == 1 or look.length == 2 or look.length == 3) and look.length or DEFAULT_LOOK.length,
+		fade = Config.FadeById[look.fade] and look.fade or DEFAULT_LOOK.fade,
+		beard = Config.BeardById[look.beard] and look.beard or DEFAULT_LOOK.beard,
 		color = Config.ColorById[look.color] and look.color or DEFAULT_LOOK.color,
 		acc = Config.AccById[look.acc] and look.acc or DEFAULT_LOOK.acc,
 	}
@@ -552,9 +963,18 @@ function HairBuilder.Apply(character: Model, look: any): Model?
 		color = colorDef.Color,
 		material = colorDef.Material or Enum.Material.SmoothPlastic,
 		rainbow = colorDef.Rainbow == true,
+		topOnly = Config.StyleById[look.style].Fade == true,
+		fade = look.fade,
 	}
 	local builder = Styles[look.style] or Styles.lisse
 	builder(ctx, look.length)
+	if ctx.topOnly then
+		fadeBands(ctx, look.fade)
+	end
+	local beard = Beards[look.beard]
+	if beard then
+		beard(ctx, colorDef.Material == Enum.Material.Neon and colorDef.Color or darken(colorDef.Color, 0.9))
+	end
 	-- Crâne rasé de la crête : couleur plus sombre
 	for _, p in model:GetChildren() do
 		if p:GetAttribute("Shaved") then
@@ -578,6 +998,8 @@ function HairBuilder.Apply(character: Model, look: any): Model?
 	model:SetAttribute("Length", look.length)
 	model:SetAttribute("Color", look.color)
 	model:SetAttribute("Acc", look.acc)
+	model:SetAttribute("Fade", look.fade)
+	model:SetAttribute("Beard", look.beard)
 	model.Parent = character
 	return model
 end
@@ -586,13 +1008,19 @@ end
 function HairBuilder.Score(request: Config.Look, look: Config.Look): number
 	local points = 0 -- sur 100 (entiers : pas d'erreur d'arrondi)
 	if request.style == look.style then
-		points += 40
+		points += 30
 	end
 	if request.length == look.length then
+		points += 10
+	end
+	if request.fade == look.fade then
+		points += 20
+	end
+	if request.beard == look.beard then
 		points += 20
 	end
 	if request.color == look.color then
-		points += 30
+		points += 10
 	end
 	if request.acc == look.acc then
 		points += 10
@@ -601,11 +1029,19 @@ function HairBuilder.Score(request: Config.Look, look: Config.Look): number
 end
 
 function HairBuilder.Describe(look: Config.Look): string
+	look = HairBuilder.Normalize(look)
 	local style = Config.StyleById[look.style]
 	local length = Config.Lengths[look.length]
 	local color = Config.ColorById[look.color]
 	local acc = Config.AccById[look.acc]
-	local parts = { style.Icon .. " " .. style.Name, length.Name, "🎨 " .. color.Name }
+	local parts = { style.Icon .. " " .. style.Name, length.Name }
+	if look.fade ~= "aucun" then
+		table.insert(parts, "🪒 " .. Config.FadeById[look.fade].Name)
+	end
+	if look.beard ~= "aucune" then
+		table.insert(parts, "🧔 " .. Config.BeardById[look.beard].Name)
+	end
+	table.insert(parts, "🎨 " .. color.Name)
 	if look.acc ~= "aucun" then
 		table.insert(parts, acc.Icon .. " " .. acc.Name)
 	end
@@ -681,6 +1117,678 @@ return Util
       </Properties>
       <Item class="ModuleScript" referent="8">
         <Properties>
+          <string name="Name">BarberTok</string>
+          <string name="Source"><![CDATA[-- BarberTok : le réseau social du jeu. Les belles coupes sont publiées en avant/après,
+-- les joueurs likent, l'auteur gagne des abonnés (= bonus d'argent permanent).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local HairBuilder = require(ReplicatedStorage.Shared.HairBuilder)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Data = require(script.Parent.Data)
+local Net = require(script.Parent.Net)
+local Progress = require(script.Parent.Progress)
+local Stats = require(script.Parent.Stats)
+local World = require(script.Parent.World)
+
+local T = Config.BarberTok
+local FIRE = Color3.fromRGB(255, 90, 140)
+
+local BarberTok = {}
+
+local posts: { any } = {}
+local likedBy: { [number]: { [number]: boolean } } = {}
+local lastPost: { [number]: number } = {}
+local pinNext: { [number]: boolean } = {}
+local nextId = 0
+
+local function ordered()
+	local now = os.time()
+	local list = table.clone(posts)
+	table.sort(list, function(a, b)
+		local pa, pb = (a.PinnedUntil or 0) > now, (b.PinnedUntil or 0) > now
+		if pa ~= pb then
+			return pa
+		end
+		return a.Id > b.Id
+	end)
+	return list
+end
+
+local function broadcast()
+	Net.Feed:FireAllClients(ordered())
+end
+
+function BarberTok.SendTo(player: Player)
+	Net.Feed:FireClient(player, ordered())
+end
+
+function BarberTok.Post(player: Player, before: any, after: any, caption: string): boolean
+	local profile = Data.Get(player)
+	if not profile then
+		return false
+	end
+	if os.clock() - (lastPost[player.UserId] or -1e9) < T.PostCooldown then
+		return false
+	end
+	lastPost[player.UserId] = os.clock()
+	nextId += 1
+	local post = {
+		Id = nextId,
+		Author = player.DisplayName,
+		AuthorId = player.UserId,
+		Before = HairBuilder.Normalize(before),
+		After = HairBuilder.Normalize(after),
+		Caption = caption,
+		Likes = 0,
+		Viral = false,
+		Time = os.time(),
+		PinnedUntil = 0,
+	}
+	if pinNext[player.UserId] then
+		pinNext[player.UserId] = nil
+		post.PinnedUntil = os.time() + 600
+	end
+	table.insert(posts, post)
+	likedBy[post.Id] = {}
+	-- On garde les plus récentes (et les épinglées)
+	while #posts > T.MaxPosts do
+		local oldest = 1
+		for i, p in posts do
+			if (p.PinnedUntil or 0) <= os.time() and p.Id < posts[oldest].Id then
+				oldest = i
+			end
+		end
+		likedBy[posts[oldest].Id] = nil
+		table.remove(posts, oldest)
+	end
+	profile.Posts += 1
+	Progress.AddXp(player, Config.Xp.Post)
+	Net.Notify:FireClient(player, { Type = "posted", Pinned = post.PinnedUntil > 0 })
+	broadcast()
+	return true
+end
+
+function BarberTok.Like(player: Player, postId: any): (boolean, string?)
+	local post
+	for _, p in posts do
+		if p.Id == postId then
+			post = p
+		end
+	end
+	if not post then
+		return false
+	end
+	if post.AuthorId == player.UserId then
+		return false, "C'est ta propre publication 😄"
+	end
+	local set = likedBy[post.Id]
+	if set[player.UserId] then
+		return false, "Déjà liké"
+	end
+	set[player.UserId] = true
+	post.Likes += 1
+	local author = Players:GetPlayerByUserId(post.AuthorId)
+	local aProfile = author and Data.Get(author)
+	if author and aProfile then
+		aProfile.Followers += 1
+		Progress.AddXp(author, Config.Xp.Like)
+		Stats.MarkDirty(author)
+		Net.Toast(author, "❤️ " .. player.DisplayName .. " aime ta coupe : +1 abonné !", "success")
+	end
+	local needed = math.max(T.ViralLikes, math.ceil(#Players:GetPlayers() / 2))
+	if not post.Viral and post.Likes >= needed then
+		post.Viral = true
+		Net.Announce("🔥 La coupe de " .. post.Author .. " est VIRALE sur BarberTok !", FIRE)
+		if author and aProfile then
+			local bonus = Stats.MinutesOfIncome(author, T.ViralBonusMinutes, 2000)
+			Stats.AddCash(author, bonus, false)
+			aProfile.Followers += 10
+			Net.Toast(author, "🔥 VIRAL ! +" .. Util.Money(bonus) .. " et +10 abonnés", "money")
+			Net.Notify:FireClient(author, { Type = "celebrate" })
+		end
+	end
+	broadcast()
+	return true
+end
+
+-- Produit Robux « Boost Viral » : la prochaine publication est épinglée 10 min.
+function BarberTok.PinNext(player: Player)
+	pinNext[player.UserId] = true
+	lastPost[player.UserId] = nil
+end
+
+function BarberTok.Init()
+	-- Écran géant BarberTok sur la place (le contenu est dessiné par chaque client)
+	local wall = World.Part({ Name = "BarberTokWall", Size = Vector3.new(13, 22, 1), CFrame = CFrame.new(0, 12, -42) * CFrame.Angles(0, math.pi, 0), Color = Color3.fromRGB(12, 10, 16) })
+	World.Part({ Name = "BarberTokFrame", Size = Vector3.new(14, 23, 0.8), CFrame = CFrame.new(0, 12, -42.4), Color = Color3.fromRGB(255, 60, 130), Material = Enum.Material.Neon })
+	for _, x in { -5, 5 } do
+		World.Part({ Name = "BarberTokLeg", Size = Vector3.new(1, 1.5, 1), Position = Vector3.new(x, 0.75, -42.4), Color = Color3.fromRGB(40, 36, 50), Material = Enum.Material.Metal })
+	end
+	wall:SetAttribute("BarberTok", true)
+	-- Mannequin utilisé par les clients pour afficher les avant/après
+	task.spawn(function()
+		local desc = Instance.new("HumanoidDescription")
+		local skin = Color3.fromRGB(190, 135, 100)
+		desc.HeadColor = skin
+		desc.LeftArmColor = skin
+		desc.RightArmColor = skin
+		desc.TorsoColor = Color3.fromRGB(30, 28, 36)
+		desc.LeftLegColor = Color3.fromRGB(30, 28, 36)
+		desc.RightLegColor = Color3.fromRGB(30, 28, 36)
+		local ok, model = pcall(function()
+			return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+		end)
+		if ok and model then
+			model.Name = "PostDummy"
+			for _, d in model:GetDescendants() do
+				if d:IsA("Script") or d:IsA("LocalScript") then
+					d:Destroy()
+				end
+			end
+			model.Parent = ReplicatedStorage
+		else
+			warn("[BarberTok] Mannequin impossible :", model)
+		end
+	end)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	lastPost[player.UserId] = nil
+	pinNext[player.UserId] = nil
+end)
+
+return BarberTok
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">Battle</string>
+          <string name="Source"><![CDATA[-- Battle de barbiers : tous les joueurs inscrits reproduisent la même coupe,
+-- en temps limité, puis le public vote. Précision + votes + vitesse = score.
+
+local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local HairBuilder = require(ReplicatedStorage.Shared.HairBuilder)
+local Util = require(ReplicatedStorage.Shared.Util)
+local BarberTok = require(script.Parent.BarberTok)
+local Data = require(script.Parent.Data)
+local Progress = require(script.Parent.Progress)
+local Net = require(script.Parent.Net)
+local Salons = require(script.Parent.Salons)
+local Stats = require(script.Parent.Stats)
+local World = require(script.Parent.World)
+
+local P = World.Part
+local B = Config.Battle
+local GOLD = Color3.fromRGB(255, 200, 70)
+local rng = Random.new()
+
+local Battle = {}
+
+local STAGE = Vector3.new(-238, 0, 0)
+local CHAIR_Z = { -18, -6, 6, 18 }
+
+local folder = Instance.new("Folder")
+folder.Name = "BattleStage"
+folder.Parent = Workspace
+
+local stations = {}
+local joinPrompt: ProximityPrompt
+local screenLabel: TextLabel
+local refDummy: Model? = nil
+
+local phase = "idle"
+local participants: { any } = {}
+local voted: { [Player]: boolean } = {}
+
+local function now()
+	return Workspace:GetServerTimeNow()
+end
+
+local function setPhase(name: string, duration: number)
+	phase = name
+	ReplicatedStorage:SetAttribute("BattlePhase", name)
+	ReplicatedStorage:SetAttribute("BattleEndsAt", now() + duration)
+end
+
+---------------------------------------------------------------------
+-- Construction de la scène
+---------------------------------------------------------------------
+local function build()
+	local wood = Color3.fromRGB(40, 30, 46)
+	P({ Name = "Stage", Size = Vector3.new(28, 3, 54), Position = STAGE + Vector3.new(0, 1.5, 0), Color = wood, Material = Enum.Material.WoodPlanks, Parent = folder })
+	P({ Name = "StageTrim", Size = Vector3.new(0.4, 0.4, 54), Position = STAGE + Vector3.new(14, 3, 0), Color = GOLD, Material = Enum.Material.Neon, Parent = folder })
+	for i = 0, 3 do
+		P({ Name = "Step", Size = Vector3.new(2, 0.75 * (i + 1), 16), Position = STAGE + Vector3.new(21 - i * 2, 0.375 * (i + 1), 0), Color = wood, Material = Enum.Material.WoodPlanks, Parent = folder })
+	end
+	-- Écran géant
+	local screen = P({ Name = "Screen", Size = Vector3.new(50, 18, 1), CFrame = CFrame.new(STAGE + Vector3.new(-13, 13, 0)) * CFrame.Angles(0, -math.pi / 2, 0), Color = Color3.fromRGB(15, 10, 22), Parent = folder })
+	P({ Name = "ScreenFrame", Size = Vector3.new(52, 20, 0.8), CFrame = CFrame.new(STAGE + Vector3.new(-13.4, 13, 0)) * CFrame.Angles(0, -math.pi / 2, 0), Color = GOLD, Material = Enum.Material.Foil, Parent = folder })
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 20
+	gui.LightInfluence = 0
+	gui.Brightness = 2
+	gui.Parent = screen
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.fromScale(1, 1)
+	bg.BorderSizePixel = 0
+	bg.Parent = gui
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new(Color3.fromRGB(120, 70, 10), Color3.fromRGB(40, 20, 50))
+	grad.Rotation = 90
+	grad.Parent = bg
+	screenLabel = Instance.new("TextLabel")
+	screenLabel.Size = UDim2.fromScale(0.94, 0.9)
+	screenLabel.Position = UDim2.fromScale(0.03, 0.05)
+	screenLabel.BackgroundTransparency = 1
+	screenLabel.Font = Enum.Font.FredokaOne
+	screenLabel.TextScaled = true
+	screenLabel.RichText = true
+	screenLabel.TextColor3 = Color3.new(1, 1, 1)
+	screenLabel.Text = "⚔️ BATTLE DE BARBIERS"
+	screenLabel.Parent = bg
+	-- Projecteurs
+	for _, z in { -24, 24 } do
+		local lamp = P({ Name = "Spot", Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2, 2), Position = STAGE + Vector3.new(4, 24, z), Color = Color3.fromRGB(255, 240, 210), Material = Enum.Material.Neon, Parent = folder })
+		local sl = Instance.new("SpotLight")
+		sl.Face = Enum.NormalId.Bottom
+		sl.Range = 40
+		sl.Angle = 70
+		sl.Brightness = 3
+		sl.Color = Color3.fromRGB(255, 230, 190)
+		sl.Parent = lamp
+		P({ Name = "Truss", Size = Vector3.new(0.8, 24, 0.8), Position = STAGE + Vector3.new(4, 12, z * 1.05), Color = Color3.fromRGB(60, 60, 70), Material = Enum.Material.DiamondPlate, Parent = folder })
+	end
+	-- Pupitre d'inscription
+	local podium = P({ Name = "JoinPodium", Size = Vector3.new(3, 4, 6), Position = STAGE + Vector3.new(26, 2, 0), Color = GOLD, Material = Enum.Material.Foil, Parent = folder })
+	local att = Instance.new("Attachment")
+	att.Parent = podium
+	joinPrompt = Instance.new("ProximityPrompt")
+	joinPrompt.Name = "battlejoin"
+	joinPrompt.ActionText = "Rejoindre la Battle"
+	joinPrompt.ObjectText = "⚔️ Battle de barbiers"
+	joinPrompt.MaxActivationDistance = 14
+	joinPrompt.RequiresLineOfSight = false
+	joinPrompt.Enabled = false
+	joinPrompt.Parent = att
+
+	-- 4 postes
+	for i, z in CHAIR_Z do
+		local base = CFrame.new(STAGE + Vector3.new(2, 3, z)) * CFrame.Angles(0, -math.pi / 2, 0) -- face au public (+X)
+		local model = Instance.new("Model")
+		model.Name = "Station" .. i
+		P({ Name = "ChairBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 3.2, 3.2), CFrame = base * CFrame.new(0, 0.15, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Parent = model })
+		local seat = P({ Name = "Seat", Size = Vector3.new(3, 0.9, 3), CFrame = base * CFrame.new(0, 2.2, 0), Color = Color3.fromRGB(170, 20, 35), Material = Enum.Material.Leather, Parent = model })
+		P({ Name = "Back", Size = Vector3.new(3, 3.4, 0.6), CFrame = base * CFrame.new(0, 4.1, 1.4), Color = Color3.fromRGB(170, 20, 35), Material = Enum.Material.Leather, Parent = model })
+		local tag = Instance.new("BillboardGui")
+		tag.Size = UDim2.fromScale(7, 2)
+		tag.StudsOffset = Vector3.new(0, 7.5, 0)
+		tag.MaxDistance = 120
+		tag.LightInfluence = 0
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.RichText = true
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.Text = ""
+		label.Parent = tag
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Parent = label
+		tag.Parent = seat
+		local vatt = Instance.new("Attachment")
+		vatt.Position = Vector3.new(0, 2, 0)
+		vatt.Parent = seat
+		local vote = Instance.new("ProximityPrompt")
+		vote.Name = "battlevote"
+		vote.ActionText = "Voter 👍"
+		vote.ObjectText = "Poste " .. i
+		vote.MaxActivationDistance = 40
+		vote.RequiresLineOfSight = false
+		vote.Enabled = false
+		vote:SetAttribute("Station", i)
+		vote.Parent = vatt
+		model.Parent = folder
+		stations[i] = { Seat = seat, Label = label, Vote = vote, Base = base }
+	end
+end
+
+---------------------------------------------------------------------
+-- Déroulement
+---------------------------------------------------------------------
+local function randomReference()
+	local gender = rng:NextNumber() < 0.5 and "F" or "H"
+	local styles = {}
+	for _, s in Config.Styles do
+		if not s.Pass and (s.Gender == "U" or s.Gender == gender) then
+			table.insert(styles, s)
+		end
+	end
+	local style = styles[rng:NextInteger(1, #styles)]
+	local colors = {}
+	for _, c in Config.Colors do
+		if c.Tier ~= "neon" then
+			table.insert(colors, c)
+		end
+	end
+	return {
+		style = style.Id,
+		length = rng:NextInteger(1, 3),
+		fade = style.Fade and Config.Fades[rng:NextInteger(1, #Config.Fades)].Id or "aucun",
+		beard = gender == "H" and Config.Beards[rng:NextInteger(1, #Config.Beards)].Id or "aucune",
+		color = colors[rng:NextInteger(1, #colors)].Id,
+		acc = rng:NextNumber() < 0.3 and Config.Accessories[rng:NextInteger(2, #Config.Accessories)].Id or "aucun",
+	},
+		gender
+end
+
+local function seatNpc(station, look): Model?
+	local model = Salons.MakeHumanoid()
+	if not model then
+		return nil
+	end
+	model.Name = "BattleClient"
+	local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	hrp.Anchored = true
+	model:PivotTo(station.Seat.CFrame * CFrame.new(0, 2.1, 0))
+	model.Parent = folder
+	HairBuilder.Apply(model, look)
+	local npc = { Model = model, Humanoid = model:FindFirstChildOfClass("Humanoid") }
+	Salons.LoadTracks(npc)
+	Salons.SetAnim(npc, "sit")
+	return model
+end
+
+function Battle.Join(player: Player): (boolean, string?)
+	if phase ~= "lobby" then
+		return false, "Pas de Battle en ce moment"
+	end
+	if #participants >= B.MaxPlayers then
+		return false, "La Battle est complète !"
+	end
+	for _, p in participants do
+		if p.Player == player then
+			return false, "Tu es déjà inscrit"
+		end
+	end
+	if Salons.HasSession(player) then
+		return false, "Termine ta coupe d'abord"
+	end
+	table.insert(participants, { Player = player, Name = player.DisplayName })
+	Net.Toast(player, "⚔️ Inscrit à la Battle ! Elle commence bientôt.", "success")
+	local char = player.Character
+	if char then
+		char:PivotTo(CFrame.new(STAGE + Vector3.new(10, 6, CHAIR_Z[#participants])))
+	end
+	return true
+end
+
+local function cleanup()
+	for _, p in participants do
+		if p.Model then
+			p.Model:Destroy()
+		end
+	end
+	if refDummy then
+		refDummy:Destroy()
+		refDummy = nil
+	end
+	for _, st in stations do
+		st.Label.Text = ""
+		st.Vote.Enabled = false
+	end
+	participants = {}
+	voted = {}
+end
+
+local function runBattle()
+	-- 1. Inscriptions
+	setPhase("lobby", B.Lobby)
+	joinPrompt.Enabled = true
+	Net.Announce("⚔️ BATTLE DE BARBIERS dans " .. B.Lobby .. " s ! Va sur la grande scène pour t'inscrire.", GOLD)
+	local t0 = os.clock()
+	while os.clock() - t0 < B.Lobby and #participants < B.MaxPlayers do
+		screenLabel.Text = string.format("⚔️ BATTLE DE BARBIERS\n<font size='60'>Inscriptions : %d/%d  •  %ds</font>", #participants, B.MaxPlayers, math.ceil(B.Lobby - (os.clock() - t0)))
+		task.wait(0.5)
+	end
+	joinPrompt.Enabled = false
+	-- Retire ceux qui sont partis
+	for i = #participants, 1, -1 do
+		if not participants[i].Player.Parent then
+			table.remove(participants, i)
+		end
+	end
+	if #participants == 0 then
+		cleanup()
+		return
+	end
+	if #participants == 1 then
+		table.insert(participants, { Player = nil, Name = "🤖 Robot Barbier", Bot = true })
+	end
+
+	-- 2. La coupe
+	local reference, gender = randomReference()
+	local refText = HairBuilder.Describe(reference)
+	ReplicatedStorage:SetAttribute("BattleRef", refText)
+	screenLabel.Text = "✂️ REPRODUIS CETTE COUPE :\n<font size='70' color='#FFD25A'>" .. refText .. "</font>"
+	-- Mannequin modèle au centre de la scène
+	refDummy = Salons.MakeHumanoid()
+	if refDummy then
+		refDummy.Name = "Reference"
+		local hrp = refDummy:FindFirstChild("HumanoidRootPart") :: BasePart
+		hrp.Anchored = true
+		refDummy:PivotTo(CFrame.new(STAGE + Vector3.new(-7, 6.2, 0)) * CFrame.Angles(0, -math.pi / 2, 0))
+		refDummy.Parent = folder
+		HairBuilder.Apply(refDummy, reference)
+		Salons.Burst(hrp.Position + Vector3.new(0, 3, 0), GOLD, 60)
+	end
+
+	local start = now()
+	for i, part in participants do
+		local station = stations[i]
+		local messy = { style = gender == "F" and "lisse" or "afro", length = 3, fade = "aucun", beard = gender == "H" and "pleine" or "aucune", color = "brun", acc = "aucun" }
+		part.Before = HairBuilder.Normalize(messy)
+		part.Model = seatNpc(station, messy)
+		station.Label.Text = part.Name
+		part.Votes = 0
+		if part.Bot then
+			part.Accuracy = rng:NextNumber(0.55, 0.9)
+			part.Time = B.Duration * rng:NextNumber(0.6, 0.95)
+			task.delay(part.Time, function()
+				if part.Model and part.Model.Parent then
+					local look = table.clone(reference)
+					if part.Accuracy < 0.8 then
+						look.color = "brun"
+					end
+					HairBuilder.Apply(part.Model, look)
+				end
+			end)
+		elseif part.Model then
+			local player: Player = part.Player
+			local duration = B.Duration + (Stats.HasPass(player, "battlePro") and 15 or 0)
+			local char = player.Character
+			if char then
+				char:PivotTo(station.Base * CFrame.new(-2.8, 3, 0.5) * CFrame.Angles(0, math.pi / 2, 0))
+			end
+			part.EndsAt = start + duration
+			Salons.OpenSession(player, {
+				Kind = "battle",
+				AllowAll = true,
+				Salon = nil,
+				Request = reference,
+				Look = HairBuilder.Normalize(messy),
+				TargetModel = part.Model,
+				TargetName = "Battle",
+				EndsAt = part.EndsAt,
+				OnEnd = function(finished, look)
+					part.Look = look
+					part.Accuracy = HairBuilder.Score(reference, look)
+					part.Time = math.min(now() - start, duration)
+					part.Done = true
+					if finished then
+						Net.Toast(player, "✅ Coupe rendue ! Ressemblance " .. math.floor(part.Accuracy * 100) .. "%", "success")
+					end
+				end,
+			})
+		end
+	end
+	setPhase("cut", B.Duration)
+	local longest = B.Duration + 15
+	while now() - start < longest do
+		local allDone = true
+		for _, part in participants do
+			if not part.Bot and not part.Done then
+				if part.Player and part.Player.Parent and now() >= (part.EndsAt or 0) then
+					Salons.EndSession(part.Player, true) -- temps écoulé : on rend la coupe telle quelle
+				elseif part.Player and part.Player.Parent then
+					allDone = false
+				end
+			end
+		end
+		if allDone and now() - start > 5 then
+			break
+		end
+		task.wait(0.5)
+	end
+
+	-- 3. Vote du public
+	setPhase("vote", B.Vote)
+	screenLabel.Text = "👍 VOTEZ POUR LA MEILLEURE COUPE !\n<font size='60'>Approche-toi d'un poste et appuie sur E</font>"
+	Net.Announce("👍 Votez pour la meilleure coupe de la Battle !", GOLD)
+	for i, part in participants do
+		if part.Model then
+			stations[i].Vote.Enabled = true
+		end
+	end
+	local voteStart = os.clock()
+	while os.clock() - voteStart < B.Vote do
+		for i, part in participants do
+			stations[i].Label.Text = part.Name .. "\n👍 " .. (part.Votes or 0)
+		end
+		task.wait(0.5)
+	end
+	for _, st in stations do
+		st.Vote.Enabled = false
+	end
+
+	-- 4. Résultats
+	for _, part in participants do
+		local accuracy = part.Accuracy or 0
+		local speed = part.Time and math.clamp(1 - part.Time / B.Duration, 0, 1) or 0
+		part.Score = math.floor(accuracy * 100 + (part.Votes or 0) * 10 + speed * 10)
+	end
+	table.sort(participants, function(a, b)
+		return a.Score > b.Score
+	end)
+	local winner = participants[1]
+	setPhase("results", 10)
+	screenLabel.Text = "🏆 " .. winner.Name .. " GAGNE !\n<font size='60'>" .. winner.Score .. " points</font>"
+	Net.Announce("🏆 " .. winner.Name .. " remporte la Battle de barbiers avec " .. winner.Score .. " pts !", GOLD)
+	for rank, part in participants do
+		local player: Player? = part.Player
+		local profile = player and player.Parent and Data.Get(player)
+		if player and profile then
+			local share = rank == 1 and 1 or (rank == 2 and 0.5 or 0.2)
+			local prize = Stats.MinutesOfIncome(player, B.PrizeMinutes, B.PrizeMin) * share
+			if Stats.HasPass(player, "battlePro") then
+				prize *= 2
+			end
+			Stats.AddCash(player, prize, false)
+			Progress.AddXp(player, Config.Xp.Battle + (rank == 1 and Config.Xp.BattleWin or 0))
+			if rank == 1 and part.Look then
+				BarberTok.Post(player, part.Before or part.Look, part.Look, "🏆 Gagnant de la Battle !")
+			end
+			if rank == 1 then
+				profile.BattleWins += 1
+				profile.Trophies += 1
+				Net.Notify:FireClient(player, { Type = "celebrate" })
+			end
+			Stats.MarkDirty(player)
+			Net.Notify:FireClient(player, { Type = "battleResult", Rank = rank, Score = part.Score, Prize = math.floor(prize), Count = #participants })
+			Net.Toast(player, string.format("⚔️ %de place (%d pts) : +%s", rank, part.Score, Util.Money(prize)), "money")
+		end
+	end
+	for i, part in participants do
+		if part.Model then
+			local head = part.Model:FindFirstChild("Head") :: BasePart?
+			if head and part == winner then
+				Salons.Burst(head.Position + Vector3.new(0, 2, 0), GOLD, 80)
+			end
+		end
+		stations[i].Label.Text = (part == winner and "🏆 " or "") .. part.Name .. "\n" .. (part.Score or 0) .. " pts"
+	end
+	task.wait(10)
+	cleanup()
+end
+
+function Battle.Init()
+	build()
+	ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
+		if not prompt:IsDescendantOf(folder) then
+			return
+		end
+		if prompt.Name == "battlejoin" then
+			local ok, msg = Battle.Join(player)
+			if not ok and msg then
+				Net.Toast(player, msg, "error")
+			end
+		elseif prompt.Name == "battlevote" and phase == "vote" then
+			local index = prompt:GetAttribute("Station")
+			local part = participants[index]
+			if not part or voted[player] then
+				return
+			end
+			if part.Player == player then
+				Net.Toast(player, "Tu ne peux pas voter pour toi 😄", "error")
+				return
+			end
+			voted[player] = true
+			part.Votes = (part.Votes or 0) + 1
+			Net.Toast(player, "👍 Vote enregistré pour " .. part.Name, "success")
+		end
+	end)
+	task.spawn(function()
+		ReplicatedStorage:SetAttribute("BattlePhase", "idle")
+		while true do
+			setPhase("idle", B.Interval)
+			local waitStart = os.clock()
+			while os.clock() - waitStart < B.Interval do
+				screenLabel.Text = "⚔️ BATTLE DE BARBIERS\n<font size='60'>Prochaine battle dans " .. Util.Time(B.Interval - (os.clock() - waitStart)) .. "</font>"
+				task.wait(1)
+			end
+			if #Players:GetPlayers() > 0 then
+				local ok, err = pcall(runBattle)
+				if not ok then
+					warn("[Battle] erreur :", err)
+					cleanup()
+				end
+			end
+		end
+	end)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	voted[player] = nil
+end)
+
+return Battle
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
           <string name="Name">Data</string>
           <string name="Source"><![CDATA[-- Sauvegarde des joueurs : verrou de session (anti-duplication entre serveurs),
 -- sauvegarde automatique, sauvegarde à la fermeture du serveur.
@@ -719,6 +1827,14 @@ export type Profile = {
 	Rebirths: number,
 	Upgrades: { chairs: number, stylists: number, deco: number, pub: number },
 	Styles: { [string]: boolean },
+	Beards: { [string]: boolean },
+	Clippers: boolean,
+	Trophies: number,
+	Followers: number,
+	Posts: number,
+	SeasonColors: { [string]: boolean },
+	Pass: { Season: number, XP: number, Free: number, Gold: number },
+	BattleWins: number,
 	Accs: { [string]: boolean },
 	FantasyColors: boolean,
 	Look: { style: string, length: number, color: string, acc: string }?,
@@ -740,7 +1856,15 @@ local function defaults(): Profile
 		Streak = 0,
 		Rebirths = 0,
 		Upgrades = { chairs = 1, stylists = 0, deco = 1, pub = 0 },
-		Styles = { pixie = true, lisse = true },
+		Styles = { pixie = true, buzz = true, lisse = true },
+		Beards = { aucune = true, trois = true },
+		Clippers = false,
+		Trophies = 0,
+		Followers = 0,
+		Posts = 0,
+		SeasonColors = {},
+		Pass = { Season = 0, XP = 0, Free = 0, Gold = 0 },
+		BattleWins = 0,
 		Accs = { aucun = true, noeud = true },
 		FantasyColors = false,
 		Look = nil,
@@ -930,17 +2054,20 @@ return Data
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Script" referent="9">
+      <Item class="Script" referent="11">
         <Properties>
           <string name="Name">Main</string>
           <token name="RunContext">0</token>
-          <string name="Source"><![CDATA[-- Point d'entrée serveur de Salon Star.
+          <string name="Source"><![CDATA[-- Point d'entrée serveur de Barber Legends.
 
 local Players = game:GetService("Players")
 
+local BarberTok = require(script.Parent.BarberTok)
+local Battle = require(script.Parent.Battle)
 local Data = require(script.Parent.Data)
 local Monetization = require(script.Parent.Monetization)
 local Net = require(script.Parent.Net)
+local Progress = require(script.Parent.Progress)
 local Rewards = require(script.Parent.Rewards)
 local Salons = require(script.Parent.Salons)
 local Stats = require(script.Parent.Stats)
@@ -949,6 +2076,8 @@ local World = require(script.Parent.World)
 World.Build()
 Salons.Init()
 Rewards.Init()
+Battle.Init()
+BarberTok.Init()
 
 local function onCharacter(player: Player, character: Model)
 	local hrp = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
@@ -978,6 +2107,8 @@ local function onPlayerAdded(player: Player)
 	Rewards.CheckGroup(player)
 	Rewards.RefreshFriends()
 	Rewards.Offline(player)
+	Progress.Sync(player)
+	BarberTok.SendTo(player)
 
 	if not Salons.Assign(player) then
 		Net.Toast(player, "Tous les salons sont pris sur ce serveur, tu peux visiter et te faire coiffer !", "error")
@@ -1050,6 +2181,10 @@ Net.Action.OnServerInvoke = function(player: Player, action: any, a: any, b: any
 		return Rewards.ClaimGift(player, a)
 	elseif action == "Code" then
 		return Rewards.RedeemCode(player, a)
+	elseif action == "Like" then
+		return BarberTok.Like(player, a)
+	elseif action == "JoinBattle" then
+		return Battle.Join(player)
 	elseif action == "GoHome" then
 		local home = Salons.HomeCFrame(player)
 		if home and player.Character and not Salons.HasSession(player) then
@@ -1066,7 +2201,7 @@ end)
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="10">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">Monetization</string>
           <string name="Source"><![CDATA[-- Passes de jeu et produits Robux.
@@ -1078,7 +2213,9 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Util = require(ReplicatedStorage.Shared.Util)
+local BarberTok = require(script.Parent.BarberTok)
 local Data = require(script.Parent.Data)
+local Progress = require(script.Parent.Progress)
 local Net = require(script.Parent.Net)
 local Salons = require(script.Parent.Salons)
 local Stats = require(script.Parent.Stats)
@@ -1105,6 +2242,8 @@ local function onPassOwned(player: Player, key: string)
 	player:SetAttribute("Pass_" .. key, true)
 	if key == "autoStylist" then
 		Salons.Rebuild(player, false)
+	elseif key == "seasonPass" then
+		Progress.Sync(player) -- donne d'un coup toutes les récompenses Gold déjà atteintes
 	end
 end
 
@@ -1153,6 +2292,16 @@ handlers.rush = function(player, _def)
 	end
 end
 
+handlers.passSkip = function(player, _def)
+	Progress.SkipTiers(player, 5)
+	Net.Toast(player, "⏩ +5 paliers de Barber Pass !", "success")
+end
+
+handlers.viral = function(player, _def)
+	BarberTok.PinNext(player)
+	Net.Toast(player, "🚀 Ta prochaine coupe sera épinglée en tête de BarberTok !", "success")
+end
+
 handlers.celebrity = function(player, _def)
 	Salons.AddCelebrity(player)
 	Net.Toast(player, "🌟 Une célébrité arrive dans ton salon !", "success")
@@ -1166,11 +2315,12 @@ handlers.starter = function(player, _def)
 	Stats.AddCash(player, 25000, false)
 	if not profile.StarterBought then
 		profile.StarterBought = true
-		profile.Styles.boucle = true
+		profile.Styles.twists = true
+		profile.Clippers = true
 		profile.FantasyColors = true
 	end
 	Stats.MarkDirty(player)
-	Net.Toast(player, "🎁 Pack Débutant reçu ! +25K $, coupe Bouclée et teintures fantaisie", "success")
+	Net.Toast(player, "🎁 Pack Débutant reçu ! +25K $, Twists, Tondeuse Pro et teintures fantaisie", "success")
 	Net.Notify:FireClient(player, { Type = "celebrate" })
 end
 
@@ -1211,7 +2361,7 @@ return Monetization
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">Net</string>
           <string name="Source"><![CDATA[-- Crée les RemoteEvents / RemoteFunctions partagés avec le client.
@@ -1231,6 +2381,7 @@ local Net = {
 	State = event("State"), -- serveur → client : état du joueur
 	Notify = event("Notify"), -- serveur → client : message / annonce / effet
 	Session = event("Session"), -- serveur → client : ouverture/fermeture de l'atelier coiffure
+	Feed = event("Feed"), -- serveur → client : fil BarberTok
 	Action = Instance.new("RemoteFunction"), -- client → serveur
 }
 Net.Action.Name = "Action"
@@ -1250,7 +2401,94 @@ return Net
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">Progress</string>
+          <string name="Source"><![CDATA[-- XP et Barber Pass (saison de 30 paliers, piste gratuite + piste Gold).
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Data = require(script.Parent.Data)
+local Net = require(script.Parent.Net)
+local Stats = require(script.Parent.Stats)
+
+local Progress = {}
+
+-- Nouvelle saison : on repart de zéro (les teintures gagnées restent).
+local function ensureSeason(profile)
+	if profile.Pass.Season ~= Config.Season then
+		profile.Pass = { Season = Config.Season, XP = 0, Free = 0, Gold = 0 }
+	end
+end
+
+function Progress.Tier(profile): number
+	return math.min(Config.PassTiers, profile.Pass.XP // Config.PassXpPerTier)
+end
+
+local function grant(player: Player, profile, reward, track: string, tier: number)
+	if reward.Kind == "cash" then
+		local amount = Stats.MinutesOfIncome(player, reward.Minutes, reward.Minutes * 150)
+		Stats.AddCash(player, amount, false)
+		Net.Toast(player, string.format("🎟️ Palier %d (%s) : +%s", tier, track, Util.Money(amount)), "money")
+	elseif reward.Kind == "color" then
+		profile.SeasonColors[reward.Id] = true
+		Net.Toast(player, "🎟️ Palier " .. tier .. " : teinture exclusive « " .. Config.ColorById[reward.Id].Name .. " » !", "success")
+		Net.Notify:FireClient(player, { Type = "celebrate" })
+	end
+end
+
+-- Donne toutes les récompenses atteintes et pas encore reçues.
+function Progress.Sync(player: Player)
+	local profile = Data.Get(player)
+	if not profile then
+		return
+	end
+	ensureSeason(profile)
+	local tier = Progress.Tier(profile)
+	while profile.Pass.Free < tier do
+		profile.Pass.Free += 1
+		grant(player, profile, Config.PassRewards[profile.Pass.Free].Free, "gratuit", profile.Pass.Free)
+	end
+	if Stats.HasPass(player, "seasonPass") then
+		while profile.Pass.Gold < tier do
+			profile.Pass.Gold += 1
+			grant(player, profile, Config.PassRewards[profile.Pass.Gold].Gold, "Gold", profile.Pass.Gold)
+		end
+	end
+	Stats.MarkDirty(player)
+end
+
+function Progress.AddXp(player: Player, amount: number)
+	local profile = Data.Get(player)
+	if not profile or amount <= 0 then
+		return
+	end
+	ensureSeason(profile)
+	local before = Progress.Tier(profile)
+	profile.Pass.XP = math.min(profile.Pass.XP + amount, Config.PassTiers * Config.PassXpPerTier)
+	if Progress.Tier(profile) > before then
+		Net.Notify:FireClient(player, { Type = "tierUp", Tier = Progress.Tier(profile) })
+		Progress.Sync(player)
+	end
+	Stats.MarkDirty(player)
+end
+
+function Progress.SkipTiers(player: Player, tiers: number)
+	local profile = Data.Get(player)
+	if not profile then
+		error("profil absent")
+	end
+	ensureSeason(profile)
+	Progress.AddXp(player, tiers * Config.PassXpPerTier)
+end
+
+return Progress
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
         <Properties>
           <string name="Name">Rewards</string>
           <string name="Source"><![CDATA[-- Récompenses gratuites (rétention) et classement mondial.
@@ -1520,11 +2758,12 @@ return Rewards
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="13">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">Salons</string>
           <string name="Source"><![CDATA[-- Salons : construction, clients, stylistes, sessions de coiffure, économie.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -1532,7 +2771,9 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local HairBuilder = require(ReplicatedStorage.Shared.HairBuilder)
 local Util = require(ReplicatedStorage.Shared.Util)
+local BarberTok = require(script.Parent.BarberTok)
 local Data = require(script.Parent.Data)
+local Progress = require(script.Parent.Progress)
 local Net = require(script.Parent.Net)
 local Stats = require(script.Parent.Stats)
 local World = require(script.Parent.World)
@@ -1700,6 +2941,27 @@ local function burst(position: Vector3, color: Color3, count: number?)
 end
 Salons.Burst = burst
 
+-- Mèches coupées qui tombent de la tête
+local function clippings(head: BasePart, color: Color3)
+	local p = P({ Name = "Clippings", Size = Vector3.new(1, 1, 1), CFrame = head.CFrame * CFrame.new(0, 0.6, 0), Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, Parent = Workspace })
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	e.Rate = 0
+	e.Lifetime = NumberRange.new(0.8, 1.3)
+	e.Speed = NumberRange.new(1.5, 3)
+	e.SpreadAngle = Vector2.new(70, 70)
+	e.Acceleration = Vector3.new(0, -18, 0)
+	e.Size = NumberSequence.new(0.12)
+	e.Rotation = NumberRange.new(0, 360)
+	e.Color = ColorSequence.new(color)
+	e.LightEmission = 0
+	e.Parent = p
+	e:Emit(35)
+	task.delay(1.6, function()
+		p:Destroy()
+	end)
+end
+
 ---------------------------------------------------------------------
 -- Construction du bâtiment (dépend du niveau de déco)
 ---------------------------------------------------------------------
@@ -1778,12 +3040,29 @@ local function buildBuilding(salon: Salon, level: number)
 		P({ ClassName = "WedgePart", Name = "Awning", Size = Vector3.new(2, 1.6, 4), CFrame = L(salon, -5 + i * 2, y0 + 11.3, -D / 2 - 1.6) * CFrame.Angles(0, math.pi, 0), Color = i % 2 == 0 and theme or Color3.new(1, 1, 1), Parent = f })
 	end
 
+	-- Enseigne barbier tournante (rayures rouges / blanches / bleues)
+	do
+		local poleCf = L(salon, -8.6, y0 + 7, -D / 2 - 0.9)
+		P({ Name = "PoleCap", Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), CFrame = poleCf * CFrame.new(0, 3.2, 0), Color = GOLD, Material = Enum.Material.Foil, Parent = f })
+		P({ Name = "PoleCap", Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), CFrame = poleCf * CFrame.new(0, -3.2, 0), Color = GOLD, Material = Enum.Material.Foil, Parent = f })
+		P({ Name = "PoleGlass", Shape = Enum.PartType.Cylinder, Size = Vector3.new(6, 1.3, 1.3), CFrame = poleCf * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(230, 240, 255), Material = Enum.Material.Glass, Transparency = 0.6, CastShadow = false, Parent = f })
+		local stripes = Instance.new("Model")
+		stripes.Name = "BarberPole"
+		local colors = { Color3.fromRGB(220, 30, 40), Color3.new(1, 1, 1), Color3.fromRGB(30, 70, 200), Color3.new(1, 1, 1) }
+		for k = 0, 11 do
+			P({ Name = "Stripe", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 1.1, 1.1), CFrame = poleCf * CFrame.new(0, -2.6 + k * 0.48, 0) * CFrame.Angles(math.rad(25), 0, math.rad(90)), Color = colors[k % 4 + 1], Material = Enum.Material.Neon, CastShadow = false, CanCollide = false, Parent = stripes })
+		end
+		stripes:SetAttribute("Center", poleCf)
+		stripes.Parent = f
+		CollectionService:AddTag(stripes, "BarberPole")
+	end
+
 	-- Enseigne
 	local sign = P({ Name = "Sign", Size = Vector3.new(26, 5, 1), CFrame = L(salon, 0, ry + 3, -D / 2 + 0.5), Color = Color3.fromRGB(30, 22, 40), Parent = f })
 	for _, dy in { -2.6, 2.6 } do
 		P({ Name = "SignNeon", Size = Vector3.new(26.4, 0.3, 1.2), CFrame = L(salon, 0, ry + 3 + dy, -D / 2 + 0.5), Color = theme, Material = Enum.Material.Neon, CastShadow = false, Parent = f })
 	end
-	salon.SignLabel = surfaceText(sign, Enum.NormalId.Front, "✂️ SALON LIBRE", theme)
+	salon.SignLabel = surfaceText(sign, Enum.NormalId.Front, "💈 BARBERSHOP LIBRE", theme)
 	if level >= 5 then
 		sparkle(sign, GOLD, 8, 0.5)
 	end
@@ -1993,6 +3272,8 @@ local function makeHumanoid(outfit: Color3?, pants: Color3?): Model?
 	return model
 end
 
+Salons.MakeHumanoid = makeHumanoid
+
 local function loadTracks(npc: any)
 	local hum: Humanoid = npc.Humanoid
 	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
@@ -2009,6 +3290,9 @@ local function loadTracks(npc: any)
 		end
 	end
 end
+
+Salons.LoadTracks = loadTracks
+Salons.SetAnim = setAnim
 
 local function walkTo(npc: any, target: Vector3, timeout: number?)
 	local hum: Humanoid = npc.Humanoid
@@ -2086,15 +3370,15 @@ local function makeBillboard(npc: any)
 	npc.Title = title
 end
 
-local function availableOptions(owner: Player, profile: any)
+local function availableOptions(owner: Player, profile: any, gender: string)
 	local styles, colors, accs = {}, {}, {}
 	for _, s in Config.Styles do
-		if profile.Styles[s.Id] or (s.Pass and Stats.HasPass(owner, s.Pass)) then
+		if (s.Gender == "U" or s.Gender == gender) and (profile.Styles[s.Id] or (s.Pass and Stats.HasPass(owner, s.Pass))) then
 			table.insert(styles, s)
 		end
 	end
 	for _, c in Config.Colors do
-		if c.Tier == "base" or (c.Tier == "fantasy" and profile.FantasyColors) or (c.Tier == "neon" and Stats.HasPass(owner, "neonColors")) then
+		if c.Tier == "base" or (c.Tier == "fantasy" and profile.FantasyColors) or (c.Tier == "neon" and Stats.HasPass(owner, "neonColors")) or (c.Tier == "season" and profile.SeasonColors[c.Id]) then
 			table.insert(colors, c)
 		end
 	end
@@ -2106,14 +3390,15 @@ local function availableOptions(owner: Player, profile: any)
 	return styles, colors, accs
 end
 
+-- Poids = rang (les options chères sortent plus souvent), x2 si tendance TikTok.
 local function weightedPick(list: { any }): any
 	local total = 0
-	for i in list do
-		total += i
+	for i, v in list do
+		total += i * (v.Trend and 2 or 1)
 	end
 	local r = rng:NextNumber() * total
 	for i, v in list do
-		r -= i
+		r -= i * (v.Trend and 2 or 1)
 		if r <= 0 then
 			return v
 		end
@@ -2121,22 +3406,47 @@ local function weightedPick(list: { any }): any
 	return list[#list]
 end
 
-local function makeRequest(owner: Player, profile: any)
-	local styles, colors, accs = availableOptions(owner, profile)
+local function makeRequest(owner: Player, profile: any, gender: string)
+	local styles, colors, accs = availableOptions(owner, profile, gender)
+	if #styles == 0 then
+		styles = { Config.StyleById.pixie }
+	end
+	local style = weightedPick(styles)
+	local fade = "aucun"
+	if style.Fade and profile.Clippers and rng:NextNumber() < 0.75 then
+		fade = weightedPick(Config.Fades).Id
+	end
+	local beard = "aucune"
+	if gender == "H" and rng:NextNumber() < 0.6 then
+		local beards = {}
+		for _, b in Config.Beards do
+			if b.Id ~= "aucune" and profile.Beards[b.Id] then
+				table.insert(beards, b)
+			end
+		end
+		if #beards > 0 then
+			beard = beards[rng:NextInteger(1, #beards)].Id
+		end
+	end
 	local request = {
-		style = weightedPick(styles).Id, -- les coupes les plus chères sortent plus souvent
+		style = style.Id,
 		length = rng:NextInteger(1, 3),
+		fade = fade,
+		beard = beard,
 		color = weightedPick(colors).Id,
-		acc = (#accs > 0 and rng:NextNumber() < 0.4) and accs[rng:NextInteger(1, #accs)].Id or "aucun",
+		acc = (#accs > 0 and rng:NextNumber() < 0.35) and accs[rng:NextInteger(1, #accs)].Id or "aucun",
 	}
+	-- Arrivée « mal coiffée » : cheveux trop longs, barbe négligée
 	local messy = {
-		style = Config.Styles[rng:NextInteger(1, 2)].Id,
-		length = rng:NextInteger(1, 3),
+		style = gender == "F" and "lisse" or (rng:NextNumber() < 0.5 and "afro" or "pixie"),
+		length = 3,
+		fade = "aucun",
+		beard = gender == "H" and (rng:NextNumber() < 0.5 and "pleine" or "trois") or "aucune",
 		color = Config.Colors[rng:NextInteger(1, 4)].Id,
 		acc = "aucun",
 	}
 	if messy.style == request.style then
-		messy.style = request.style == "lisse" and "pixie" or "lisse"
+		messy.style = gender == "F" and "boucle" or "lisse"
 	end
 	return request, messy
 end
@@ -2223,7 +3533,8 @@ local function spawnCustomer(salon: Salon, special: string?)
 	end
 	chair.Reserved = true
 	updateChairAttrs(chair)
-	local request, messy = makeRequest(owner, profile)
+	local gender = rng:NextNumber() < 0.5 and "F" or "H"
+	local request, messy = makeRequest(owner, profile, gender)
 	local isVip = special == nil and rng:NextNumber() < Config.VipChance * (Stats.HasPass(owner, "vip") and 2 or 1)
 	local celebrity = special == "celebrity"
 	local model = makeHumanoid(celebrity and Color3.fromRGB(20, 20, 24) or (isVip and Color3.fromRGB(250, 210, 90) or nil))
@@ -2246,6 +3557,7 @@ local function spawnCustomer(salon: Salon, special: string?)
 		State = "walking",
 		Vip = isVip,
 		Celebrity = celebrity,
+		Gender = gender,
 		Patience = Config.CustomerPatience * (celebrity and 3 or 1),
 		Waited = 0,
 	}
@@ -2291,7 +3603,9 @@ end
 local function computePay(owner: Player, profile: any, request: any, score: number, npc: any, byPlayer: boolean): (number, boolean)
 	local style = Config.StyleById[request.style]
 	local color = Config.ColorById[request.color]
-	local base = Config.BasePay * style.Value * color.Value * Config.Lengths[request.length].Mult * (request.acc ~= "aucun" and 1.3 or 1)
+	local fade = Config.FadeById[request.fade] or Config.FadeById.aucun
+	local beard = Config.BeardById[request.beard] or Config.BeardById.aucune
+	local base = Config.BasePay * style.Value * color.Value * fade.Mult * beard.Mult * Config.Lengths[request.length].Mult * (request.acc ~= "aucun" and 1.3 or 1)
 	local deco = Config.Upgrades.deco.Mult[math.clamp(profile.Upgrades.deco, 1, #Config.Upgrades.deco.Mult)]
 	local perfect = score >= 0.999
 	local quality
@@ -2324,6 +3638,9 @@ local function payFor(salon: Salon, npc: any, score: number, byPlayer: boolean)
 	end
 	profile.Served += 1
 	Stats.AddCash(owner, pay)
+	if byPlayer then
+		Progress.AddXp(owner, Config.Xp.Cut + (perfect and Config.Xp.Perfect or 0))
+	end
 	local head = npc.Model:FindFirstChild("Head") :: BasePart?
 	if head then
 		burst(head.Position + Vector3.new(0, 1.5, 0), perfect and GOLD or Color3.fromRGB(255, 150, 210), perfect and 60 or 25)
@@ -2471,9 +3788,9 @@ local function refreshSign(salon: Salon)
 	if owner then
 		local profile = Data.Get(owner)
 		local stars = string.rep("★", profile and profile.Upgrades.deco or 1)
-		salon.SignLabel.Text = "✂️ Salon de " .. owner.DisplayName .. "  " .. stars
+		salon.SignLabel.Text = "💈 Barbershop de " .. owner.DisplayName .. "  " .. stars
 	else
-		salon.SignLabel.Text = "✂️ SALON LIBRE"
+		salon.SignLabel.Text = "💈 BARBERSHOP LIBRE"
 	end
 end
 
@@ -2661,12 +3978,16 @@ local function canUse(player: Player, kind: string, id: any): boolean
 		if not c then
 			return false
 		end
-		return c.Tier == "base" or (c.Tier == "fantasy" and profile.FantasyColors) or (c.Tier == "neon" and Stats.HasPass(player, "neonColors"))
+		return c.Tier == "base" or (c.Tier == "fantasy" and profile.FantasyColors) or (c.Tier == "neon" and Stats.HasPass(player, "neonColors")) or (c.Tier == "season" and profile.SeasonColors[id] == true)
 	elseif kind == "acc" then
 		local a = Config.AccById[id]
 		return a ~= nil and (profile.Accs[id] == true or (a.Pass ~= nil and Stats.HasPass(player, a.Pass)))
 	elseif kind == "length" then
 		return id == 1 or id == 2 or id == 3
+	elseif kind == "fade" then
+		return Config.FadeById[id] ~= nil and (id == "aucun" or profile.Clippers == true)
+	elseif kind == "beard" then
+		return Config.BeardById[id] ~= nil and profile.Beards[id] == true
 	end
 	return false
 end
@@ -2677,8 +3998,38 @@ local function near(player: Player, pos: Vector3, dist: number): boolean
 	return hrp ~= nil and (hrp.Position - pos).Magnitude <= dist
 end
 
+-- Tondeuse dans la main du barbier pendant la coupe
+local function giveClipper(player: Player)
+	local char = player.Character
+	local hand = char and (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")) :: BasePart?
+	if not hand or char:FindFirstChild("Clipper") then
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = "Clipper"
+	local body = P({ Name = "Body", Size = Vector3.new(0.35, 1.1, 0.3), CFrame = hand.CFrame * CFrame.new(0, -0.5, -0.2), Color = Color3.fromRGB(240, 240, 245), Material = Enum.Material.SmoothPlastic, Anchored = false, CanCollide = false, Massless = true, Parent = model })
+	P({ Name = "Blade", Size = Vector3.new(0.38, 0.12, 0.32), CFrame = body.CFrame * CFrame.new(0, -0.6, 0), Color = Color3.fromRGB(200, 200, 210), Material = Enum.Material.Metal, Anchored = false, CanCollide = false, Massless = true, Parent = model })
+	P({ Name = "Led", Size = Vector3.new(0.08, 0.08, 0.05), CFrame = body.CFrame * CFrame.new(0, 0.3, -0.16), Color = Color3.fromRGB(80, 200, 255), Material = Enum.Material.Neon, Anchored = false, CanCollide = false, Massless = true, Parent = model })
+	for _, part in model:GetChildren() do
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = hand
+		w.Part1 = part :: BasePart
+		w.Parent = part
+	end
+	model.Parent = char
+end
+
+local function removeClipper(player: Player)
+	local c = player.Character and player.Character:FindFirstChild("Clipper")
+	if c then
+		c:Destroy()
+	end
+end
+
 local function startSession(player: Player, sess: any)
+	sess.Before = table.clone(sess.Look)
 	sessions[player] = sess
+	giveClipper(player)
 	Net.Session:FireClient(player, {
 		Open = true,
 		Kind = sess.Kind,
@@ -2686,7 +4037,16 @@ local function startSession(player: Player, sess: any)
 		Request = sess.Request,
 		Look = sess.Look,
 		Name = sess.TargetName,
+		EndsAt = sess.EndsAt,
 	})
+end
+
+-- Utilisé par la Battle (et tout autre mode) pour ouvrir une session de coiffure.
+function Salons.OpenSession(player: Player, sess: any)
+	if sessions[player] then
+		Salons.EndSession(player, false)
+	end
+	startSession(player, sess)
 end
 
 function Salons.EndSession(player: Player, finished: boolean)
@@ -2695,12 +4055,21 @@ function Salons.EndSession(player: Player, finished: boolean)
 		return
 	end
 	sessions[player] = nil
-	if sess.Kind == "npc" then
+	removeClipper(player)
+	if sess.Kind == "battle" then
+		if sess.OnEnd then
+			task.spawn(sess.OnEnd, finished, sess.Look)
+		end
+	elseif sess.Kind == "npc" then
 		local npc = sess.Npc
 		if npc.State == "styling" then
 			if finished then
-				payFor(sess.Salon, npc, HairBuilder.Score(npc.Request, sess.Look), true)
+				local score = HairBuilder.Score(npc.Request, sess.Look)
+				payFor(sess.Salon, npc, score, true)
 				leave(sess.Salon, npc, true)
+				if score >= Config.BarberTok.MinScoreToPost then
+					BarberTok.Post(player, sess.Before, sess.Look, (npc.Gender == "F" and "💇‍♀️ Cliente : " or "💈 Client : ") .. Config.StyleById[sess.Look.style].Name)
+				end
 			else
 				npc.State = "waiting"
 				if npc.Chair then
@@ -2714,6 +4083,11 @@ function Salons.EndSession(player: Player, finished: boolean)
 		if finished and tProfile then
 			tProfile.Look = table.clone(sess.Look)
 			Stats.MarkDirty(target)
+			if sess.Kind == "self" then
+				BarberTok.Post(player, sess.Before, sess.Look, "✨ Mon nouveau look : " .. Config.StyleById[sess.Look.style].Name)
+			else
+				BarberTok.Post(player, sess.Before, sess.Look, "✂️ Coupe pour " .. target.DisplayName)
+			end
 			if sess.Kind == "player" then
 				Net.Toast(target, "💇 " .. player.DisplayName .. " t'a fait une nouvelle coiffure !", "success")
 				-- Petite récompense pour le coiffeur (limitée pour éviter les abus)
@@ -2752,7 +4126,7 @@ function Salons.EndSession(player: Player, finished: boolean)
 			sess.Chair.Model:SetAttribute("Busy", false)
 		end
 	end
-	Net.Session:FireClient(player, { Open = false })
+	Net.Session:FireClient(player, { Open = false, Finished = finished })
 end
 
 local function onPrompt(prompt: ProximityPrompt, player: Player)
@@ -2878,21 +4252,27 @@ function Salons.Apply(player: Player, field: string, value: any): (boolean, stri
 	if not sess then
 		return false, "Aucune coiffure en cours"
 	end
-	local kinds = { style = "style", length = "length", color = "color", acc = "acc" }
+	local kinds = { style = "style", length = "length", fade = "fade", beard = "beard", color = "color", acc = "acc" }
 	local kind = kinds[field]
 	if not kind then
 		return false
 	end
-	if not canUse(player, kind, value) then
+	if sess.AllowAll then
+		local valid = (kind == "style" and Config.StyleById[value]) or (kind == "length" and Config.Lengths[value]) or (kind == "fade" and Config.FadeById[value]) or (kind == "beard" and Config.BeardById[value]) or (kind == "color" and Config.ColorById[value]) or (kind == "acc" and Config.AccById[value])
+		if not valid then
+			return false
+		end
+	elseif not canUse(player, kind, value) then
 		return false, "🔒 Pas encore débloqué"
 	end
+	local before = sess.Look[field]
 	sess.Look[field] = value
 	local model = sess.TargetModel
 	if model and model.Parent then
 		HairBuilder.Apply(model, sess.Look)
 		local head = model:FindFirstChild("Head") :: BasePart?
-		if head then
-			burst(head.Position + Vector3.new(0, 1, 0), Color3.fromRGB(255, 180, 230), 12)
+		if head and before ~= value then
+			clippings(head, (field == "color") and Config.ColorById[value].Color or Color3.fromRGB(40, 30, 25))
 		end
 	end
 	if sess.Kind == "npc" then
@@ -2940,6 +4320,25 @@ function Salons.Buy(player: Player, kind: string, id: string): (boolean, string?
 		end
 		owned[id] = true
 		Net.Toast(player, def.Icon .. " " .. def.Name .. " débloqué ! Les clients vont le demander.", "success")
+	elseif kind == "beard" then
+		local def = Config.BeardById[id]
+		if not def or profile.Beards[id] then
+			return false
+		end
+		if not Stats.Spend(player, def.Cost) then
+			return false, "Pas assez d'argent"
+		end
+		profile.Beards[id] = true
+		Net.Toast(player, def.Icon .. " " .. def.Name .. " débloquée !", "success")
+	elseif kind == "clippers" then
+		if profile.Clippers then
+			return false
+		end
+		if not Stats.Spend(player, Config.ClippersCost) then
+			return false, "Pas assez d'argent"
+		end
+		profile.Clippers = true
+		Net.Toast(player, "🪒 Tondeuse Pro débloquée : tu peux faire des dégradés !", "success")
 	elseif kind == "fantasy" then
 		if profile.FantasyColors then
 			return false
@@ -3017,7 +4416,7 @@ return Salons
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="14">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">Stats</string>
           <string name="Source"><![CDATA[-- Argent, multiplicateurs, passes possédés, état envoyé au client.
@@ -3109,12 +4508,13 @@ function Stats.BoostBreakdown(player: Player)
 		Vip = Stats.HasPass(player, "vip") and Config.VipBoost or 0,
 		Double = Stats.HasPass(player, "doubleCash"),
 		Rush = Stats.RushActive(),
+		Fame = profile and math.min((profile.Followers or 0) * Config.BarberTok.FollowerBoost, Config.BarberTok.FollowerBoostMax) or 0,
 	}
 end
 
 function Stats.Multiplier(player: Player): number
 	local b = Stats.BoostBreakdown(player)
-	local m = (1 + b.Rebirth) * (1 + b.Friends + b.Group + b.Premium) * (1 + b.Vip)
+	local m = (1 + b.Rebirth) * (1 + b.Friends + b.Group + b.Premium + b.Fame) * (1 + b.Vip)
 	if b.Double then
 		m *= 2
 	end
@@ -3192,6 +4592,14 @@ local function snapshot(player: Player)
 		Rebirths = profile.Rebirths,
 		Upgrades = profile.Upgrades,
 		Styles = profile.Styles,
+		Beards = profile.Beards,
+		Clippers = profile.Clippers,
+		Trophies = profile.Trophies,
+		Followers = profile.Followers,
+		Posts = profile.Posts,
+		SeasonColors = profile.SeasonColors,
+		Pass = profile.Pass,
+		BattleWins = profile.BattleWins,
 		Accs = profile.Accs,
 		FantasyColors = profile.FantasyColors,
 		Look = profile.Look,
@@ -3216,9 +4624,13 @@ function Stats.PushNow(player: Player)
 		local ls = player:FindFirstChild("leaderstats")
 		if ls then
 			local cash = ls:FindFirstChild("Argent") :: StringValue
-			local served = ls:FindFirstChild("Clients") :: IntValue
+			local followers = ls:FindFirstChild("Abonnés") :: IntValue
 			cash.Value = Util.Format(snap.Cash)
-			served.Value = snap.Served
+			followers.Value = snap.Followers or 0
+			local trophies = ls:FindFirstChild("Trophées") :: IntValue?
+			if trophies then
+				trophies.Value = snap.BattleWins
+			end
 		end
 	end
 end
@@ -3230,9 +4642,12 @@ function Stats.CreateLeaderstats(player: Player)
 	cash.Name = "Argent"
 	cash.Value = "0"
 	cash.Parent = ls
-	local served = Instance.new("IntValue")
-	served.Name = "Clients"
-	served.Parent = ls
+	local followers = Instance.new("IntValue")
+	followers.Name = "Abonnés"
+	followers.Parent = ls
+	local trophies = Instance.new("IntValue")
+	trophies.Name = "Trophées"
+	trophies.Parent = ls
 	ls.Parent = player
 end
 
@@ -3267,7 +4682,7 @@ return Stats
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">World</string>
           <string name="Source"><![CDATA[-- Génère la carte : terrain, éclairage cinématique, boulevard, fontaine, arbres.
@@ -3561,9 +4976,7 @@ local function boulevard()
 		local r = rng:NextNumber(240, 310)
 		World.Tree(Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), rng:NextNumber() < 0.5)
 	end
-	for _, x in { -215, 215 } do
-		flowerBed(Vector3.new(x, 0, 0), 10, 30)
-	end
+	flowerBed(Vector3.new(215, 0, 0), 10, 30) -- (côté ouest : la scène de Battle)
 end
 
 ---------------------------------------------------------------------
@@ -3617,21 +5030,21 @@ return World
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="16">
+  <Item class="StarterPlayer" referent="19">
     <Properties>
       <string name="Name">StarterPlayer</string>
       <float name="CharacterJumpPower">50</float>
       <float name="CharacterWalkSpeed">18</float>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="17">
+    <Item class="StarterPlayerScripts" referent="20">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="Folder" referent="18">
+      <Item class="Folder" referent="21">
         <Properties>
           <string name="Name">Client</string>
         </Properties>
-        <Item class="LocalScript" referent="19">
+        <Item class="LocalScript" referent="22">
           <Properties>
             <string name="Name">Main</string>
             <string name="Source"><![CDATA[-- Client de Salon Star : interface, atelier de coiffure, effets.
@@ -3879,6 +5292,7 @@ end
 -- Fenêtres
 ---------------------------------------------------------------------
 local windows: { [string]: Frame } = {}
+local buildFeedRef: () -> () = function() end
 local function openWindow(name: string)
 	for n, w in windows do
 		w.Visible = (n == name) and not w.Visible
@@ -3887,6 +5301,9 @@ local function openWindow(name: string)
 		end
 	end
 	refreshAll()
+	if name == "tok" then
+		buildFeedRef()
+	end
 end
 
 -- Carte générique pour les listes
@@ -3917,7 +5334,7 @@ local function buildShop()
 	end
 	sectionTitle(shopScroll, 0, "⚡ Boosts")
 	local order = 1
-	for _, key in { "rushHour", "celebrity", "starterPack" } do
+	for _, key in { "rushHour", "celebrity", "viralBoost", "passSkip", "starterPack" } do
 		local def = Config.Products[key]
 		if not (key == "starterPack" and state and state.StarterBought) then
 			rowCard(shopScroll, order, def.Icon, def.Name, def.Desc or "", priceText(def.Id, false), C.Green, function()
@@ -3938,7 +5355,7 @@ local function buildShop()
 	end
 	sectionTitle(shopScroll, 20, "💎 Passes (pour toujours)")
 	order = 21
-	for _, key in { "vip", "doubleCash", "neonColors", "premiumStyles", "autoStylist", "fastClients", "bigTips" } do
+	for _, key in { "seasonPass", "vip", "doubleCash", "neonColors", "premiumStyles", "battlePro", "autoStylist", "fastClients", "bigTips" } do
 		local def = Config.GamePasses[key]
 		local owned = state and state.Passes[key]
 		rowCard(shopScroll, order, def.Icon, def.Name, def.Desc, owned and "✅ Possédé" or priceText(def.Id, true), owned and C.Card or C.Gold, function()
@@ -3951,7 +5368,7 @@ local function buildShop()
 end
 
 -- Améliorations du salon ------------------------------------------
-local upWin, upContent = Ui.Window(gui, "⬆️ Mon Salon", C.Pink)
+local upWin, upContent = Ui.Window(gui, "⬆️ Mon Barbershop", C.Pink)
 windows.upgrades = upWin
 local upScroll = Ui.Scroll(upContent)
 local function buildUpgrades()
@@ -3990,7 +5407,8 @@ local function buildUpgrades()
 		else
 			text, color = Util.Money(s.Cost), state.Cash >= s.Cost and C.Green or C.Card
 		end
-		rowCard(upScroll, order, s.Icon, s.Name, "Valeur x" .. s.Value, text, color, function()
+		local tags = ({ H = "♂ Homme", F = "♀ Femme", U = "⚥ Mixte" })[s.Gender] .. (s.Trend and "  •  🔥 TENDANCE" or "") .. (s.Fade and "  •  🪒 dégradé" or "")
+		rowCard(upScroll, order, s.Icon, s.Name, tags .. "  •  x" .. s.Value, text, color, function()
 			if owned then
 				return
 			end
@@ -4002,8 +5420,27 @@ local function buildUpgrades()
 		end)
 		order += 1
 	end
-	sectionTitle(upScroll, 30, "🎨 Teintures & accessoires")
+	sectionTitle(upScroll, 30, "🪒 Barbier")
 	order = 31
+	rowCard(upScroll, order, "🪒", "Tondeuse Pro", "Débloque les 6 dégradés (taper, burst, à blanc…) : x1.15 à x1.4", state.Clippers and "✅ Débloqué" or Util.Money(Config.ClippersCost), state.Clippers and C.Card or C.Green, function()
+		if not state.Clippers then
+			call("Buy", "clippers", "clippers")
+		end
+	end)
+	order += 1
+	for _, b in Config.Beards do
+		if b.Cost > 0 then
+			local owned = state.Beards[b.Id]
+			rowCard(upScroll, order, b.Icon, b.Name, "Pour les clients hommes  •  x" .. b.Mult, owned and "✅ Débloqué" or Util.Money(b.Cost), owned and C.Card or C.Green, function()
+				if not owned then
+					call("Buy", "beard", b.Id)
+				end
+			end)
+			order += 1
+		end
+	end
+	sectionTitle(upScroll, 60, "🎨 Teintures & accessoires")
+	order = 61
 	rowCard(upScroll, order, "🎨", "Teintures fantaisie", "Rose, bleu, lavande, menthe, platine (x1.6)", state.FantasyColors and "✅ Débloqué" or Util.Money(Config.FantasyColorsCost), state.FantasyColors and C.Card or C.Green, function()
 		if not state.FantasyColors then
 			call("Buy", "fantasy", "fantasy")
@@ -4156,12 +5593,173 @@ Ui.Button({ Parent = codeContent, AnchorPoint = Vector2.new(0.5, 0), Position = 
 	end
 end)
 
+-- Barber Pass ------------------------------------------------------
+local passWin, passContent = Ui.Window(gui, "🎟️ Barber Pass — " .. Config.SeasonName, Color3.fromRGB(255, 120, 60))
+windows.pass = passWin
+local passTop = Ui.Frame({ Parent = passContent, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 90) })
+local passInfo = Ui.Label({ Parent = passTop, Text = "", Size = UDim2.new(0.6, 0, 0, 34), TextXAlignment = Enum.TextXAlignment.Left })
+local passBarBg = Ui.Frame({ Parent = passTop, Position = UDim2.fromOffset(0, 44), Size = UDim2.new(0.6, 0, 0, 22), BackgroundColor3 = C.Bg2 })
+Ui.Corner(passBarBg, 11)
+local passBar = Ui.Frame({ Parent = passBarBg, Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(255, 140, 60) })
+Ui.Corner(passBar, 11)
+local passGoldBtn = Ui.Button({ Parent = passTop, Text = "🎟️ Gold", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 0), Size = UDim2.new(0.37, 0, 0, 40), BackgroundColor3 = C.Gold }, function()
+	buyPass("seasonPass")
+end)
+Ui.Button({ Parent = passTop, Text = "⏩ +5 paliers", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 46), Size = UDim2.new(0.37, 0, 0, 36), BackgroundColor3 = C.Green }, function()
+	buyProduct("passSkip")
+end)
+local passListHolder = Ui.Frame({ Parent = passContent, BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 98), Size = UDim2.new(1, 0, 1, -98) })
+local passScroll = Ui.Scroll(passListHolder, 6)
+local function rewardText(r): string
+	if r.Kind == "cash" then
+		return "💰 " .. r.Minutes .. " min de gains"
+	end
+	return "🎨 " .. Config.ColorById[r.Id].Name
+end
+local function buildPass()
+	if not state or not passWin.Visible then
+		return
+	end
+	local xp = state.Pass.Season == Config.Season and state.Pass.XP or 0
+	local tier = math.min(Config.PassTiers, xp // Config.PassXpPerTier)
+	local gold = state.Passes.seasonPass
+	passInfo.Text = string.format("Palier %d / %d  •  %d XP", tier, Config.PassTiers, xp)
+	local into = tier >= Config.PassTiers and 1 or (xp % Config.PassXpPerTier) / Config.PassXpPerTier
+	passBar.Size = UDim2.fromScale(into, 1)
+	passGoldBtn.Text = gold and "✅ Gold actif" or "🎟️ Passer Gold"
+	for _, c in passScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	for t = 1, Config.PassTiers do
+		local r = Config.PassRewards[t]
+		local reached = t <= tier
+		local row = Ui.Frame({ Parent = passScroll, LayoutOrder = t, Size = UDim2.new(1, -10, 0, 48), BackgroundColor3 = reached and Color3.fromRGB(70, 50, 40) or C.Card })
+		Ui.Corner(row, 12)
+		Ui.Label({ Parent = row, Text = tostring(t), Size = UDim2.fromOffset(44, 36), Position = UDim2.fromOffset(6, 6), TextColor3 = reached and C.Gold or C.Muted })
+		Ui.Label({ Parent = row, Text = (reached and "✅ " or "") .. rewardText(r.Free), Size = UDim2.new(0.42, -30, 0, 30), Position = UDim2.new(0, 56, 0, 9), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
+		Ui.Label({ Parent = row, Text = ((reached and gold) and "✅ " or (gold and "" or "🔒 ")) .. rewardText(r.Gold), Size = UDim2.new(0.5, -10, 0, 30), Position = UDim2.new(0.5, 0, 0, 9), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Gold })
+	end
+end
+
+-- BarberTok (le TikTok du jeu) ------------------------------------
+local viewport -- défini plus bas (atelier)
+local feed: { any } = {}
+local myLikes: { [number]: boolean } = {}
+local tokWin, tokContent = Ui.Window(gui, "📱 BarberTok", Color3.fromRGB(255, 60, 130))
+windows.tok = tokWin
+tokWin.Size = UDim2.fromScale(0.34, 0.86)
+local tokLimit = tokWin:FindFirstChildOfClass("UISizeConstraint")
+if tokLimit then
+	tokLimit.MaxSize = Vector2.new(430, 760)
+end
+local tokScroll = Ui.Scroll(tokContent, 12)
+
+local function dummyWithLook(look): Model?
+	local template = ReplicatedStorage:FindFirstChild("PostDummy")
+	if not template then
+		return nil
+	end
+	local m = template:Clone()
+	HairBuilder.Apply(m, look)
+	return m
+end
+
+local function buildFeed()
+	if not tokWin.Visible then
+		return
+	end
+	for _, c in tokScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	if #feed == 0 then
+		Ui.Label({ Parent = tokScroll, Text = "Aucune publication… Fais une coupe parfaite pour être le premier ! ✂️", Size = UDim2.new(1, -10, 0, 80), Font = Enum.Font.GothamBold })
+		return
+	end
+	for i, post in feed do
+		if i > 12 then
+			break
+		end
+		local card = Ui.Frame({ Parent = tokScroll, LayoutOrder = i, Size = UDim2.new(1, -10, 0, 300), BackgroundColor3 = Color3.fromRGB(16, 12, 22) })
+		Ui.Corner(card, 18)
+		Ui.Stroke(card, post.Viral and Color3.fromRGB(255, 90, 60) or Color3.fromRGB(255, 60, 130), post.Viral and 3 or 1.5)
+		local pinned = (post.PinnedUntil or 0) > (state and state.ServerNow or 0)
+		Ui.Label({ Parent = card, Text = (pinned and "📌 " or "") .. "@" .. post.Author .. (post.Viral and "  🔥 VIRAL" or ""), Size = UDim2.new(1, -20, 0, 28), Position = UDim2.fromOffset(12, 8), TextXAlignment = Enum.TextXAlignment.Left })
+		Ui.Label({ Parent = card, Text = post.Caption or "", Size = UDim2.new(1, -20, 0, 22), Position = UDim2.fromOffset(12, 38), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamMedium, TextColor3 = C.Muted, NoStroke = true })
+		local holder = Ui.Frame({ Parent = card, BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 64), Size = UDim2.new(1, -16, 0, 180) })
+		local before, after = dummyWithLook(post.Before), dummyWithLook(post.After)
+		if before and after then
+			viewport(holder, before, 0.02, "AVANT")
+			viewport(holder, after, 0.54, "APRÈS")
+		end
+		local liked = myLikes[post.Id]
+		Ui.Button({ Parent = card, Text = (liked and "❤️ " or "🤍 ") .. post.Likes, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -10), Size = UDim2.fromOffset(120, 40), BackgroundColor3 = liked and Color3.fromRGB(255, 60, 120) or C.Bg2 }, function()
+			if myLikes[post.Id] or post.AuthorId == player.UserId then
+				return
+			end
+			if call("Like", post.Id) then
+				myLikes[post.Id] = true
+				sound(PING, 0.4, 1.7)
+			end
+		end)
+	end
+end
+
+buildFeedRef = buildFeed
+
+-- Écran géant BarberTok sur la place : affiche la publication la plus likée
+local function renderWall()
+	local map = Workspace:FindFirstChild("Map")
+	local wall = map and map:FindFirstChild("BarberTokWall")
+	if not wall then
+		return
+	end
+	local sg = wall:FindFirstChild("TokGui") or Instance.new("SurfaceGui")
+	sg.Name = "TokGui"
+	sg.Face = Enum.NormalId.Front
+	sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	sg.PixelsPerStud = 24
+	sg.LightInfluence = 0
+	sg.Parent = wall
+	sg:ClearAllChildren()
+	local bg = Ui.Frame({ Parent = sg, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(14, 10, 20) })
+	Ui.Label({ Parent = bg, Text = "📱 BarberTok", Size = UDim2.fromScale(1, 0.09), Position = UDim2.fromScale(0, 0.02), TextColor3 = Color3.fromRGB(255, 80, 150) })
+	local best
+	for _, p in feed do
+		if not best or p.Likes > best.Likes then
+			best = p
+		end
+	end
+	if not best then
+		Ui.Label({ Parent = bg, Text = "Fais une coupe parfaite pour apparaître ici ! ✂️", Size = UDim2.fromScale(0.9, 0.3), Position = UDim2.fromScale(0.05, 0.35) })
+		return
+	end
+	local holder = Ui.Frame({ Parent = bg, BackgroundTransparency = 1, Position = UDim2.fromScale(0, 0.13), Size = UDim2.fromScale(1, 0.6) })
+	local before, after = dummyWithLook(best.Before), dummyWithLook(best.After)
+	if before and after then
+		viewport(holder, before, 0.04, "AVANT")
+		viewport(holder, after, 0.56, "APRÈS")
+	end
+	Ui.Label({ Parent = bg, Text = "@" .. best.Author .. (best.Viral and "  🔥" or ""), Size = UDim2.fromScale(0.9, 0.08), Position = UDim2.fromScale(0.05, 0.76) })
+	Ui.Label({ Parent = bg, Text = "❤️ " .. best.Likes .. "   •   " .. (best.Caption or ""), Size = UDim2.fromScale(0.9, 0.06), Position = UDim2.fromScale(0.05, 0.86), Font = Enum.Font.GothamBold })
+end
+
+local FeedEvent: RemoteEvent = Remotes:WaitForChild("Feed")
+FeedEvent.OnClientEvent:Connect(function(list)
+	feed = list
+	buildFeed()
+	task.spawn(renderWall)
+end)
+
 ---------------------------------------------------------------------
 -- Barre de boutons (gauche)
 ---------------------------------------------------------------------
-local sideBar = Ui.Frame({ Parent = hud, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.fromOffset(84, 560) })
+local sideBar = Ui.Frame({ Parent = hud, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.fromOffset(84, 720) })
 local sideLayout = Instance.new("UIListLayout")
-sideLayout.Padding = UDim.new(0, 8)
+sideLayout.Padding = UDim.new(0, 6)
 sideLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 sideLayout.Parent = sideBar
 local sideScale = Instance.new("UIScale")
@@ -4184,6 +5782,12 @@ end)
 sideButton("⬆️", "Salon", C.Pink, function()
 	openWindow("upgrades")
 end)
+sideButton("📱", "BarberTok", Color3.fromRGB(255, 60, 130), function()
+	openWindow("tok")
+end)
+sideButton("🎟️", "Pass", Color3.fromRGB(255, 120, 60), function()
+	openWindow("pass")
+end)
 sideButton("🏆", "Franchise", Color3.fromRGB(190, 120, 255), function()
 	openWindow("rebirth")
 end)
@@ -4196,7 +5800,7 @@ end)
 sideButton("🎟️", "Codes", Color3.fromRGB(255, 140, 90), function()
 	openWindow("codes")
 end)
-sideButton("🏠", "Mon salon", Color3.fromRGB(120, 200, 200), function()
+sideButton("🏠", "Mon shop", Color3.fromRGB(120, 200, 200), function()
 	call("GoHome")
 end)
 sideButton("👥", "Inviter", Color3.fromRGB(100, 150, 255), function()
@@ -4207,7 +5811,7 @@ end)
 
 local function adaptScale()
 	local h = camera.ViewportSize.Y
-	sideScale.Scale = math.clamp(h / 760, 0.62, 1.1)
+	sideScale.Scale = math.clamp(h / 900, 0.55, 1.05)
 end
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(adaptScale)
 adaptScale()
@@ -4221,6 +5825,7 @@ table.insert(refreshers, function()
 	end
 	buildRebirth()
 	buildDaily()
+	buildPass()
 	badges["Bonus"].Visible = dailyReady()
 	badges["Franchise"].Visible = state.Cash >= Config.RebirthCost(state.Rebirths)
 end)
@@ -4266,6 +5871,7 @@ Ui.Corner(requestCard, 16)
 local requestTitle = Ui.Label({ Parent = requestCard, Text = "💬 Demande", Size = UDim2.new(1, -16, 0.18, 0), Position = UDim2.fromOffset(8, 6), TextColor3 = C.Pink2 })
 local requestText = Ui.Label({ Parent = requestCard, Text = "", Size = UDim2.new(1, -16, 0.42, 0), Position = UDim2.new(0, 8, 0.2, 0), Font = Enum.Font.GothamBold })
 local scoreText = Ui.Label({ Parent = requestCard, Text = "", Size = UDim2.new(1, -16, 0.18, 0), Position = UDim2.new(0, 8, 0.62, 0), TextColor3 = C.Gold })
+local timerText = Ui.Label({ Parent = studio, Text = "", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -8), Size = UDim2.fromOffset(340, 44), TextColor3 = Color3.fromRGB(255, 120, 90), Visible = false })
 local rotateLeft = Ui.Button({ Parent = requestCard, Text = "⟲", Size = UDim2.new(0.3, 0, 0.16, 0), Position = UDim2.new(0.05, 0, 0.82, 0), BackgroundColor3 = C.Bg2 })
 local rotateRight = Ui.Button({ Parent = requestCard, Text = "⟳", Size = UDim2.new(0.3, 0, 0.16, 0), Position = UDim2.new(0.65, 0, 0.82, 0), BackgroundColor3 = C.Bg2 })
 
@@ -4301,6 +5907,9 @@ local function isUnlocked(kind: string, id: any): (boolean, string?)
 	if not state then
 		return false
 	end
+	if session and session.Kind == "battle" then
+		return true -- en Battle, tout le monde a accès à tout (équitable)
+	end
 	if kind == "style" then
 		local s = Config.StyleById[id]
 		if state.Styles[id] then
@@ -4316,9 +5925,15 @@ local function isUnlocked(kind: string, id: any): (boolean, string?)
 			return true
 		elseif c.Tier == "fantasy" then
 			return state.FantasyColors, "money"
+		elseif c.Tier == "season" then
+			return state.SeasonColors[id] == true, "pass:seasonPass"
 		else
 			return state.Passes.neonColors == true, "pass:neonColors"
 		end
+	elseif kind == "fade" then
+		return id == "aucun" or state.Clippers == true, "money"
+	elseif kind == "beard" then
+		return state.Beards[id] == true, "money"
 	elseif kind == "acc" then
 		local a = Config.AccById[id]
 		if state.Accs[id] then
@@ -4373,8 +5988,12 @@ function buildOptions()
 			c:Destroy()
 		end
 	end
-	local function option(order: number, icon: string, name: string, selected: boolean, wanted: boolean, locked: string?, color: Color3?, onClick: () -> ())
+	local function option(order: number, icon: string, name: string, selected: boolean, wanted: boolean, locked: string?, color: Color3?, onClick: () -> (), trend: boolean?)
 		local b = Ui.Button({ Parent = optionsScroll, LayoutOrder = order, Text = "", BackgroundColor3 = selected and C.Pink or C.Card }, onClick)
+		if trend then
+			local badge = Ui.Label({ Parent = b, Text = "🔥", Size = UDim2.fromOffset(24, 24), Position = UDim2.new(1, -26, 0, 2), NoStroke = true, ZIndex = 3 })
+			badge.ZIndex = 3
+		end
 		if wanted then
 			Ui.Stroke(b, C.Gold, 3)
 		end
@@ -4398,7 +6017,7 @@ function buildOptions()
 			local ok, why = isUnlocked("style", s.Id)
 			option(i, s.Icon, s.Name, look.style == s.Id, req ~= nil and req.style == s.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, nil, function()
 				choose("style", s.Id)
-			end)
+			end, s.Trend)
 		end
 	elseif currentTab == "length" then
 		for i, l in Config.Lengths do
@@ -4406,26 +6025,44 @@ function buildOptions()
 				choose("length", l.Id)
 			end)
 		end
+	elseif currentTab == "fade" then
+		local fadeOk = Config.StyleById[look.style].Fade
+		for i, f in Config.Fades do
+			local ok = isUnlocked("fade", f.Id)
+			option(i, f.Icon, f.Name, look.fade == f.Id, req ~= nil and req.fade == f.Id, (not ok) and "🔒" or nil, nil, function()
+				if not fadeOk and f.Id ~= "aucun" then
+					toast("Le dégradé se fait sur une coupe courte (🪒 dans l'onglet Coupe)", "info")
+				end
+				choose("fade", f.Id)
+			end, f.Trend)
+		end
+	elseif currentTab == "beard" then
+		for i, b in Config.Beards do
+			local ok = isUnlocked("beard", b.Id)
+			option(i, b.Icon, b.Name, look.beard == b.Id, req ~= nil and req.beard == b.Id, (not ok) and "🔒" or nil, nil, function()
+				choose("beard", b.Id)
+			end)
+		end
 	elseif currentTab == "color" then
 		for i, c in Config.Colors do
 			local ok, why = isUnlocked("color", c.Id)
 			option(i, "", c.Name, look.color == c.Id, req ~= nil and req.color == c.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, c.Color, function()
 				choose("color", c.Id)
-			end)
+			end, c.Trend)
 		end
 	elseif currentTab == "acc" then
 		for i, a in Config.Accessories do
 			local ok, why = isUnlocked("acc", a.Id)
 			option(i, a.Icon, a.Name, look.acc == a.Id, req ~= nil and req.acc == a.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, nil, function()
 				choose("acc", a.Id)
-			end)
+			end, a.Trend)
 		end
 	end
 end
 
 local tabButtons = {}
-for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Longueur" }, { "color", "🎨 Couleur" }, { "acc", "🎀 Accessoire" } } do
-	tabButtons[t[1]] = Ui.Button({ Parent = tabsBar, Text = t[2], Size = UDim2.new(0.25, -6, 1, 0), BackgroundColor3 = C.Bg2 }, function()
+for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Long." }, { "fade", "🪒 Dégradé" }, { "beard", "🧔 Barbe" }, { "color", "🎨 Couleur" }, { "acc", "💎 Accessoire" } } do
+	tabButtons[t[1]] = Ui.Button({ Parent = tabsBar, Text = t[2], Size = UDim2.new(1 / 6, -7, 1, 0), BackgroundColor3 = C.Bg2 }, function()
 		currentTab = t[1]
 		for k, b in tabButtons do
 			b.BackgroundColor3 = k == currentTab and C.Pink or C.Bg2
@@ -4434,8 +6071,89 @@ for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Longueur" }, { "col
 	end)
 end
 
+-- Copie figée d'un personnage (pour la carte avant / après)
+local function snapshotModel(model: Instance?): Model?
+	if not model or not model.Parent then
+		return nil
+	end
+	local ok, clone = pcall(function()
+		model.Archivable = true
+		return model:Clone()
+	end)
+	if not ok or not clone then
+		return nil
+	end
+	for _, d in clone:GetDescendants() do
+		if d:IsA("BillboardGui") or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ParticleEmitter") or d:IsA("Sound") then
+			d:Destroy()
+		end
+	end
+	return clone
+end
+
+function viewport(parent: Instance, model: Model, x: number, title: string)
+	local vp = Instance.new("ViewportFrame")
+	vp.BackgroundColor3 = Color3.fromRGB(60, 36, 10)
+	vp.BackgroundTransparency = 0.6
+	vp.Position = UDim2.fromScale(x, 0.17)
+	vp.Size = UDim2.fromScale(0.4, 0.72)
+	vp.Ambient = Color3.fromRGB(170, 150, 130)
+	vp.LightColor = Color3.fromRGB(255, 240, 220)
+	vp.LightDirection = Vector3.new(-1, -1, -1)
+	vp.Parent = parent
+	Ui.Corner(vp, 16)
+	model.Parent = vp
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 30
+	cam.Parent = vp
+	vp.CurrentCamera = cam
+	local head = model:FindFirstChild("Head") :: BasePart?
+	if head then
+		local eye = (head.CFrame * CFrame.new(1.4, 0.4, -4.6)).Position
+		cam.CFrame = CFrame.lookAt(eye, head.Position + Vector3.new(0, 0.1, 0))
+	end
+	Ui.Label({ Parent = parent, Text = title, Position = UDim2.fromScale(x, 0.04), Size = UDim2.fromScale(0.4, 0.11) })
+end
+
+local function showBeforeAfter(before: Model, after: Model, scoreLine: string?)
+	local card = Ui.Frame({ Parent = gui, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromScale(0.5, 0.42), ZIndex = 90 })
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = Vector2.new(640, 380)
+	limit.Parent = card
+	Ui.Corner(card, 22)
+	Ui.Stroke(card, C.Gold, 4)
+	Ui.Gradient(card, Color3.fromRGB(240, 170, 50), Color3.fromRGB(120, 60, 10), 45)
+	viewport(card, before, 0.05, "AVANT")
+	viewport(card, after, 0.55, "APRÈS ✨")
+	Ui.Label({ Parent = card, Text = "➜", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.12, 0.25), TextColor3 = Color3.fromRGB(255, 235, 170) })
+	if scoreLine then
+		Ui.Label({ Parent = card, Text = scoreLine, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.9), Size = UDim2.fromScale(0.9, 0.09) })
+	end
+	Ui.Pop(card)
+	task.delay(4.5, function()
+		Ui.Tween(card, 0.3, { BackgroundTransparency = 1 })
+		task.wait(0.3)
+		card:Destroy()
+	end)
+end
+
+local beforeSnapshot: Model? = nil
 local camConn: RBXScriptConnection? = nil
-local function closeStudio()
+local function closeStudio(finished: boolean?)
+	if finished and session and beforeSnapshot then
+		local after = snapshotModel(session.Target)
+		if after then
+			local line = nil
+			if session.Request then
+				line = "Ressemblance : " .. math.floor(HairBuilder.Score(session.Request, session.Look) * 100 + 0.5) .. "%"
+			end
+			showBeforeAfter(beforeSnapshot, after, line)
+		end
+	elseif beforeSnapshot then
+		beforeSnapshot:Destroy()
+	end
+	beforeSnapshot = nil
+	timerText.Visible = false
 	session = nil
 	studio.Visible = false
 	hud.Visible = true
@@ -4456,7 +6174,10 @@ local function openStudio(data: any)
 		Target = data.Target,
 		Request = data.Request,
 		Look = HairBuilder.Normalize(data.Look),
+		EndsAt = data.EndsAt,
 	}
+	beforeSnapshot = snapshotModel(data.Target)
+	timerText.Visible = data.EndsAt ~= nil
 	for _, w in windows do
 		w.Visible = false
 	end
@@ -4467,7 +6188,11 @@ local function openStudio(data: any)
 	for k, b in tabButtons do
 		b.BackgroundColor3 = k == currentTab and C.Pink or C.Bg2
 	end
-	if data.Request then
+	if data.Kind == "battle" then
+		requestTitle.Text = "⚔️ BATTLE : reproduis"
+		requestText.Text = HairBuilder.Describe(data.Request)
+		finishBtn.Text = "✅ Rendre"
+	elseif data.Request then
 		requestTitle.Text = "💬 " .. (data.Name or "Client") .. " veut :"
 		requestText.Text = HairBuilder.Describe(data.Request)
 		finishBtn.Text = "✅ Terminer"
@@ -4515,7 +6240,15 @@ SessionEvent.OnClientEvent:Connect(function(data)
 	if data.Open then
 		openStudio(data)
 	else
-		closeStudio()
+		closeStudio(data.Finished)
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	if session and session.EndsAt then
+		local left = session.EndsAt - Workspace:GetServerTimeNow()
+		timerText.Text = "⏱️ " .. Util.Time(math.max(0, left))
+		timerText.TextColor3 = left < 10 and C.Red or C.Gold
 	end
 end)
 
@@ -4617,6 +6350,47 @@ RunService.Heartbeat:Connect(function()
 end)
 
 ---------------------------------------------------------------------
+-- Bannière de Battle
+---------------------------------------------------------------------
+local battleBanner = Ui.Frame({ Parent = hud, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.fromOffset(470, 64), BackgroundColor3 = C.Bg, Visible = false })
+Ui.Corner(battleBanner, 20)
+Ui.Stroke(battleBanner, C.Gold, 3)
+Ui.Gradient(battleBanner, Color3.fromRGB(150, 80, 10), Color3.fromRGB(50, 24, 60), 0)
+local battleText = Ui.Label({ Parent = battleBanner, Text = "", Position = UDim2.fromOffset(14, 8), Size = UDim2.new(1, -170, 1, -16), TextXAlignment = Enum.TextXAlignment.Left })
+local battleJoin = Ui.Button({ Parent = battleBanner, Text = "⚔️ Rejoindre", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(140, 46), BackgroundColor3 = C.Green }, function()
+	if call("JoinBattle") then
+		confetti()
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	local phase = ReplicatedStorage:GetAttribute("BattlePhase") or "idle"
+	local left = (ReplicatedStorage:GetAttribute("BattleEndsAt") or 0) - Workspace:GetServerTimeNow()
+	battleBanner.Visible = phase ~= "idle" and session == nil
+	battleJoin.Visible = phase == "lobby"
+	if phase == "lobby" then
+		battleText.Text = "⚔️ BATTLE DE BARBIERS — inscriptions " .. Util.Time(left)
+	elseif phase == "cut" then
+		battleText.Text = "✂️ Battle en cours ! Va regarder sur la scène"
+	elseif phase == "vote" then
+		battleText.Text = "👍 Vote pour la meilleure coupe ! " .. Util.Time(left)
+	elseif phase == "results" then
+		battleText.Text = "🏆 Résultats sur la grande scène !"
+	end
+end)
+
+-- Enseignes barbier qui tournent
+RunService.RenderStepped:Connect(function()
+	local angle = os.clock() * 2
+	for _, pole in CollectionService:GetTagged("BarberPole") do
+		local center = pole:GetAttribute("Center")
+		if typeof(center) == "CFrame" and pole:IsA("Model") then
+			pole:PivotTo(center * CFrame.Angles(0, angle, 0))
+		end
+	end
+end)
+
+---------------------------------------------------------------------
 -- Tag VIP dans le chat
 ---------------------------------------------------------------------
 pcall(function()
@@ -4647,9 +6421,13 @@ NotifyEvent.OnClientEvent:Connect(function(msg)
 		showAnnounce(msg.Text, msg.Color)
 	elseif msg.Type == "pay" then
 		payPopup(msg.Amount, msg.Perfect, msg.Streak)
-		if session and session.Kind == "npc" then
-			closeStudio()
-		end
+	elseif msg.Type == "posted" then
+		toast(msg.Pinned and "📌 Publié et ÉPINGLÉ sur BarberTok !" or "📱 Ta coupe est publiée sur BarberTok !", "success")
+	elseif msg.Type == "tierUp" then
+		showAnnounce("🎟️ Barber Pass : palier " .. msg.Tier .. " atteint !", Color3.fromRGB(255, 150, 70))
+	elseif msg.Type == "battleResult" then
+		local medal = ({ "🥇", "🥈", "🥉" })[msg.Rank] or "🎖️"
+		showAnnounce(string.format("%s %de / %d à la Battle — %d pts  +%s", medal, msg.Rank, msg.Count, msg.Score, Util.Money(msg.Prize)), msg.Rank == 1 and C.Gold or C.Pink2)
 	elseif msg.Type == "celebrate" then
 		confetti()
 	elseif msg.Type == "open" then
@@ -4661,13 +6439,15 @@ NotifyEvent.OnClientEvent:Connect(function(msg)
 			tutorialShown = true
 			task.spawn(function()
 				task.wait(2)
-				toast("👋 Bienvenue dans ton salon de coiffure !", "success")
+				toast("💈 Bienvenue dans ton barbershop !", "success")
 				task.wait(3)
-				toast("💺 Des clients vont s'asseoir sur tes fauteuils.", "info")
+				toast("💺 Clients et clientes vont s'asseoir sur tes fauteuils.", "info")
 				task.wait(3)
 				toast("✂️ Approche-toi et appuie sur E pour les coiffer.", "info")
 				task.wait(3)
-				toast("⭐ Fais exactement ce qu'ils demandent = gros pourboire !", "money")
+				toast("⭐ Coupe exacte (dégradé, barbe, couleur…) = gros pourboire !", "money")
+				task.wait(3)
+				toast("⚔️ Toutes les quelques minutes : BATTLE sur la grande scène !", "info")
 			end)
 		end
 		-- Offre de bienvenue (une fois par session, si pas déjà acheté)
@@ -4693,7 +6473,7 @@ end)
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="20">
+        <Item class="ModuleScript" referent="23">
           <Properties>
             <string name="Name">Ui</string>
             <string name="Source"><![CDATA[-- Petite bibliothèque d'interface : composants arrondis, dégradés, animations.
@@ -4897,7 +6677,7 @@ return Ui
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="21">
+  <Item class="Workspace" referent="24">
     <Properties>
       <string name="Name">Workspace</string>
       <float name="Gravity">196.2</float>

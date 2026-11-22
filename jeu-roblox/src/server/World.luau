@@ -289,9 +289,7 @@ local function boulevard()
 		local r = rng:NextNumber(240, 310)
 		World.Tree(Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), rng:NextNumber() < 0.5)
 	end
-	for _, x in { -215, 215 } do
-		flowerBed(Vector3.new(x, 0, 0), 10, 30)
-	end
+	flowerBed(Vector3.new(215, 0, 0), 10, 30) -- (côté ouest : la scène de Battle)
 end
 
 ---------------------------------------------------------------------

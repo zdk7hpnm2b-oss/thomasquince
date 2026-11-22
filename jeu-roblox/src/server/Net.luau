@@ -15,6 +15,7 @@ local Net = {
 	State = event("State"), -- serveur → client : état du joueur
 	Notify = event("Notify"), -- serveur → client : message / annonce / effet
 	Session = event("Session"), -- serveur → client : ouverture/fermeture de l'atelier coiffure
+	Feed = event("Feed"), -- serveur → client : fil BarberTok
 	Action = Instance.new("RemoteFunction"), -- client → serveur
 }
 Net.Action.Name = "Action"

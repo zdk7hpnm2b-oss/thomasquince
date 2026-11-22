@@ -243,6 +243,7 @@ end
 -- Fenêtres
 ---------------------------------------------------------------------
 local windows: { [string]: Frame } = {}
+local buildFeedRef: () -> () = function() end
 local function openWindow(name: string)
 	for n, w in windows do
 		w.Visible = (n == name) and not w.Visible
@@ -251,6 +252,9 @@ local function openWindow(name: string)
 		end
 	end
 	refreshAll()
+	if name == "tok" then
+		buildFeedRef()
+	end
 end
 
 -- Carte générique pour les listes
@@ -281,7 +285,7 @@ local function buildShop()
 	end
 	sectionTitle(shopScroll, 0, "⚡ Boosts")
 	local order = 1
-	for _, key in { "rushHour", "celebrity", "starterPack" } do
+	for _, key in { "rushHour", "celebrity", "viralBoost", "passSkip", "starterPack" } do
 		local def = Config.Products[key]
 		if not (key == "starterPack" and state and state.StarterBought) then
 			rowCard(shopScroll, order, def.Icon, def.Name, def.Desc or "", priceText(def.Id, false), C.Green, function()
@@ -302,7 +306,7 @@ local function buildShop()
 	end
 	sectionTitle(shopScroll, 20, "💎 Passes (pour toujours)")
 	order = 21
-	for _, key in { "vip", "doubleCash", "neonColors", "premiumStyles", "autoStylist", "fastClients", "bigTips" } do
+	for _, key in { "seasonPass", "vip", "doubleCash", "neonColors", "premiumStyles", "battlePro", "autoStylist", "fastClients", "bigTips" } do
 		local def = Config.GamePasses[key]
 		local owned = state and state.Passes[key]
 		rowCard(shopScroll, order, def.Icon, def.Name, def.Desc, owned and "✅ Possédé" or priceText(def.Id, true), owned and C.Card or C.Gold, function()
@@ -315,7 +319,7 @@ local function buildShop()
 end
 
 -- Améliorations du salon ------------------------------------------
-local upWin, upContent = Ui.Window(gui, "⬆️ Mon Salon", C.Pink)
+local upWin, upContent = Ui.Window(gui, "⬆️ Mon Barbershop", C.Pink)
 windows.upgrades = upWin
 local upScroll = Ui.Scroll(upContent)
 local function buildUpgrades()
@@ -354,7 +358,8 @@ local function buildUpgrades()
 		else
 			text, color = Util.Money(s.Cost), state.Cash >= s.Cost and C.Green or C.Card
 		end
-		rowCard(upScroll, order, s.Icon, s.Name, "Valeur x" .. s.Value, text, color, function()
+		local tags = ({ H = "♂ Homme", F = "♀ Femme", U = "⚥ Mixte" })[s.Gender] .. (s.Trend and "  •  🔥 TENDANCE" or "") .. (s.Fade and "  •  🪒 dégradé" or "")
+		rowCard(upScroll, order, s.Icon, s.Name, tags .. "  •  x" .. s.Value, text, color, function()
 			if owned then
 				return
 			end
@@ -366,8 +371,27 @@ local function buildUpgrades()
 		end)
 		order += 1
 	end
-	sectionTitle(upScroll, 30, "🎨 Teintures & accessoires")
+	sectionTitle(upScroll, 30, "🪒 Barbier")
 	order = 31
+	rowCard(upScroll, order, "🪒", "Tondeuse Pro", "Débloque les 6 dégradés (taper, burst, à blanc…) : x1.15 à x1.4", state.Clippers and "✅ Débloqué" or Util.Money(Config.ClippersCost), state.Clippers and C.Card or C.Green, function()
+		if not state.Clippers then
+			call("Buy", "clippers", "clippers")
+		end
+	end)
+	order += 1
+	for _, b in Config.Beards do
+		if b.Cost > 0 then
+			local owned = state.Beards[b.Id]
+			rowCard(upScroll, order, b.Icon, b.Name, "Pour les clients hommes  •  x" .. b.Mult, owned and "✅ Débloqué" or Util.Money(b.Cost), owned and C.Card or C.Green, function()
+				if not owned then
+					call("Buy", "beard", b.Id)
+				end
+			end)
+			order += 1
+		end
+	end
+	sectionTitle(upScroll, 60, "🎨 Teintures & accessoires")
+	order = 61
 	rowCard(upScroll, order, "🎨", "Teintures fantaisie", "Rose, bleu, lavande, menthe, platine (x1.6)", state.FantasyColors and "✅ Débloqué" or Util.Money(Config.FantasyColorsCost), state.FantasyColors and C.Card or C.Green, function()
 		if not state.FantasyColors then
 			call("Buy", "fantasy", "fantasy")
@@ -520,12 +544,173 @@ Ui.Button({ Parent = codeContent, AnchorPoint = Vector2.new(0.5, 0), Position = 
 	end
 end)
 
+-- Barber Pass ------------------------------------------------------
+local passWin, passContent = Ui.Window(gui, "🎟️ Barber Pass — " .. Config.SeasonName, Color3.fromRGB(255, 120, 60))
+windows.pass = passWin
+local passTop = Ui.Frame({ Parent = passContent, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 90) })
+local passInfo = Ui.Label({ Parent = passTop, Text = "", Size = UDim2.new(0.6, 0, 0, 34), TextXAlignment = Enum.TextXAlignment.Left })
+local passBarBg = Ui.Frame({ Parent = passTop, Position = UDim2.fromOffset(0, 44), Size = UDim2.new(0.6, 0, 0, 22), BackgroundColor3 = C.Bg2 })
+Ui.Corner(passBarBg, 11)
+local passBar = Ui.Frame({ Parent = passBarBg, Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(255, 140, 60) })
+Ui.Corner(passBar, 11)
+local passGoldBtn = Ui.Button({ Parent = passTop, Text = "🎟️ Gold", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 0), Size = UDim2.new(0.37, 0, 0, 40), BackgroundColor3 = C.Gold }, function()
+	buyPass("seasonPass")
+end)
+Ui.Button({ Parent = passTop, Text = "⏩ +5 paliers", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 46), Size = UDim2.new(0.37, 0, 0, 36), BackgroundColor3 = C.Green }, function()
+	buyProduct("passSkip")
+end)
+local passListHolder = Ui.Frame({ Parent = passContent, BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 98), Size = UDim2.new(1, 0, 1, -98) })
+local passScroll = Ui.Scroll(passListHolder, 6)
+local function rewardText(r): string
+	if r.Kind == "cash" then
+		return "💰 " .. r.Minutes .. " min de gains"
+	end
+	return "🎨 " .. Config.ColorById[r.Id].Name
+end
+local function buildPass()
+	if not state or not passWin.Visible then
+		return
+	end
+	local xp = state.Pass.Season == Config.Season and state.Pass.XP or 0
+	local tier = math.min(Config.PassTiers, xp // Config.PassXpPerTier)
+	local gold = state.Passes.seasonPass
+	passInfo.Text = string.format("Palier %d / %d  •  %d XP", tier, Config.PassTiers, xp)
+	local into = tier >= Config.PassTiers and 1 or (xp % Config.PassXpPerTier) / Config.PassXpPerTier
+	passBar.Size = UDim2.fromScale(into, 1)
+	passGoldBtn.Text = gold and "✅ Gold actif" or "🎟️ Passer Gold"
+	for _, c in passScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	for t = 1, Config.PassTiers do
+		local r = Config.PassRewards[t]
+		local reached = t <= tier
+		local row = Ui.Frame({ Parent = passScroll, LayoutOrder = t, Size = UDim2.new(1, -10, 0, 48), BackgroundColor3 = reached and Color3.fromRGB(70, 50, 40) or C.Card })
+		Ui.Corner(row, 12)
+		Ui.Label({ Parent = row, Text = tostring(t), Size = UDim2.fromOffset(44, 36), Position = UDim2.fromOffset(6, 6), TextColor3 = reached and C.Gold or C.Muted })
+		Ui.Label({ Parent = row, Text = (reached and "✅ " or "") .. rewardText(r.Free), Size = UDim2.new(0.42, -30, 0, 30), Position = UDim2.new(0, 56, 0, 9), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
+		Ui.Label({ Parent = row, Text = ((reached and gold) and "✅ " or (gold and "" or "🔒 ")) .. rewardText(r.Gold), Size = UDim2.new(0.5, -10, 0, 30), Position = UDim2.new(0.5, 0, 0, 9), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Gold })
+	end
+end
+
+-- BarberTok (le TikTok du jeu) ------------------------------------
+local viewport -- défini plus bas (atelier)
+local feed: { any } = {}
+local myLikes: { [number]: boolean } = {}
+local tokWin, tokContent = Ui.Window(gui, "📱 BarberTok", Color3.fromRGB(255, 60, 130))
+windows.tok = tokWin
+tokWin.Size = UDim2.fromScale(0.34, 0.86)
+local tokLimit = tokWin:FindFirstChildOfClass("UISizeConstraint")
+if tokLimit then
+	tokLimit.MaxSize = Vector2.new(430, 760)
+end
+local tokScroll = Ui.Scroll(tokContent, 12)
+
+local function dummyWithLook(look): Model?
+	local template = ReplicatedStorage:FindFirstChild("PostDummy")
+	if not template then
+		return nil
+	end
+	local m = template:Clone()
+	HairBuilder.Apply(m, look)
+	return m
+end
+
+local function buildFeed()
+	if not tokWin.Visible then
+		return
+	end
+	for _, c in tokScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	if #feed == 0 then
+		Ui.Label({ Parent = tokScroll, Text = "Aucune publication… Fais une coupe parfaite pour être le premier ! ✂️", Size = UDim2.new(1, -10, 0, 80), Font = Enum.Font.GothamBold })
+		return
+	end
+	for i, post in feed do
+		if i > 12 then
+			break
+		end
+		local card = Ui.Frame({ Parent = tokScroll, LayoutOrder = i, Size = UDim2.new(1, -10, 0, 300), BackgroundColor3 = Color3.fromRGB(16, 12, 22) })
+		Ui.Corner(card, 18)
+		Ui.Stroke(card, post.Viral and Color3.fromRGB(255, 90, 60) or Color3.fromRGB(255, 60, 130), post.Viral and 3 or 1.5)
+		local pinned = (post.PinnedUntil or 0) > (state and state.ServerNow or 0)
+		Ui.Label({ Parent = card, Text = (pinned and "📌 " or "") .. "@" .. post.Author .. (post.Viral and "  🔥 VIRAL" or ""), Size = UDim2.new(1, -20, 0, 28), Position = UDim2.fromOffset(12, 8), TextXAlignment = Enum.TextXAlignment.Left })
+		Ui.Label({ Parent = card, Text = post.Caption or "", Size = UDim2.new(1, -20, 0, 22), Position = UDim2.fromOffset(12, 38), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamMedium, TextColor3 = C.Muted, NoStroke = true })
+		local holder = Ui.Frame({ Parent = card, BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 64), Size = UDim2.new(1, -16, 0, 180) })
+		local before, after = dummyWithLook(post.Before), dummyWithLook(post.After)
+		if before and after then
+			viewport(holder, before, 0.02, "AVANT")
+			viewport(holder, after, 0.54, "APRÈS")
+		end
+		local liked = myLikes[post.Id]
+		Ui.Button({ Parent = card, Text = (liked and "❤️ " or "🤍 ") .. post.Likes, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 12, 1, -10), Size = UDim2.fromOffset(120, 40), BackgroundColor3 = liked and Color3.fromRGB(255, 60, 120) or C.Bg2 }, function()
+			if myLikes[post.Id] or post.AuthorId == player.UserId then
+				return
+			end
+			if call("Like", post.Id) then
+				myLikes[post.Id] = true
+				sound(PING, 0.4, 1.7)
+			end
+		end)
+	end
+end
+
+buildFeedRef = buildFeed
+
+-- Écran géant BarberTok sur la place : affiche la publication la plus likée
+local function renderWall()
+	local map = Workspace:FindFirstChild("Map")
+	local wall = map and map:FindFirstChild("BarberTokWall")
+	if not wall then
+		return
+	end
+	local sg = wall:FindFirstChild("TokGui") or Instance.new("SurfaceGui")
+	sg.Name = "TokGui"
+	sg.Face = Enum.NormalId.Front
+	sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	sg.PixelsPerStud = 24
+	sg.LightInfluence = 0
+	sg.Parent = wall
+	sg:ClearAllChildren()
+	local bg = Ui.Frame({ Parent = sg, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(14, 10, 20) })
+	Ui.Label({ Parent = bg, Text = "📱 BarberTok", Size = UDim2.fromScale(1, 0.09), Position = UDim2.fromScale(0, 0.02), TextColor3 = Color3.fromRGB(255, 80, 150) })
+	local best
+	for _, p in feed do
+		if not best or p.Likes > best.Likes then
+			best = p
+		end
+	end
+	if not best then
+		Ui.Label({ Parent = bg, Text = "Fais une coupe parfaite pour apparaître ici ! ✂️", Size = UDim2.fromScale(0.9, 0.3), Position = UDim2.fromScale(0.05, 0.35) })
+		return
+	end
+	local holder = Ui.Frame({ Parent = bg, BackgroundTransparency = 1, Position = UDim2.fromScale(0, 0.13), Size = UDim2.fromScale(1, 0.6) })
+	local before, after = dummyWithLook(best.Before), dummyWithLook(best.After)
+	if before and after then
+		viewport(holder, before, 0.04, "AVANT")
+		viewport(holder, after, 0.56, "APRÈS")
+	end
+	Ui.Label({ Parent = bg, Text = "@" .. best.Author .. (best.Viral and "  🔥" or ""), Size = UDim2.fromScale(0.9, 0.08), Position = UDim2.fromScale(0.05, 0.76) })
+	Ui.Label({ Parent = bg, Text = "❤️ " .. best.Likes .. "   •   " .. (best.Caption or ""), Size = UDim2.fromScale(0.9, 0.06), Position = UDim2.fromScale(0.05, 0.86), Font = Enum.Font.GothamBold })
+end
+
+local FeedEvent: RemoteEvent = Remotes:WaitForChild("Feed")
+FeedEvent.OnClientEvent:Connect(function(list)
+	feed = list
+	buildFeed()
+	task.spawn(renderWall)
+end)
+
 ---------------------------------------------------------------------
 -- Barre de boutons (gauche)
 ---------------------------------------------------------------------
-local sideBar = Ui.Frame({ Parent = hud, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.fromOffset(84, 560) })
+local sideBar = Ui.Frame({ Parent = hud, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.fromOffset(84, 720) })
 local sideLayout = Instance.new("UIListLayout")
-sideLayout.Padding = UDim.new(0, 8)
+sideLayout.Padding = UDim.new(0, 6)
 sideLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 sideLayout.Parent = sideBar
 local sideScale = Instance.new("UIScale")
@@ -548,6 +733,12 @@ end)
 sideButton("⬆️", "Salon", C.Pink, function()
 	openWindow("upgrades")
 end)
+sideButton("📱", "BarberTok", Color3.fromRGB(255, 60, 130), function()
+	openWindow("tok")
+end)
+sideButton("🎟️", "Pass", Color3.fromRGB(255, 120, 60), function()
+	openWindow("pass")
+end)
 sideButton("🏆", "Franchise", Color3.fromRGB(190, 120, 255), function()
 	openWindow("rebirth")
 end)
@@ -560,7 +751,7 @@ end)
 sideButton("🎟️", "Codes", Color3.fromRGB(255, 140, 90), function()
 	openWindow("codes")
 end)
-sideButton("🏠", "Mon salon", Color3.fromRGB(120, 200, 200), function()
+sideButton("🏠", "Mon shop", Color3.fromRGB(120, 200, 200), function()
 	call("GoHome")
 end)
 sideButton("👥", "Inviter", Color3.fromRGB(100, 150, 255), function()
@@ -571,7 +762,7 @@ end)
 
 local function adaptScale()
 	local h = camera.ViewportSize.Y
-	sideScale.Scale = math.clamp(h / 760, 0.62, 1.1)
+	sideScale.Scale = math.clamp(h / 900, 0.55, 1.05)
 end
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(adaptScale)
 adaptScale()
@@ -585,6 +776,7 @@ table.insert(refreshers, function()
 	end
 	buildRebirth()
 	buildDaily()
+	buildPass()
 	badges["Bonus"].Visible = dailyReady()
 	badges["Franchise"].Visible = state.Cash >= Config.RebirthCost(state.Rebirths)
 end)
@@ -630,6 +822,7 @@ Ui.Corner(requestCard, 16)
 local requestTitle = Ui.Label({ Parent = requestCard, Text = "💬 Demande", Size = UDim2.new(1, -16, 0.18, 0), Position = UDim2.fromOffset(8, 6), TextColor3 = C.Pink2 })
 local requestText = Ui.Label({ Parent = requestCard, Text = "", Size = UDim2.new(1, -16, 0.42, 0), Position = UDim2.new(0, 8, 0.2, 0), Font = Enum.Font.GothamBold })
 local scoreText = Ui.Label({ Parent = requestCard, Text = "", Size = UDim2.new(1, -16, 0.18, 0), Position = UDim2.new(0, 8, 0.62, 0), TextColor3 = C.Gold })
+local timerText = Ui.Label({ Parent = studio, Text = "", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0, -8), Size = UDim2.fromOffset(340, 44), TextColor3 = Color3.fromRGB(255, 120, 90), Visible = false })
 local rotateLeft = Ui.Button({ Parent = requestCard, Text = "⟲", Size = UDim2.new(0.3, 0, 0.16, 0), Position = UDim2.new(0.05, 0, 0.82, 0), BackgroundColor3 = C.Bg2 })
 local rotateRight = Ui.Button({ Parent = requestCard, Text = "⟳", Size = UDim2.new(0.3, 0, 0.16, 0), Position = UDim2.new(0.65, 0, 0.82, 0), BackgroundColor3 = C.Bg2 })
 
@@ -665,6 +858,9 @@ local function isUnlocked(kind: string, id: any): (boolean, string?)
 	if not state then
 		return false
 	end
+	if session and session.Kind == "battle" then
+		return true -- en Battle, tout le monde a accès à tout (équitable)
+	end
 	if kind == "style" then
 		local s = Config.StyleById[id]
 		if state.Styles[id] then
@@ -680,9 +876,15 @@ local function isUnlocked(kind: string, id: any): (boolean, string?)
 			return true
 		elseif c.Tier == "fantasy" then
 			return state.FantasyColors, "money"
+		elseif c.Tier == "season" then
+			return state.SeasonColors[id] == true, "pass:seasonPass"
 		else
 			return state.Passes.neonColors == true, "pass:neonColors"
 		end
+	elseif kind == "fade" then
+		return id == "aucun" or state.Clippers == true, "money"
+	elseif kind == "beard" then
+		return state.Beards[id] == true, "money"
 	elseif kind == "acc" then
 		local a = Config.AccById[id]
 		if state.Accs[id] then
@@ -737,8 +939,12 @@ function buildOptions()
 			c:Destroy()
 		end
 	end
-	local function option(order: number, icon: string, name: string, selected: boolean, wanted: boolean, locked: string?, color: Color3?, onClick: () -> ())
+	local function option(order: number, icon: string, name: string, selected: boolean, wanted: boolean, locked: string?, color: Color3?, onClick: () -> (), trend: boolean?)
 		local b = Ui.Button({ Parent = optionsScroll, LayoutOrder = order, Text = "", BackgroundColor3 = selected and C.Pink or C.Card }, onClick)
+		if trend then
+			local badge = Ui.Label({ Parent = b, Text = "🔥", Size = UDim2.fromOffset(24, 24), Position = UDim2.new(1, -26, 0, 2), NoStroke = true, ZIndex = 3 })
+			badge.ZIndex = 3
+		end
 		if wanted then
 			Ui.Stroke(b, C.Gold, 3)
 		end
@@ -762,7 +968,7 @@ function buildOptions()
 			local ok, why = isUnlocked("style", s.Id)
 			option(i, s.Icon, s.Name, look.style == s.Id, req ~= nil and req.style == s.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, nil, function()
 				choose("style", s.Id)
-			end)
+			end, s.Trend)
 		end
 	elseif currentTab == "length" then
 		for i, l in Config.Lengths do
@@ -770,26 +976,44 @@ function buildOptions()
 				choose("length", l.Id)
 			end)
 		end
+	elseif currentTab == "fade" then
+		local fadeOk = Config.StyleById[look.style].Fade
+		for i, f in Config.Fades do
+			local ok = isUnlocked("fade", f.Id)
+			option(i, f.Icon, f.Name, look.fade == f.Id, req ~= nil and req.fade == f.Id, (not ok) and "🔒" or nil, nil, function()
+				if not fadeOk and f.Id ~= "aucun" then
+					toast("Le dégradé se fait sur une coupe courte (🪒 dans l'onglet Coupe)", "info")
+				end
+				choose("fade", f.Id)
+			end, f.Trend)
+		end
+	elseif currentTab == "beard" then
+		for i, b in Config.Beards do
+			local ok = isUnlocked("beard", b.Id)
+			option(i, b.Icon, b.Name, look.beard == b.Id, req ~= nil and req.beard == b.Id, (not ok) and "🔒" or nil, nil, function()
+				choose("beard", b.Id)
+			end)
+		end
 	elseif currentTab == "color" then
 		for i, c in Config.Colors do
 			local ok, why = isUnlocked("color", c.Id)
 			option(i, "", c.Name, look.color == c.Id, req ~= nil and req.color == c.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, c.Color, function()
 				choose("color", c.Id)
-			end)
+			end, c.Trend)
 		end
 	elseif currentTab == "acc" then
 		for i, a in Config.Accessories do
 			local ok, why = isUnlocked("acc", a.Id)
 			option(i, a.Icon, a.Name, look.acc == a.Id, req ~= nil and req.acc == a.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, nil, function()
 				choose("acc", a.Id)
-			end)
+			end, a.Trend)
 		end
 	end
 end
 
 local tabButtons = {}
-for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Longueur" }, { "color", "🎨 Couleur" }, { "acc", "🎀 Accessoire" } } do
-	tabButtons[t[1]] = Ui.Button({ Parent = tabsBar, Text = t[2], Size = UDim2.new(0.25, -6, 1, 0), BackgroundColor3 = C.Bg2 }, function()
+for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Long." }, { "fade", "🪒 Dégradé" }, { "beard", "🧔 Barbe" }, { "color", "🎨 Couleur" }, { "acc", "💎 Accessoire" } } do
+	tabButtons[t[1]] = Ui.Button({ Parent = tabsBar, Text = t[2], Size = UDim2.new(1 / 6, -7, 1, 0), BackgroundColor3 = C.Bg2 }, function()
 		currentTab = t[1]
 		for k, b in tabButtons do
 			b.BackgroundColor3 = k == currentTab and C.Pink or C.Bg2
@@ -798,8 +1022,89 @@ for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Longueur" }, { "col
 	end)
 end
 
+-- Copie figée d'un personnage (pour la carte avant / après)
+local function snapshotModel(model: Instance?): Model?
+	if not model or not model.Parent then
+		return nil
+	end
+	local ok, clone = pcall(function()
+		model.Archivable = true
+		return model:Clone()
+	end)
+	if not ok or not clone then
+		return nil
+	end
+	for _, d in clone:GetDescendants() do
+		if d:IsA("BillboardGui") or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ParticleEmitter") or d:IsA("Sound") then
+			d:Destroy()
+		end
+	end
+	return clone
+end
+
+function viewport(parent: Instance, model: Model, x: number, title: string)
+	local vp = Instance.new("ViewportFrame")
+	vp.BackgroundColor3 = Color3.fromRGB(60, 36, 10)
+	vp.BackgroundTransparency = 0.6
+	vp.Position = UDim2.fromScale(x, 0.17)
+	vp.Size = UDim2.fromScale(0.4, 0.72)
+	vp.Ambient = Color3.fromRGB(170, 150, 130)
+	vp.LightColor = Color3.fromRGB(255, 240, 220)
+	vp.LightDirection = Vector3.new(-1, -1, -1)
+	vp.Parent = parent
+	Ui.Corner(vp, 16)
+	model.Parent = vp
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 30
+	cam.Parent = vp
+	vp.CurrentCamera = cam
+	local head = model:FindFirstChild("Head") :: BasePart?
+	if head then
+		local eye = (head.CFrame * CFrame.new(1.4, 0.4, -4.6)).Position
+		cam.CFrame = CFrame.lookAt(eye, head.Position + Vector3.new(0, 0.1, 0))
+	end
+	Ui.Label({ Parent = parent, Text = title, Position = UDim2.fromScale(x, 0.04), Size = UDim2.fromScale(0.4, 0.11) })
+end
+
+local function showBeforeAfter(before: Model, after: Model, scoreLine: string?)
+	local card = Ui.Frame({ Parent = gui, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.45), Size = UDim2.fromScale(0.5, 0.42), ZIndex = 90 })
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = Vector2.new(640, 380)
+	limit.Parent = card
+	Ui.Corner(card, 22)
+	Ui.Stroke(card, C.Gold, 4)
+	Ui.Gradient(card, Color3.fromRGB(240, 170, 50), Color3.fromRGB(120, 60, 10), 45)
+	viewport(card, before, 0.05, "AVANT")
+	viewport(card, after, 0.55, "APRÈS ✨")
+	Ui.Label({ Parent = card, Text = "➜", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.12, 0.25), TextColor3 = Color3.fromRGB(255, 235, 170) })
+	if scoreLine then
+		Ui.Label({ Parent = card, Text = scoreLine, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.9), Size = UDim2.fromScale(0.9, 0.09) })
+	end
+	Ui.Pop(card)
+	task.delay(4.5, function()
+		Ui.Tween(card, 0.3, { BackgroundTransparency = 1 })
+		task.wait(0.3)
+		card:Destroy()
+	end)
+end
+
+local beforeSnapshot: Model? = nil
 local camConn: RBXScriptConnection? = nil
-local function closeStudio()
+local function closeStudio(finished: boolean?)
+	if finished and session and beforeSnapshot then
+		local after = snapshotModel(session.Target)
+		if after then
+			local line = nil
+			if session.Request then
+				line = "Ressemblance : " .. math.floor(HairBuilder.Score(session.Request, session.Look) * 100 + 0.5) .. "%"
+			end
+			showBeforeAfter(beforeSnapshot, after, line)
+		end
+	elseif beforeSnapshot then
+		beforeSnapshot:Destroy()
+	end
+	beforeSnapshot = nil
+	timerText.Visible = false
 	session = nil
 	studio.Visible = false
 	hud.Visible = true
@@ -820,7 +1125,10 @@ local function openStudio(data: any)
 		Target = data.Target,
 		Request = data.Request,
 		Look = HairBuilder.Normalize(data.Look),
+		EndsAt = data.EndsAt,
 	}
+	beforeSnapshot = snapshotModel(data.Target)
+	timerText.Visible = data.EndsAt ~= nil
 	for _, w in windows do
 		w.Visible = false
 	end
@@ -831,7 +1139,11 @@ local function openStudio(data: any)
 	for k, b in tabButtons do
 		b.BackgroundColor3 = k == currentTab and C.Pink or C.Bg2
 	end
-	if data.Request then
+	if data.Kind == "battle" then
+		requestTitle.Text = "⚔️ BATTLE : reproduis"
+		requestText.Text = HairBuilder.Describe(data.Request)
+		finishBtn.Text = "✅ Rendre"
+	elseif data.Request then
 		requestTitle.Text = "💬 " .. (data.Name or "Client") .. " veut :"
 		requestText.Text = HairBuilder.Describe(data.Request)
 		finishBtn.Text = "✅ Terminer"
@@ -879,7 +1191,15 @@ SessionEvent.OnClientEvent:Connect(function(data)
 	if data.Open then
 		openStudio(data)
 	else
-		closeStudio()
+		closeStudio(data.Finished)
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	if session and session.EndsAt then
+		local left = session.EndsAt - Workspace:GetServerTimeNow()
+		timerText.Text = "⏱️ " .. Util.Time(math.max(0, left))
+		timerText.TextColor3 = left < 10 and C.Red or C.Gold
 	end
 end)
 
@@ -981,6 +1301,47 @@ RunService.Heartbeat:Connect(function()
 end)
 
 ---------------------------------------------------------------------
+-- Bannière de Battle
+---------------------------------------------------------------------
+local battleBanner = Ui.Frame({ Parent = hud, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.fromOffset(470, 64), BackgroundColor3 = C.Bg, Visible = false })
+Ui.Corner(battleBanner, 20)
+Ui.Stroke(battleBanner, C.Gold, 3)
+Ui.Gradient(battleBanner, Color3.fromRGB(150, 80, 10), Color3.fromRGB(50, 24, 60), 0)
+local battleText = Ui.Label({ Parent = battleBanner, Text = "", Position = UDim2.fromOffset(14, 8), Size = UDim2.new(1, -170, 1, -16), TextXAlignment = Enum.TextXAlignment.Left })
+local battleJoin = Ui.Button({ Parent = battleBanner, Text = "⚔️ Rejoindre", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0), Size = UDim2.fromOffset(140, 46), BackgroundColor3 = C.Green }, function()
+	if call("JoinBattle") then
+		confetti()
+	end
+end)
+
+RunService.Heartbeat:Connect(function()
+	local phase = ReplicatedStorage:GetAttribute("BattlePhase") or "idle"
+	local left = (ReplicatedStorage:GetAttribute("BattleEndsAt") or 0) - Workspace:GetServerTimeNow()
+	battleBanner.Visible = phase ~= "idle" and session == nil
+	battleJoin.Visible = phase == "lobby"
+	if phase == "lobby" then
+		battleText.Text = "⚔️ BATTLE DE BARBIERS — inscriptions " .. Util.Time(left)
+	elseif phase == "cut" then
+		battleText.Text = "✂️ Battle en cours ! Va regarder sur la scène"
+	elseif phase == "vote" then
+		battleText.Text = "👍 Vote pour la meilleure coupe ! " .. Util.Time(left)
+	elseif phase == "results" then
+		battleText.Text = "🏆 Résultats sur la grande scène !"
+	end
+end)
+
+-- Enseignes barbier qui tournent
+RunService.RenderStepped:Connect(function()
+	local angle = os.clock() * 2
+	for _, pole in CollectionService:GetTagged("BarberPole") do
+		local center = pole:GetAttribute("Center")
+		if typeof(center) == "CFrame" and pole:IsA("Model") then
+			pole:PivotTo(center * CFrame.Angles(0, angle, 0))
+		end
+	end
+end)
+
+---------------------------------------------------------------------
 -- Tag VIP dans le chat
 ---------------------------------------------------------------------
 pcall(function()
@@ -1011,9 +1372,13 @@ NotifyEvent.OnClientEvent:Connect(function(msg)
 		showAnnounce(msg.Text, msg.Color)
 	elseif msg.Type == "pay" then
 		payPopup(msg.Amount, msg.Perfect, msg.Streak)
-		if session and session.Kind == "npc" then
-			closeStudio()
-		end
+	elseif msg.Type == "posted" then
+		toast(msg.Pinned and "📌 Publié et ÉPINGLÉ sur BarberTok !" or "📱 Ta coupe est publiée sur BarberTok !", "success")
+	elseif msg.Type == "tierUp" then
+		showAnnounce("🎟️ Barber Pass : palier " .. msg.Tier .. " atteint !", Color3.fromRGB(255, 150, 70))
+	elseif msg.Type == "battleResult" then
+		local medal = ({ "🥇", "🥈", "🥉" })[msg.Rank] or "🎖️"
+		showAnnounce(string.format("%s %de / %d à la Battle — %d pts  +%s", medal, msg.Rank, msg.Count, msg.Score, Util.Money(msg.Prize)), msg.Rank == 1 and C.Gold or C.Pink2)
 	elseif msg.Type == "celebrate" then
 		confetti()
 	elseif msg.Type == "open" then
@@ -1025,13 +1390,15 @@ NotifyEvent.OnClientEvent:Connect(function(msg)
 			tutorialShown = true
 			task.spawn(function()
 				task.wait(2)
-				toast("👋 Bienvenue dans ton salon de coiffure !", "success")
+				toast("💈 Bienvenue dans ton barbershop !", "success")
 				task.wait(3)
-				toast("💺 Des clients vont s'asseoir sur tes fauteuils.", "info")
+				toast("💺 Clients et clientes vont s'asseoir sur tes fauteuils.", "info")
 				task.wait(3)
 				toast("✂️ Approche-toi et appuie sur E pour les coiffer.", "info")
 				task.wait(3)
-				toast("⭐ Fais exactement ce qu'ils demandent = gros pourboire !", "money")
+				toast("⭐ Coupe exacte (dégradé, barbe, couleur…) = gros pourboire !", "money")
+				task.wait(3)
+				toast("⚔️ Toutes les quelques minutes : BATTLE sur la grande scène !", "info")
 			end)
 		end
 		-- Offre de bienvenue (une fois par session, si pas déjà acheté)

@@ -1,10 +1,13 @@
--- Point d'entrée serveur de Salon Star.
+-- Point d'entrée serveur de Barber Legends.
 
 local Players = game:GetService("Players")
 
+local BarberTok = require(script.Parent.BarberTok)
+local Battle = require(script.Parent.Battle)
 local Data = require(script.Parent.Data)
 local Monetization = require(script.Parent.Monetization)
 local Net = require(script.Parent.Net)
+local Progress = require(script.Parent.Progress)
 local Rewards = require(script.Parent.Rewards)
 local Salons = require(script.Parent.Salons)
 local Stats = require(script.Parent.Stats)
@@ -13,6 +16,8 @@ local World = require(script.Parent.World)
 World.Build()
 Salons.Init()
 Rewards.Init()
+Battle.Init()
+BarberTok.Init()
 
 local function onCharacter(player: Player, character: Model)
 	local hrp = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
@@ -42,6 +47,8 @@ local function onPlayerAdded(player: Player)
 	Rewards.CheckGroup(player)
 	Rewards.RefreshFriends()
 	Rewards.Offline(player)
+	Progress.Sync(player)
+	BarberTok.SendTo(player)
 
 	if not Salons.Assign(player) then
 		Net.Toast(player, "Tous les salons sont pris sur ce serveur, tu peux visiter et te faire coiffer !", "error")
@@ -114,6 +121,10 @@ Net.Action.OnServerInvoke = function(player: Player, action: any, a: any, b: any
 		return Rewards.ClaimGift(player, a)
 	elseif action == "Code" then
 		return Rewards.RedeemCode(player, a)
+	elseif action == "Like" then
+		return BarberTok.Like(player, a)
+	elseif action == "JoinBattle" then
+		return Battle.Join(player)
 	elseif action == "GoHome" then
 		local home = Salons.HomeCFrame(player)
 		if home and player.Character and not Salons.HasSession(player) then

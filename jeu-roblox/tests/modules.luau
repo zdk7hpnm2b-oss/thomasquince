@@ -76,30 +76,51 @@ for key, def in Config.Upgrades do
 end
 assert(#Config.Upgrades.pub.Interval == #Config.Upgrades.pub.Costs + 1)
 assert(#Config.Upgrades.deco.Mult == #Config.Upgrades.deco.Costs)
+assert(#Config.PassRewards == Config.PassTiers, "paliers du pass")
+for t, r in Config.PassRewards do
+	for _, side in { r.Free, r.Gold } do
+		assert(side.Kind == "cash" and side.Minutes > 0 or (side.Kind == "color" and Config.ColorById[side.Id] and Config.ColorById[side.Id].Tier == "season"), "récompense palier " .. t)
+	end
+end
+for _, s in Config.Styles do
+	assert(Config.StyleById[s.Id] == s)
+end
 print("Config OK")
 
--- Toutes les coiffures × longueurs × couleurs × accessoires
+-- Toutes les coiffures × longueurs × dégradés × barbes, puis couleurs × accessoires
+local function newChar()
+	local char = roblox.Instance.new("Model")
+	local head = roblox.Instance.new("Part")
+	head.Name = "Head"
+	head.Size = roblox.Vector3.new(1.2, 1.2, 1.2)
+	head.Parent = char
+	local hair = roblox.Instance.new("Accessory")
+	hair.Name = "CoolHair"
+	hair.Parent = char
+	return char
+end
 local count = 0
+local function check(look)
+	local char = newChar()
+	local model = HairBuilder.Apply(char, look)
+	assert(model and #model:GetChildren() > 0, "vide : " .. look.style)
+	assert(char:FindFirstChild("CoolHair") == nil, "cheveux Roblox non retirés")
+	assert(HairBuilder.Score(look, look) == 1, "score")
+	HairBuilder.Describe(look)
+	count += 1
+end
 for _, s in Config.Styles do
+	assert(s.Gender == "H" or s.Gender == "F" or s.Gender == "U", "genre manquant : " .. s.Id)
 	for len = 1, 3 do
-		for _, c in Config.Colors do
-			for _, a in Config.Accessories do
-				local char = roblox.Instance.new("Model")
-				local head = roblox.Instance.new("Part")
-				head.Name = "Head"
-				head.Size = roblox.Vector3.new(1.2, 1.2, 1.2)
-				head.Parent = char
-				local hair = roblox.Instance.new("Accessory")
-				hair.Name = "CoolHair"
-				hair.Parent = char
-				local look = { style = s.Id, length = len, color = c.Id, acc = a.Id }
-				local model = HairBuilder.Apply(char, look)
-				assert(model and #model:GetChildren() > 0, "vide : " .. s.Id)
-				assert(char:FindFirstChild("CoolHair") == nil, "cheveux Roblox non retirés")
-				assert(HairBuilder.Score(look, look) == 1)
-				HairBuilder.Describe(look)
-				count += 1
+		for _, f in Config.Fades do
+			for _, b in Config.Beards do
+				check({ style = s.Id, length = len, fade = f.Id, beard = b.Id, color = "noir", acc = "aucun" })
 			end
+		end
+	end
+	for _, c in Config.Colors do
+		for _, a in Config.Accessories do
+			check({ style = s.Id, length = 2, fade = "burst", beard = "pleine", color = c.Id, acc = a.Id })
 		end
 	end
 end
@@ -118,7 +139,7 @@ for _, c in char:GetChildren() do
 end
 assert(n == 1, "plusieurs coiffures")
 local norm = HairBuilder.Normalize({ style = "nope", length = 9 })
-assert(norm.style == "lisse" and norm.length == 2)
+assert(norm.style == "pixie" and norm.length == 2 and norm.fade == "aucun" and norm.beard == "aucune")
 print(("HairBuilder OK : %d combinaisons, tags arc-en-ciel=%d"):format(count, tags.RainbowHair or 0))
 
 -- Interface : construit une fenêtre (valide les noms/types de propriétés)

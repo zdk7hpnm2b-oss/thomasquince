@@ -7,7 +7,9 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Util = require(ReplicatedStorage.Shared.Util)
+local BarberTok = require(script.Parent.BarberTok)
 local Data = require(script.Parent.Data)
+local Progress = require(script.Parent.Progress)
 local Net = require(script.Parent.Net)
 local Salons = require(script.Parent.Salons)
 local Stats = require(script.Parent.Stats)
@@ -34,6 +36,8 @@ local function onPassOwned(player: Player, key: string)
 	player:SetAttribute("Pass_" .. key, true)
 	if key == "autoStylist" then
 		Salons.Rebuild(player, false)
+	elseif key == "seasonPass" then
+		Progress.Sync(player) -- donne d'un coup toutes les récompenses Gold déjà atteintes
 	end
 end
 
@@ -82,6 +86,16 @@ handlers.rush = function(player, _def)
 	end
 end
 
+handlers.passSkip = function(player, _def)
+	Progress.SkipTiers(player, 5)
+	Net.Toast(player, "⏩ +5 paliers de Barber Pass !", "success")
+end
+
+handlers.viral = function(player, _def)
+	BarberTok.PinNext(player)
+	Net.Toast(player, "🚀 Ta prochaine coupe sera épinglée en tête de BarberTok !", "success")
+end
+
 handlers.celebrity = function(player, _def)
 	Salons.AddCelebrity(player)
 	Net.Toast(player, "🌟 Une célébrité arrive dans ton salon !", "success")
@@ -95,11 +109,12 @@ handlers.starter = function(player, _def)
 	Stats.AddCash(player, 25000, false)
 	if not profile.StarterBought then
 		profile.StarterBought = true
-		profile.Styles.boucle = true
+		profile.Styles.twists = true
+		profile.Clippers = true
 		profile.FantasyColors = true
 	end
 	Stats.MarkDirty(player)
-	Net.Toast(player, "🎁 Pack Débutant reçu ! +25K $, coupe Bouclée et teintures fantaisie", "success")
+	Net.Toast(player, "🎁 Pack Débutant reçu ! +25K $, Twists, Tondeuse Pro et teintures fantaisie", "success")
 	Net.Notify:FireClient(player, { Type = "celebrate" })
 end
 

@@ -1,116 +1,133 @@
-# ✂️ Salon Star : Coiffure Tycoon (Roblox)
+# 💈 Barber Legends (Roblox)
 
-Jeu Roblox complet de **salon de coiffure** : des clients entrent avec une demande (coupe, longueur, couleur, accessoire), tu les coiffes dans un atelier en 3D, tu gagnes de l'argent, tu agrandis ton salon et tu engages des stylistes qui travaillent pour toi, même quand tu es hors ligne.
+Jeu Roblox de **barbershop / salon de coiffure pour hommes et femmes**, avec les coupes tendance de 2026 (TikTok), des **Battles de barbiers** sur scène avec vote du public, et **BarberTok**, le réseau social intégré au jeu.
 
-Tout est généré par code (bâtiments, coiffures, PNJ, interface) : **aucun asset à importer**, le jeu marche tel quel.
-
----
-
-## 🚀 Ouvrir le jeu dans Roblox Studio (2 minutes)
-
-1. Ouvre **`build/SalonStar.rbxlx`** dans Roblox Studio (double-clic ou Fichier → Ouvrir).
-2. Clique sur **▶ Play**. La carte se construit au lancement (en mode édition, la carte est vide : c'est normal).
-3. Pour publier : **Fichier → Publish to Roblox**.
-4. Dans **Game Settings** :
-   - **Security** → active *Enable Studio Access to API Services* (sinon pas de sauvegarde en test).
-   - **Places → Server Size / Max Players** : mets **8** (il y a 8 salons par serveur).
-   - **Avatar** : R15.
-
-> Modifier le code : les sources sont dans `src/`. Avec [Rojo](https://rojo.space) : `rojo serve` puis le plugin Rojo dans Studio, ou recompile le fichier avec `rojo build default.project.json -o build/SalonStar.rbxlx`.
+Tout est généré par code (bâtiments, coiffures, PNJ, interface) : **aucun asset à importer**.
 
 ---
 
-## 🎮 Comment on joue
+## 🚀 Ouvrir le jeu (2 minutes)
 
-| Étape | Ce que fait le joueur |
-|---|---|
-| 1 | Il arrive dans **son salon** (8 par serveur, nom du joueur sur l'enseigne). |
-| 2 | Des **clients PNJ** entrent et s'assoient. Une bulle affiche leur demande et leur patience. |
-| 3 | Il appuie sur **E** près du fauteuil → **atelier de coiffure** (caméra sur le visage, onglets Coupe / Longueur / Couleur / Accessoire, % de ressemblance en direct). |
-| 4 | **Coiffure parfaite = +50 % de pourboire** et une **série** qui augmente encore les gains. |
-| 5 | Il dépense son argent : fauteuils, stylistes automatiques, décoration (5 niveaux, du salon simple au palace doré avec tapis rouge), publicité, nouvelles coupes. |
-| 6 | **Franchise** (renaissance) : repart de zéro avec +50 % d'argent pour toujours. |
+1. Ouvre **`build/BarberLegends.rbxlx`** dans Roblox Studio.
+2. Clique sur **▶ Play**. La carte se construit au lancement (en mode édition elle est vide, c'est normal).
+3. **Fichier → Publish to Roblox**, puis dans **Game Settings** :
+   - **Security** → *Enable Studio Access to API Services* (sinon pas de sauvegarde en test)
+   - **Places → Max Players : 8** (8 barbershops par serveur)
+   - **Avatar** : R15
 
-**Côté social :**
-- Les joueurs peuvent **s'asseoir dans le salon d'un autre** et se faire coiffer. Ils gardent la coiffure, qui est sauvegardée.
-- Le **miroir magique** permet de changer son propre look.
-- Une star arrive, un joueur lance l'Heure de Pointe… → **annonces à tout le serveur**.
-- **Classement mondial** des meilleurs coiffeurs sur la place centrale.
-
-**Contenu :** 11 coupes × 3 longueurs × 13 couleurs (dont néon et arc-en-ciel animé) × 5 accessoires, clients VIP, célébrités, cycle jour/nuit.
+> Modifier le code : sources dans `src/`, puis `rojo build default.project.json -o build/BarberLegends.rbxlx` (ou `rojo serve` + plugin Rojo).
 
 ---
 
-## 💰 Monétisation (à configurer)
+## ✨ Ce qui rend le jeu différent
 
-Crée les passes et produits sur **create.roblox.com → ton jeu → Monétisation**, puis colle leurs IDs dans **`src/shared/Config.luau`** (`Config.GamePasses` et `Config.Products`). Tant qu'un ID vaut `0`, le bouton affiche « Bientôt ».
+| | Les autres jeux de coiffure | Barber Legends |
+|---|---|---|
+| Public | surtout barbier homme **ou** salon femme | **les deux** : clients et clientes, coupes ♂ ♀ ⚥ |
+| Coupes | coupes génériques | **tendances TikTok 2026** : French crop, Edgar, mulet, wolf cut, curtain, burst fade, butterfly, bob italien… avec badge 🔥 |
+| Social | vote en fin de manche | **BarberTok** : fil type TikTok d'avant/après, likes, **abonnés = bonus d'argent**, publications **virales** annoncées au serveur, écran géant sur la place |
+| Compétition | vote | **Battle** : même modèle pour tous, chrono, vote du public, **robot barbier** si tu es seul |
+| Fin de coupe | – | **carte avant/après** dorée en 3D (style miniature) |
 
-### Passes de jeu (achat unique)
+---
+
+## 🎮 Gameplay
+
+- **Ton barbershop** (enseigne barbier qui tourne, ton nom sur la façade). Des clients **et clientes** entrent avec une demande : coupe, longueur, **dégradé**, **barbe**, couleur, accessoire.
+- **Atelier** (touche E près du fauteuil) : caméra face au visage, **tondeuse dans la main**, mèches qui tombent, % de ressemblance en direct. 6 onglets : Coupe / Longueur / Dégradé / Barbe / Couleur / Accessoire.
+- **Coupe exacte** = pourboire +50 % + série qui augmente les gains.
+- **Contenu** :
+  - **26 coupes** (dont 13 tendance) ;
+  - **7 dégradés** : taper, bas, moyen, haut, à blanc, burst ;
+  - **5 barbes** ;
+  - **18 couleurs** ;
+  - **8 accessoires** : trait rasé, pince crabe, chaîne en or…
+- **Progression** :
+  - améliorations : fauteuils, stylistes automatiques (qui gagnent même hors ligne), 5 niveaux de déco (jusqu'au palace doré), publicité, Tondeuse Pro ;
+  - **Franchise** : recommencer de zéro avec +50 % d'argent pour toujours.
+- **Battle** toutes les ~3,5 min sur la grande scène. Le score combine la précision, les votes et la vitesse, et les gagnants touchent un prix.
+- **BarberTok** :
+  - chaque coupe ≥ 90 % de ressemblance (ou nouveau look) est publiée ;
+  - chaque like = +1 abonné (+0,2 % d'argent par abonné, jusqu'à +50 %) ;
+  - une publication virale rapporte un bonus et 10 abonnés.
+- **Barber Pass** : saison de 30 paliers avec une piste gratuite et une piste **Gold** payante. L'XP vient des coupes, battles, likes et publications.
+
+---
+
+## 💰 Monétisation
+
+Crée les passes et produits sur **create.roblox.com → ton jeu → Monétisation**, puis colle leurs IDs dans **`src/shared/Config.luau`**. Tant qu'un ID vaut `0`, le bouton affiche « Bientôt ».
+
+### Passes (achat unique)
 | Pass | Effet | Prix conseillé |
 |---|---|---|
+| 🎟️ Barber Pass Gold | piste Gold de la saison : x3 récompenses + teintures exclusives (Or rose, Chrome, Galaxie) | 299 R$ (à refaire à chaque saison : nouvel ID) |
 | 👑 VIP | +50 % d'argent, vitesse, tag [VIP] dans le chat, 2× plus de clients VIP | 299 R$ |
 | 💸 Argent x2 | double tous les gains | 399 R$ |
-| 🌈 Couleurs Néon | teintures néon / or / arc-en-ciel, payées x3 par les clients | 149 R$ |
-| 💎 Coiffures de Luxe | coupes Sirène et Royale + Couronne (les mieux payées) | 249 R$ |
+| 🌈 Couleurs Néon | néon, or, arc-en-ciel animé (payés x3) | 149 R$ |
+| 💎 Coiffures de Luxe | Sirène, Royale + Couronne | 249 R$ |
+| ⚔️ Battle Pro | gains de Battle x2 + 15 s de plus | 149 R$ |
 | 🤖 Styliste Star | +2 stylistes gratuits | 199 R$ |
 | ⚡ Clients Express | clients 40 % plus rapides | 99 R$ |
-| 🪙 Gros Pourboires | pourboires x2 sur les coiffures parfaites | 99 R$ |
+| 🪙 Gros Pourboires | pourboires x2 | 99 R$ |
 
 ### Produits (achats répétables)
 | Produit | Effet | Prix conseillé |
 |---|---|---|
-| 💵 💰 🏦 🏰 Packs d'argent | **calculés selon les gains du joueur** (10 min → 12 h de gains) : ils restent intéressants à chaque niveau | 25 / 79 / 199 / 499 R$ |
-| 🔥 Heure de Pointe | clients x2 et paie x2 pour **tout le serveur** pendant 15 min, annoncé avec le nom de l'acheteur | 49 R$ |
-| 🌟 Client Célébrité | une star arrive et paie x10 | 35 R$ |
-| 🎁 Pack Débutant | 25K $ + coupe Bouclée + teintures fantaisie, proposé automatiquement après 1 min | 19 R$ |
+| 💵 💰 🏦 🏰 Packs d'argent | calculés selon les gains du joueur (10 min → 12 h) | 25 / 79 / 199 / 499 R$ |
+| ⏩ +5 paliers de Pass | avance dans le Barber Pass | 79 R$ |
+| 🚀 Boost Viral | prochaine publication BarberTok épinglée en tête 10 min | 39 R$ |
+| 🔥 Heure de Pointe | x2 clients et x2 paie pour **tout le serveur** 15 min (nom de l'acheteur annoncé) | 49 R$ |
+| 🌟 Client Célébrité | une star qui paie x10 | 35 R$ |
+| 🎁 Pack Débutant | 25K $ + Twists + Tondeuse Pro + teintures fantaisie (proposé après 1 min) | 19 R$ |
 
-Les achats sont **sécurisés** : chaque reçu est enregistré dans la sauvegarde du joueur, il ne peut pas être donné deux fois.
+Achats sécurisés : chaque reçu est noté dans la sauvegarde, impossible de le recevoir deux fois.
 
-### Leviers gratuits déjà intégrés (rétention = algorithme Roblox)
-- Bonus quotidien sur 7 jours (de x1 à x10)
-- Cadeaux de temps de jeu (5, 15, 30, 60 min)
-- Gains hors ligne grâce aux stylistes (jusqu'à 3 h) → les joueurs reviennent
-- Boost amis (+10 % par ami, max +40 %), boost groupe (+10 %, mets ton `GroupId`), boost Premium (+10 % : les joueurs Premium te rapportent aussi des *Engagement Payouts*)
-- Codes promo : `SALONSTAR`, `COIFFURE`, `MERCI` (modifiables dans `Config.Codes`)
-- Bouton **Inviter des amis**
+**Gratuit (pour faire revenir les joueurs) :**
+- bonus quotidien sur 7 jours ;
+- cadeaux de temps de jeu ;
+- gains hors ligne ;
+- codes `SALONSTAR`, `COIFFURE`, `MERCI` ;
+- boosts amis, groupe et Premium ;
+- invitation d'amis.
+
+**Nouvelle saison :** change `Config.Season` et `Config.SeasonName`, crée un nouveau pass Gold et mets son ID. Le nouveau pass est à racheter, comme dans les gros jeux.
 
 ---
 
-## 📈 Pour que le jeu décolle (checklist de lancement)
+## 📈 Checklist de lancement
 
-1. **Miniature et icône** : un personnage avec une coiffure néon arc-en-ciel très visible + texte court « COIFFE TES CLIENTS ! ». C'est le facteur n°1 du taux de clic.
-2. **Titre** : `✂️ Salon Star [NOUVEAU]` puis `[MISE À JOUR 🌈]` à chaque mise à jour.
-3. **Groupe Roblox** : crée-le, mets son ID dans `Config.GroupId`, et donne un code réservé aux membres.
-4. **Publicités sponsorisées** : commence petit (quelques centaines de Robux par jour) le week-end, garde ce qui convertit.
-5. **Mises à jour régulières** (toutes les 1–2 semaines) : nouvelle coupe, nouvelle couleur, nouveau code. Tout s'ajoute dans `Config.luau`.
-6. **Équilibrage** : tous les prix et gains sont dans `Config.luau` (`Upgrades`, `Styles`, `BasePay`…).
+1. **Miniature** : un gros plan avant/après sur fond doré (le jeu génère exactement ce visuel à chaque coupe : fais une capture), texte « BATTLE 💈 » ou « COUPE VIRALE 🔥 ».
+2. **Titre** : `💈 Barber Legends [⚔️ BATTLES]`, puis `[🆕 SAISON 2]` à chaque saison.
+3. **Groupe Roblox** : mets son ID dans `Config.GroupId`, code réservé aux membres.
+4. **TikTok** : poste les meilleurs avant/après et les Battles (c'est fait pour être filmé).
+5. **Mise à jour toutes les 1–2 semaines** : nouvelle coupe tendance (dans `Config.Styles`, avec `Trend = true`), nouveau code, nouvelle saison chaque mois.
+6. Tout l'équilibrage est dans `Config.luau`.
 
-> Personne ne peut garantir qu'un jeu Roblox marche : la mise en avant dépend de la rétention et du temps de jeu. Le jeu est conçu pour ça (boucle courte, objectifs constants, social, retour quotidien), mais la miniature et les mises à jour feront la différence.
+> Aucun jeu n'a de succès garanti : Roblox met en avant les jeux qui gardent les joueurs. Le jeu est construit pour ça (boucle courte, Battles régulières, abonnés, pass saison, retour quotidien) ; la miniature et la régularité des mises à jour feront la différence.
 
 ---
 
 ## 🗂️ Structure
 
 ```
-default.project.json        Projet Rojo (éclairage Future, etc.)
-build/SalonStar.rbxlx       Fichier prêt à ouvrir dans Studio
-src/shared/Config.luau      ⚙️ Équilibrage + IDs de monétisation
-src/shared/HairBuilder.luau Générateur de coiffures 3D
-src/shared/Util.luau        Formatage (1.5K, 2.3M…)
-src/server/Main.server.luau Point d'entrée serveur
-src/server/World.luau       Carte, terrain, éclairage, jour/nuit
-src/server/Salons.luau      Salons, clients PNJ, stylistes, atelier, économie
-src/server/Data.luau        Sauvegarde (verrou de session anti-duplication)
-src/server/Stats.luau       Argent, multiplicateurs, état envoyé au client
-src/server/Monetization.luau Passes et produits Robux
-src/server/Rewards.luau     Quotidien, cadeaux, codes, amis/groupe, classement
-src/client/Main.client.luau Interface, atelier, effets, tag VIP
-src/client/Ui.luau          Composants d'interface
+build/BarberLegends.rbxlx     Fichier prêt à ouvrir dans Studio
+src/shared/Config.luau        ⚙️ Équilibrage, coupes, IDs de monétisation, saison
+src/shared/HairBuilder.luau   Coiffures 3D : coupes, dégradés en bandes, barbes, accessoires
+src/server/Salons.luau        Barbershops, clients ♂♀, stylistes, atelier, économie
+src/server/Battle.luau        Battle de barbiers (scène, chrono, vote, robot)
+src/server/BarberTok.luau     Réseau social : publications, likes, abonnés, viral
+src/server/Progress.luau      XP et Barber Pass
+src/server/Monetization.luau  Passes et produits Robux
+src/server/Rewards.luau       Quotidien, cadeaux, codes, amis/groupe, classement
+src/server/Data.luau          Sauvegarde (verrou de session anti-duplication)
+src/server/Stats.luau         Argent, multiplicateurs, état client
+src/server/World.luau         Carte, éclairage, jour/nuit
+src/client/Main.client.luau   Interface, atelier, avant/après, BarberTok, Pass, effets
+tests/modules.luau            Tests hors Studio (Lune)
 ```
 
 ## 🧪 Tests
-
-Les modules partagés (coiffures, formatage, équilibrage, interface) se testent hors de Studio avec [Lune](https://lune-org.github.io) :
 
 ```bash
 lune run tests/modules.luau .

@@ -87,12 +87,13 @@ function Stats.BoostBreakdown(player: Player)
 		Vip = Stats.HasPass(player, "vip") and Config.VipBoost or 0,
 		Double = Stats.HasPass(player, "doubleCash"),
 		Rush = Stats.RushActive(),
+		Fame = profile and math.min((profile.Followers or 0) * Config.BarberTok.FollowerBoost, Config.BarberTok.FollowerBoostMax) or 0,
 	}
 end
 
 function Stats.Multiplier(player: Player): number
 	local b = Stats.BoostBreakdown(player)
-	local m = (1 + b.Rebirth) * (1 + b.Friends + b.Group + b.Premium) * (1 + b.Vip)
+	local m = (1 + b.Rebirth) * (1 + b.Friends + b.Group + b.Premium + b.Fame) * (1 + b.Vip)
 	if b.Double then
 		m *= 2
 	end
@@ -170,6 +171,14 @@ local function snapshot(player: Player)
 		Rebirths = profile.Rebirths,
 		Upgrades = profile.Upgrades,
 		Styles = profile.Styles,
+		Beards = profile.Beards,
+		Clippers = profile.Clippers,
+		Trophies = profile.Trophies,
+		Followers = profile.Followers,
+		Posts = profile.Posts,
+		SeasonColors = profile.SeasonColors,
+		Pass = profile.Pass,
+		BattleWins = profile.BattleWins,
 		Accs = profile.Accs,
 		FantasyColors = profile.FantasyColors,
 		Look = profile.Look,
@@ -194,9 +203,13 @@ function Stats.PushNow(player: Player)
 		local ls = player:FindFirstChild("leaderstats")
 		if ls then
 			local cash = ls:FindFirstChild("Argent") :: StringValue
-			local served = ls:FindFirstChild("Clients") :: IntValue
+			local followers = ls:FindFirstChild("Abonnés") :: IntValue
 			cash.Value = Util.Format(snap.Cash)
-			served.Value = snap.Served
+			followers.Value = snap.Followers or 0
+			local trophies = ls:FindFirstChild("Trophées") :: IntValue?
+			if trophies then
+				trophies.Value = snap.BattleWins
+			end
 		end
 	end
 end
@@ -208,9 +221,12 @@ function Stats.CreateLeaderstats(player: Player)
 	cash.Name = "Argent"
 	cash.Value = "0"
 	cash.Parent = ls
-	local served = Instance.new("IntValue")
-	served.Name = "Clients"
-	served.Parent = ls
+	local followers = Instance.new("IntValue")
+	followers.Name = "Abonnés"
+	followers.Parent = ls
+	local trophies = Instance.new("IntValue")
+	trophies.Name = "Trophées"
+	trophies.Parent = ls
 	ls.Parent = player
 end
 
