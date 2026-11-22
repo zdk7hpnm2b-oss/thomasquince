@@ -33,26 +33,31 @@ Tout est généré par code (bâtiments, coiffures, PNJ, interface) : **aucun as
 
 ## 🎮 Gameplay
 
-- **Ton barbershop** (enseigne barbier qui tourne, ton nom sur la façade). Des clients **et clientes** entrent avec une demande : coupe, longueur, **dégradé**, **barbe**, couleur, accessoire.
-- **Atelier** (touche E près du fauteuil) : caméra face au visage, **tondeuse dans la main**, mèches qui tombent, % de ressemblance en direct. 6 onglets : Coupe / Longueur / Dégradé / Barbe / Couleur / Accessoire.
-- **Coupe exacte** = pourboire +50 % + série qui augmente les gains.
-- **Contenu** :
-  - **26 coupes** (dont 13 tendance) ;
-  - **7 dégradés** : taper, bas, moyen, haut, à blanc, burst ;
-  - **5 barbes** ;
-  - **18 couleurs** ;
-  - **8 accessoires** : trait rasé, pince crabe, chaîne en or…
+- **Ton barbershop**, avec enseigne barbier qui tourne et ton nom + ta **note ⭐** sur la façade. Les clients **et clientes** entrent, s'assoient en **salle d'attente**, puis prennent un fauteuil dès qu'il se libère.
+- **Patience** : une jauge **verte → rouge** au-dessus de chaque client. À zéro, il part fâché et laisse ★☆☆☆☆.
+- **Tu coupes toi-même** : maintiens le clic (ou le doigt, ou R2 à la manette) sur la tête.
+  - 🪒 **Tondeuse** à sabots #0 à #4 : fais tes dégradés toi-même. Débloquée par la Tondeuse Pro.
+  - ✂️ **Ciseaux** : raccourcissent petit à petit.
+  - 🔪 **Rasoir** : contours, crâne rasé.
+  - 🎨 **Teinture** au pinceau.
+  - Pinceau S / M / L, ↩️ annuler, 👁️ **modèle fantôme** superposé sur la tête.
+  - Caméra : clic droit / Q-E / stick droit, molette pour zoomer.
+- **Le modèle demandé est affiché en haut à droite** (tête 3D qui tourne), avec la **note en étoiles et le % de ressemblance en direct**, mèche par mèche.
+- **Note de 1 à 5 étoiles** selon la qualité. La moyenne du salon fait venir les clients plus vite ou plus lentement.
+- **Carte avant/après** dorée à chaque coupe.
+- **Ménage** : chaque coupe laisse des cheveux par terre. Un salon sale rend les clients impatients et leur fait enlever une étoile. Tu commences au 🧹 **balai**, puis tu passes à l'**aspirateur** (aspire tout autour), puis au 🤖 **robot aspirateur** (automatique).
+- **Tâches** : 3 objectifs en même temps (coupes, 5★, ménage, Battle, BarberTok, « sans perdre de client »…) avec récompenses.
+- **Contenu** : **21 coupes** (dont 10 tendance TikTok), 7 dégradés, 5 barbes, 4 textures (lisses, bouclés, twists, locs), 18 couleurs.
 - **Progression** :
-  - améliorations : fauteuils, stylistes automatiques (qui gagnent même hors ligne), 5 niveaux de déco (jusqu'au palace doré), publicité, Tondeuse Pro ;
+  - améliorations : fauteuils, stylistes automatiques (qui gagnent même hors ligne), nettoyage, 5 niveaux de déco, publicité, Tondeuse Pro ;
   - **Franchise** : recommencer de zéro avec +50 % d'argent pour toujours.
-- **Battle** toutes les ~3,5 min sur la grande scène. Le score combine la précision, les votes et la vitesse, et les gagnants touchent un prix.
-- **BarberTok** :
-  - chaque coupe ≥ 90 % de ressemblance (ou nouveau look) est publiée ;
-  - chaque like = +1 abonné (+0,2 % d'argent par abonné, jusqu'à +50 %) ;
-  - une publication virale rapporte un bonus et 10 abonnés.
-- **Barber Pass** : saison de 30 paliers avec une piste gratuite et une piste **Gold** payante. L'XP vient des coupes, battles, likes et publications.
+- **Battle** toutes les ~3,5 min sur la grande scène : tout le monde a les mêmes cheveux trop longs et le même modèle, avec un chrono. Le score combine la précision, le vote du public et la vitesse. Un robot barbier joue si tu es seul.
+- **BarberTok** : les coupes ≥ 90 % sont publiées en avant/après. Les likes donnent des abonnés (bonus d'argent), et une publication virale est annoncée à tout le serveur.
+- **Barber Pass** : saison de 30 paliers, piste gratuite + piste Gold payante.
+- **Miroir magique** : coupe libre sur toi-même. 🌱 fait repousser les cheveux, et tu peux changer de texture. Ton look est sauvegardé.
 
----
+### 🔊 Sons et musique
+Dans `Config.Sounds`, colle des IDs de la boutique Roblox (create.roblox.com → Creator Store → Audio) : tondeuse, ciseaux, aspirateur, balai, étoiles, **musique du salon** et **musique de Battle**. Tant qu'un ID est vide, un son intégré à Roblox est utilisé, et la musique reste coupée. Le bouton 🎵 du jeu coupe ou remet la musique.
 
 ## 💰 Monétisation
 
@@ -113,11 +118,12 @@ Achats sécurisés : chaque reçu est noté dans la sauvegarde, impossible de le
 ```
 build/BarberLegends.rbxlx     Fichier prêt à ouvrir dans Studio
 src/shared/Config.luau        ⚙️ Équilibrage, coupes, IDs de monétisation, saison
-src/shared/HairBuilder.luau   Coiffures 3D : coupes, dégradés en bandes, barbes, accessoires
+src/shared/HairGrid.luau      Coupe aux mèches : cibles, score, encodage, rendu
+src/shared/HairBuilder.luau   Coiffures « en bataille » légères des clients qui attendent
 src/server/Salons.luau        Barbershops, clients ♂♀, stylistes, atelier, économie
 src/server/Battle.luau        Battle de barbiers (scène, chrono, vote, robot)
 src/server/BarberTok.luau     Réseau social : publications, likes, abonnés, viral
-src/server/Progress.luau      XP et Barber Pass
+src/server/Progress.luau      XP, Barber Pass et tâches
 src/server/Monetization.luau  Passes et produits Robux
 src/server/Rewards.luau       Quotidien, cadeaux, codes, amis/groupe, classement
 src/server/Data.luau          Sauvegarde (verrou de session anti-duplication)

@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local HairBuilder = require(ReplicatedStorage.Shared.HairBuilder)
+local HairGrid = require(ReplicatedStorage.Shared.HairGrid)
 local Util = require(ReplicatedStorage.Shared.Util)
 local BarberTok = require(script.Parent.BarberTok)
 local Data = require(script.Parent.Data)
@@ -180,7 +181,8 @@ local function randomReference()
 		fade = style.Fade and Config.Fades[rng:NextInteger(1, #Config.Fades)].Id or "aucun",
 		beard = gender == "H" and Config.Beards[rng:NextInteger(1, #Config.Beards)].Id or "aucune",
 		color = colors[rng:NextInteger(1, #colors)].Id,
-		acc = rng:NextNumber() < 0.3 and Config.Accessories[rng:NextInteger(2, #Config.Accessories)].Id or "aucun",
+		acc = "aucun",
+		gender = gender,
 	},
 		gender
 end
@@ -282,15 +284,18 @@ local function runBattle()
 		hrp.Anchored = true
 		refDummy:PivotTo(CFrame.new(STAGE + Vector3.new(-7, 6.2, 0)) * CFrame.Angles(0, -math.pi / 2, 0))
 		refDummy.Parent = folder
-		HairBuilder.Apply(refDummy, reference)
+		HairGrid.Apply(refDummy, HairGrid.Target(reference))
 		Salons.Burst(hrp.Position + Vector3.new(0, 3, 0), GOLD, 60)
 	end
 
+	local battleStart = HairGrid.Encode(HairGrid.Overgrown(reference, "brun", Random.new(rng:NextInteger(1, 1e6))))
+	local targetCut = HairGrid.Target(reference)
 	local start = now()
 	for i, part in participants do
 		local station = stations[i]
 		local messy = { style = gender == "F" and "lisse" or "afro", length = 3, fade = "aucun", beard = gender == "H" and "pleine" or "aucune", color = "brun", acc = "aucun" }
-		part.Before = HairBuilder.Normalize(messy)
+		-- Même point de départ pour tout le monde : la coupe cible + de la repousse
+		part.Before = battleStart
 		part.Model = seatNpc(station, messy)
 		station.Label.Text = part.Name
 		part.Votes = 0
@@ -299,11 +304,12 @@ local function runBattle()
 			part.Time = B.Duration * rng:NextNumber(0.6, 0.95)
 			task.delay(part.Time, function()
 				if part.Model and part.Model.Parent then
-					local look = table.clone(reference)
-					if part.Accuracy < 0.8 then
-						look.color = "brun"
+					-- Le robot coupe « presque » bien
+					local cut = HairGrid.Clone(targetCut)
+					for k = 1, #cut.L do
+						cut.L[k] = math.max(0, cut.L[k] + rng:NextNumber(-0.25, 0.25) * (1 - part.Accuracy))
 					end
-					HairBuilder.Apply(part.Model, look)
+					HairGrid.Apply(part.Model, cut)
 				end
 			end)
 		elseif part.Model then
@@ -319,13 +325,16 @@ local function runBattle()
 				AllowAll = true,
 				Salon = nil,
 				Request = reference,
-				Look = HairBuilder.Normalize(messy),
+				Start = battleStart,
 				TargetModel = part.Model,
 				TargetName = "Battle",
 				EndsAt = part.EndsAt,
-				OnEnd = function(finished, look)
-					part.Look = look
-					part.Accuracy = HairBuilder.Score(reference, look)
+				OnEnd = function(finished, cut)
+					part.Final = cut
+					part.Accuracy = cut and HairGrid.Score(cut, targetCut) or 0
+					if cut and part.Model and part.Model.Parent then
+						HairGrid.Apply(part.Model, cut) -- le public voit le résultat
+					end
 					part.Time = math.min(now() - start, duration)
 					part.Done = true
 					if finished then
@@ -342,7 +351,14 @@ local function runBattle()
 		for _, part in participants do
 			if not part.Bot and not part.Done then
 				if part.Player and part.Player.Parent and now() >= (part.EndsAt or 0) then
-					Salons.EndSession(part.Player, true) -- temps écoulé : on rend la coupe telle quelle
+					-- Temps écoulé : on demande la coupe au client, puis on la prend telle quelle
+					if not part.TimeoutAt then
+						part.TimeoutAt = now()
+						Salons.RequestFinish(part.Player)
+					elseif now() - part.TimeoutAt > 4 then
+						Salons.EndSession(part.Player, false)
+					end
+					allDone = false
 				elseif part.Player and part.Player.Parent then
 					allDone = false
 				end
@@ -398,8 +414,9 @@ local function runBattle()
 			end
 			Stats.AddCash(player, prize, false)
 			Progress.AddXp(player, Config.Xp.Battle + (rank == 1 and Config.Xp.BattleWin or 0))
-			if rank == 1 and part.Look then
-				BarberTok.Post(player, part.Before or part.Look, part.Look, "🏆 Gagnant de la Battle !")
+			Progress.Task(player, "battle", 1)
+			if rank == 1 and part.Final then
+				BarberTok.Post(player, part.Before, HairGrid.Encode(part.Final), "🏆 Gagnant de la Battle !")
 			end
 			if rank == 1 then
 				profile.BattleWins += 1

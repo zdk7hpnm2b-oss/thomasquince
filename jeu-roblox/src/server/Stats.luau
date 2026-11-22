@@ -130,6 +130,19 @@ function Stats.Spend(player: Player, amount: number): boolean
 	return true
 end
 
+-- Note moyenne du salon (5 par défaut tant qu'il n'y a pas d'avis)
+function Stats.Rating(player: Player): number
+	local profile = Data.Get(player)
+	if not profile or #profile.Ratings == 0 then
+		return 5
+	end
+	local sum = 0
+	for _, r in profile.Ratings do
+		sum += r
+	end
+	return sum / #profile.Ratings
+end
+
 -- Gains par seconde estimés (sert à dimensionner les packs et récompenses).
 function Stats.Rate(player: Player): number
 	local profile = Data.Get(player)
@@ -175,9 +188,12 @@ local function snapshot(player: Player)
 		Clippers = profile.Clippers,
 		Trophies = profile.Trophies,
 		Followers = profile.Followers,
+		Rating = Stats.Rating(player),
+		RatingCount = #profile.Ratings,
 		Posts = profile.Posts,
 		SeasonColors = profile.SeasonColors,
 		Pass = profile.Pass,
+		Tasks = profile.Tasks,
 		BattleWins = profile.BattleWins,
 		Accs = profile.Accs,
 		FantasyColors = profile.FantasyColors,

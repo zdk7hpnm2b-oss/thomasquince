@@ -48,6 +48,7 @@ local function onPlayerAdded(player: Player)
 	Rewards.RefreshFriends()
 	Rewards.Offline(player)
 	Progress.Sync(player)
+	Progress.EnsureTasks(player)
 	BarberTok.SendTo(player)
 
 	if not Salons.Assign(player) then
@@ -100,11 +101,8 @@ Net.Action.OnServerInvoke = function(player: Player, action: any, a: any, b: any
 		return false, "Chargement…"
 	end
 
-	if action == "Apply" then
-		return Salons.Apply(player, a, b)
-	elseif action == "Finish" then
-		Salons.EndSession(player, true)
-		return true
+	if action == "FinishCut" then
+		return Salons.FinishCut(player, a)
 	elseif action == "Cancel" then
 		Salons.EndSession(player, false)
 		return true

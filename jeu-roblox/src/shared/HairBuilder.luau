@@ -572,7 +572,7 @@ end
 function HairBuilder.Normalize(look: any): Config.Look
 	look = typeof(look) == "table" and look or {}
 	return {
-		style = Config.StyleById[look.style] and look.style or DEFAULT_LOOK.style,
+		style = (Styles[look.style] or Config.StyleById[look.style]) and look.style or DEFAULT_LOOK.style,
 		length = (look.length == 1 or look.length == 2 or look.length == 3) and look.length or DEFAULT_LOOK.length,
 		fade = Config.FadeById[look.fade] and look.fade or DEFAULT_LOOK.fade,
 		beard = Config.BeardById[look.beard] and look.beard or DEFAULT_LOOK.beard,
@@ -617,7 +617,7 @@ function HairBuilder.Apply(character: Model, look: any): Model?
 		color = colorDef.Color,
 		material = colorDef.Material or Enum.Material.SmoothPlastic,
 		rainbow = colorDef.Rainbow == true,
-		topOnly = Config.StyleById[look.style].Fade == true,
+		topOnly = Config.StyleById[look.style] ~= nil and Config.StyleById[look.style].Fade == true,
 		fade = look.fade,
 	}
 	local builder = Styles[look.style] or Styles.lisse
@@ -684,7 +684,7 @@ end
 
 function HairBuilder.Describe(look: Config.Look): string
 	look = HairBuilder.Normalize(look)
-	local style = Config.StyleById[look.style]
+	local style = Config.StyleById[look.style] or { Icon = "✂️", Name = look.style }
 	local length = Config.Lengths[look.length]
 	local color = Config.ColorById[look.color]
 	local acc = Config.AccById[look.acc]

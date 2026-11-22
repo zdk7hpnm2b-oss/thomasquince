@@ -5,7 +5,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local HairBuilder = require(ReplicatedStorage.Shared.HairBuilder)
 local Util = require(ReplicatedStorage.Shared.Util)
 local Data = require(script.Parent.Data)
 local Net = require(script.Parent.Net)
@@ -59,8 +58,8 @@ function BarberTok.Post(player: Player, before: any, after: any, caption: string
 		Id = nextId,
 		Author = player.DisplayName,
 		AuthorId = player.UserId,
-		Before = HairBuilder.Normalize(before),
-		After = HairBuilder.Normalize(after),
+		Before = before, -- coupes encodées (HairGrid)
+		After = after,
 		Caption = caption,
 		Likes = 0,
 		Viral = false,
@@ -86,6 +85,7 @@ function BarberTok.Post(player: Player, before: any, after: any, caption: string
 	end
 	profile.Posts += 1
 	Progress.AddXp(player, Config.Xp.Post)
+	Progress.Task(player, "post", 1)
 	Net.Notify:FireClient(player, { Type = "posted", Pinned = post.PinnedUntil > 0 })
 	broadcast()
 	return true

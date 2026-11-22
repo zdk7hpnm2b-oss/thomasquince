@@ -58,6 +58,7 @@ end
 local Config = load("src/shared/Config.luau")
 local Util = load("src/shared/Util.luau")
 local HairBuilder = load("src/shared/HairBuilder.luau", { Config = Config })
+local HairGrid = load("src/shared/HairGrid.luau", { Config = Config })
 
 -- Util
 local cases = { [0] = "0", [999] = "999", [1000] = "1K", [1500] = "1.5K", [12345] = "12.3K", [100000] = "100K", [2500000] = "2.5M", [1e9] = "1B" }
@@ -141,6 +142,67 @@ assert(n == 1, "plusieurs coiffures")
 local norm = HairBuilder.Normalize({ style = "nope", length = 9 })
 assert(norm.style == "pixie" and norm.length == 2 and norm.fade == "aucun" and norm.beard == "aucune")
 print(("HairBuilder OK : %d combinaisons, tags arc-en-ciel=%d"):format(count, tags.RainbowHair or 0))
+
+-- HairGrid : la coupe aux mèches
+print(("HairGrid : %d mèches (%d cuir chevelu, %d barbe)"):format(HairGrid.Count, HairGrid.ScalpCount, HairGrid.Count - HairGrid.ScalpCount))
+assert(HairGrid.Count > 150 and HairGrid.Count < 500, "nombre de mèches")
+-- Lune n'a pas Random : petit équivalent
+local rngT = {
+	NextNumber = function(_, a, b)
+		return (a or 0) + math.random() * ((b or 1) - (a or 0))
+	end,
+	NextInteger = function(_, a, b)
+		return math.random(a, b)
+	end,
+}
+for _, st in Config.Styles do
+	for _, f in Config.Fades do
+		for _, b in Config.Beards do
+			local look = { style = st.Id, length = 2, fade = f.Id, beard = b.Id, color = "blond", acc = "aucun", gender = "H" }
+			local target = HairGrid.Target(look)
+			-- encodage aller-retour
+			local enc = HairGrid.Encode(target)
+			local dec = HairGrid.Decode(enc)
+			assert(dec, "décodage")
+			assert(HairGrid.Score(dec, target) > 0.97, "aller-retour " .. st.Id .. " " .. f.Id .. " : " .. HairGrid.Score(dec, target))
+			assert(HairGrid.Score(target, target) == 1, "score parfait")
+			-- trop longs à l'arrivée : jamais plus courts que la cible, et moins bien notés
+			local over = HairGrid.Overgrown(look, "brun", rngT)
+			for i = 1, #target.L do
+				assert(over.L[i] >= target.L[i] - 1e-6 or target.L[i] >= HairGrid.MaxLength, "repousse plus courte que la cible")
+			end
+			assert(HairGrid.Score(over, target) < 0.9, "un client non coupé ne doit pas être parfait : " .. st.Id)
+		end
+	end
+end
+-- un dégradé doit vraiment raccourcir le bas de la tête
+do
+	local plain = HairGrid.Target({ style = "courte", length = 2, fade = "aucun", beard = "aucune", color = "noir" })
+	local faded = HairGrid.Target({ style = "courte", length = 2, fade = "haut", beard = "aucune", color = "noir" })
+	local shorter = 0
+	for i, t in HairGrid.Tufts do
+		if not t.Beard and t.Dir.Y < 0 and faded.L[i] < plain.L[i] then
+			shorter += 1
+		end
+	end
+	assert(shorter > 10, "le dégradé ne raccourcit pas la nuque")
+end
+-- rendu sur une tête
+do
+	local char = newChar()
+	local head = char:FindFirstChild("Head")
+	local cut = HairGrid.Target({ style = "afro", length = 3, fade = "burst", beard = "pleine", color = "arcenciel" })
+	local model = HairGrid.Apply(char, cut)
+	assert(model and #model:GetChildren() == HairGrid.Count, "toutes les mèches construites")
+	assert(char:FindFirstChild("CoolHair") == nil, "cheveux Roblox retirés")
+	cut.L[1] = 0
+	HairGrid.UpdateTuft(model, head, cut, 1)
+	HairGrid.UpdateAll(model, head, cut)
+	local near = HairGrid.TuftsNear(head, head.CFrame.Position + roblox.Vector3.new(0, 2, 0), math.rad(20))
+	assert(#near > 0, "le pinceau au sommet touche des mèches")
+	assert(HairGrid.Decode({ L = "x", C = "y" }) == nil, "données invalides refusées")
+end
+print("HairGrid OK")
 
 -- Interface : construit une fenêtre (valide les noms/types de propriétés)
 local Ui = load("src/client/Ui.luau")

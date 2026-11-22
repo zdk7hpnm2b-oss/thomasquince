@@ -78,4 +78,82 @@ function Progress.SkipTiers(player: Player, tiers: number)
 	Progress.AddXp(player, tiers * Config.PassXpPerTier)
 end
 
+---------------------------------------------------------------------
+-- Tâches
+---------------------------------------------------------------------
+local taskById = {}
+for _, def in Config.Tasks do
+	taskById[def.Id] = def
+end
+local rng = Random.new()
+
+local function pickTask(profile): string
+	local active = {}
+	for _, t in profile.Tasks do
+		active[t.Id] = true
+	end
+	local pool = {}
+	for _, def in Config.Tasks do
+		if not active[def.Id] then
+			table.insert(pool, def.Id)
+		end
+	end
+	return pool[rng:NextInteger(1, #pool)]
+end
+
+function Progress.EnsureTasks(player: Player)
+	local profile = Data.Get(player)
+	if not profile then
+		return
+	end
+	for i = #profile.Tasks, 1, -1 do
+		if not taskById[profile.Tasks[i].Id] then
+			table.remove(profile.Tasks, i)
+		end
+	end
+	while #profile.Tasks < 3 do
+		table.insert(profile.Tasks, { Id = pickTask(profile), Progress = 0 })
+	end
+	Stats.MarkDirty(player)
+end
+
+function Progress.Task(player: Player, kind: string, amount: number?)
+	local profile = Data.Get(player)
+	if not profile then
+		return
+	end
+	for i = #profile.Tasks, 1, -1 do
+		local t = profile.Tasks[i]
+		local def = taskById[t.Id]
+		if def and def.Kind == kind then
+			t.Progress += amount or 1
+			if t.Progress >= def.Goal then
+				table.remove(profile.Tasks, i)
+				local reward = Stats.MinutesOfIncome(player, def.Minutes, def.Minutes * 100)
+				Stats.AddCash(player, reward, false)
+				Progress.AddXp(player, def.Xp)
+				Net.Toast(player, "✅ Tâche terminée : " .. def.Text .. "  +" .. Util.Money(reward), "money")
+				Net.Notify:FireClient(player, { Type = "celebrate" })
+			end
+		end
+	end
+	Progress.EnsureTasks(player)
+end
+
+-- Remet à zéro les tâches d'un type (ex. « sans perdre de client »)
+function Progress.ResetTask(player: Player, kind: string)
+	local profile = Data.Get(player)
+	if not profile then
+		return
+	end
+	for _, t in profile.Tasks do
+		local def = taskById[t.Id]
+		if def and def.Kind == kind and t.Progress > 0 then
+			t.Progress = 0
+			Net.Toast(player, "❌ Client perdu : la tâche « " .. def.Text .. " » repart à zéro", "error")
+		end
+	end
+	Stats.MarkDirty(player)
+end
+
 return Progress
