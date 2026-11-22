@@ -38,7 +38,7 @@ local JOUEURS_MIN = P.JoueursMin or 2
 local INTERMISSION = P.Intermission or 20
 local DUREE = P.DureeManche or 300
 local AVANCE = P.AvanceFugitifs or 8
-local DISTANCE_ARRESTATION = P.DistanceArrestation or 7
+local DISTANCE_ARRESTATION = P.DistanceArrestation or 8
 local BOTS_TEST = P.BotsTest or 0
 local SOL = 1
 local HAUTEUR_ETAGE = SOL + 25
@@ -90,6 +90,30 @@ local function positionDe(p: Participant): Vector3?
 		return racine and racine.Position or nil
 	end
 	return p.bot and p.bot.racine.Position or nil
+end
+
+-- Position du KART d'un participant (son centre), ou du personnage s'il est à pied.
+-- C'est ce qu'on compare pour les arrestations : dès que les karts se touchent
+-- (de face, par derrière ou de côté), c'est gagné.
+local function positionKart(p: Participant): Vector3?
+	if p.bot then
+		local chassis = p.bot.modele:FindFirstChild("Chassis") :: BasePart?
+		return if chassis then chassis.Position else p.bot.racine.Position
+	end
+	local j = p.joueur :: Player
+	for _, kart in ipairs(dossierKarts:GetChildren()) do
+		if kart:GetAttribute("Proprietaire") == j.UserId and (kart :: Model).PrimaryPart then
+			local h = j.Character and j.Character:FindFirstChildOfClass("Humanoid")
+			if h and h.SeatPart and h.SeatPart:IsDescendantOf(kart) then
+				return ((kart :: Model).PrimaryPart :: BasePart).Position
+			end
+		end
+	end
+	return positionDe(p)
+end
+
+local function distanceAPlat(a: Vector3, b: Vector3): number
+	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
 -- Un policier ne peut arrêter qu'au volant de son kart
@@ -462,11 +486,11 @@ local function jouerManche(participants: { Participant })
 
 		-- Arrestations : un policier au volant tout près d'un fugitif libre
 		for _, flic in ipairs(police) do
-			local posFlic = present(flic) and auVolant(flic) and positionDe(flic)
+			local posFlic = present(flic) and auVolant(flic) and positionKart(flic)
 			if posFlic then
 				for _, fugitif in ipairs(fugitifs) do
-					local posFugitif = present(fugitif) and not fugitif.arrete and positionDe(fugitif)
-					if posFugitif and (posFugitif - posFlic).Magnitude < DISTANCE_ARRESTATION then
+					local posFugitif = present(fugitif) and not fugitif.arrete and positionKart(fugitif)
+					if posFugitif and distanceAPlat(posFugitif, posFlic) < DISTANCE_ARRESTATION and math.abs(posFugitif.Y - posFlic.Y) < 6 then
 						fugitif.arrete = true
 						if fugitif.joueur then
 							local j = fugitif.joueur

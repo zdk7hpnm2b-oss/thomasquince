@@ -188,7 +188,7 @@ Config.Partie = {
 	Intermission = 12, -- secondes sur la page d'attente avant le tirage au sort
 	DureeManche = 300, -- durée d'une manche (5 minutes)
 	AvanceFugitifs = 8, -- secondes d'avance des fugitifs (la police reste bloquée après le vert)
-	DistanceArrestation = 7, -- un policier aussi près d'un fugitif l'arrête
+	DistanceArrestation = 8, -- distance entre les centres des deux karts (un kart fait 6 de long) : ils se touchent = arrestation
 	XPVictoire = 300, -- XP pour chaque joueur de l'équipe gagnante
 	XPParticipation = 50, -- XP pour tous les participants
 	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
