@@ -29,25 +29,25 @@ Config.Karts = {
 		Nom = "Kart Basique", Niveau = 1, Ordre = 1,
 		Description = "Équilibré, parfait pour apprendre.",
 		VitesseMax = 50, Acceleration = 32, Freinage = 70,
-		Rotation = 2.5, RotationDrift = 1.9, Adherence = 4, AdherenceDrift = 0.6, Boost = 16,
+		Rotation = 2.5, RotationDrift = 2.1, Adherence = 2.6, AdherenceDrift = 0.35, Boost = 16,
 	},
 	Chariot = {
 		Nom = "Chariot Turbo", Niveau = 3, Ordre = 2,
 		Description = "Un caddie motorisé. Glisse énormément !",
 		VitesseMax = 46, Acceleration = 30, Freinage = 60,
-		Rotation = 3.1, RotationDrift = 2.2, Adherence = 2.8, AdherenceDrift = 0.35, Boost = 15,
+		Rotation = 3.1, RotationDrift = 2.3, Adherence = 1.8, AdherenceDrift = 0.2, Boost = 15,
 	},
 	Bolide = {
 		Nom = "Bolide Sport", Niveau = 6, Ordre = 3,
 		Description = "Rapide et précis, avec un aileron.",
 		VitesseMax = 66, Acceleration = 42, Freinage = 80,
-		Rotation = 2.6, RotationDrift = 2.0, Adherence = 4.5, AdherenceDrift = 0.5, Boost = 22,
+		Rotation = 2.6, RotationDrift = 2.2, Adherence = 3, AdherenceDrift = 0.3, Boost = 22,
 	},
 	ProDubai = {
 		Nom = "Kart Pro Dubaï", Niveau = 10, Ordre = 4,
 		Description = "Le kart des champions. Finitions dorées.",
 		VitesseMax = 74, Acceleration = 48, Freinage = 85,
-		Rotation = 2.8, RotationDrift = 2.1, Adherence = 5, AdherenceDrift = 0.45, Boost = 26,
+		Rotation = 2.8, RotationDrift = 2.3, Adherence = 3.3, AdherenceDrift = 0.28, Boost = 26,
 	},
 }
 
@@ -217,6 +217,12 @@ Config.PNJ = {
 ---------------------------------------------------------------------
 -- LE SOL MOUILLÉ
 ---------------------------------------------------------------------
+-- La glisse en fonction de la vitesse : à fond, les pneus accrochent moins
+Config.Glisse = {
+	PerteAdherenceAFond = 0.45, -- à vitesse max, l'adhérence est multipliée par (1 - 0.45)
+	CoupDeVolant = 1.6, -- l'arrière décroche quand on déclenche le drift en tournant
+}
+
 Config.Mouille = {
 	Adherence = 0.3, -- adhérence x0.3 = encore 3x plus glissant
 	Acceleration = 0.5, -- on accélère 2x moins bien sur l'eau

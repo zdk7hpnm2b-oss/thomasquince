@@ -221,6 +221,7 @@ end
 ---------------------------------------------------------------------
 local kart = nil -- { modele, chassis, stats, trails, fumees, eaux, sons }
 local driftAppuye = false
+local driftAppuyeAvant = false
 local vitesseRotation = 0
 local tempsBoost = 0
 local derniereVitesse = 0
@@ -1003,6 +1004,15 @@ RunService.Heartbeat:Connect(function(dt: number)
 
 	-- 2) Adhérence : on "efface" plus ou moins vite la glisse sur le côté
 	local adherence = if driftAppuye then s.AdherenceDrift else s.Adherence
+	-- Plus on va vite, moins les pneus accrochent : le kart part en glisse tout seul à fond
+	local glisse = Config.Glisse or { PerteAdherenceAFond = 0.45, CoupDeVolant = 1.6 }
+	adherence *= 1 - glisse.PerteAdherenceAFond * math.clamp(math.abs(vAvant) / s.VitesseMax, 0, 1)
+	-- Coup de volant : au moment où on déclenche le drift en tournant, l'arrière décroche
+	if driftAppuye and not driftAppuyeAvant and math.abs(volant) > 0.3 and math.abs(vAvant) > 12 then
+		vitesseRotation += -math.sign(volant) * glisse.CoupDeVolant
+		vCote -= math.sign(volant) * math.abs(vAvant) * 0.12 -- l'élan continue tout droit : le kart glisse vers l'extérieur
+	end
+	driftAppuyeAvant = driftAppuye
 	if mouille then
 		adherence *= Config.Mouille.Adherence
 	end

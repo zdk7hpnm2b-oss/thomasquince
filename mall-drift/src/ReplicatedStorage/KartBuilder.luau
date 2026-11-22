@@ -131,7 +131,7 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	-- Friction 0 : c'est le script de conduite qui gère la glisse
 	chassis.CustomPhysicalProperties = PhysicalProperties.new(1, 0, 0, 100, 100)
 	chassis.Anchored = apercu == true
-	chassis:SetAttribute("Peinture", "Carrosserie")
+	chassis.Transparency = 1 -- bloc invisible pour la physique ; le look vient des pièces ci-dessous
 	chassis.Parent = modele
 	modele.PrimaryPart = chassis
 
@@ -178,7 +178,50 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 		piece("Jante", Vector3.new(0.06, r.d * 0.6, r.d * 0.6), CFrame.new(dehors, r.y, r.z), Color3.new(1, 1, 1), "Jantes", Enum.Material.Metal, CYL)
 	end
 
-	piece("PareChoc", Vector3.new(4.6, 0.5, 0.6), CFrame.new(0, 0, -3.2), NOIR)
+	-- CADRE EN TUBES (comme les vrais karts de drift)
+	local TUBE = Color3.fromRGB(30, 30, 34)
+	local LONG = CFrame.Angles(0, math.rad(90), 0) -- tube couché dans le sens de la longueur
+	local DEBOUT = CFrame.Angles(0, 0, math.rad(90)) -- tube vertical
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("TubeLateral", Vector3.new(5.8, 0.38, 0.38), CFrame.new(cote * 1.95, 0.05, 0) * LONG, TUBE, nil, Enum.Material.Metal, CYL)
+		piece("TubeArceau", Vector3.new(2.6, 0.3, 0.3), CFrame.new(cote * 1.05, 1.5, 2.45) * DEBOUT, TUBE, nil, Enum.Material.Metal, CYL)
+		piece("Pedale", Vector3.new(0.35, 0.5, 0.15), CFrame.new(cote * 0.4, 0.35, -2.3) * CFrame.Angles(math.rad(-30), 0, 0), Color3.fromRGB(190, 195, 205), nil, Enum.Material.Metal)
+		-- Fourches des roues arrière pivotantes
+		for _, dx in ipairs({ -0.38, 0.38 }) do
+			piece("Fourche", Vector3.new(0.12, 0.75, 0.12), CFrame.new(cote * 1.9 + dx, 0.35, 2.5), TUBE, nil, Enum.Material.Metal)
+		end
+		piece("TeteFourche", Vector3.new(0.9, 0.15, 0.3), CFrame.new(cote * 1.9, 0.75, 2.5), TUBE, nil, Enum.Material.Metal)
+	end
+	piece("PareChocAvant", Vector3.new(4.4, 0.4, 0.4), CFrame.new(0, 0.05, -3.15), TUBE, nil, Enum.Material.Metal, CYL)
+	piece("PareChocArriere", Vector3.new(4.2, 0.35, 0.35), CFrame.new(0, 0.3, 3.15), TUBE, nil, Enum.Material.Metal, CYL)
+	piece("HautArceau", Vector3.new(2.4, 0.3, 0.3), CFrame.new(0, 2.8, 2.45), TUBE, nil, Enum.Material.Metal, CYL)
+
+	-- CARROSSERIE (aux couleurs du joueur) : plancher, pontons latéraux, carénage avant
+	piece("Plancher", Vector3.new(3.6, 0.15, 5.6), CFrame.new(0, -0.2, 0), Color3.new(1, 1, 1), "Carrosserie")
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("Ponton", Vector3.new(0.95, 0.7, 2.6), CFrame.new(cote * 2.3, 0.15, 0.2), Color3.new(1, 1, 1), "Carrosserie")
+		piece("PontonBas", Vector3.new(0.95, 0.12, 2.6), CFrame.new(cote * 2.3, -0.26, 0.2), TUBE)
+	end
+	piece("Carenage", Vector3.new(3.2, 0.5, 1.6), CFrame.new(0, 0.45, -2.35) * CFrame.Angles(math.rad(-12), 0, 0), Color3.new(1, 1, 1), "Carrosserie")
+	-- Plaque numéro à l'avant
+	local plaque = piece("PlaqueNumero", Vector3.new(1.5, 0.9, 0.1), CFrame.new(0, 0.6, -3.25), Color3.fromRGB(245, 245, 245))
+	local sgPlaque = Instance.new("SurfaceGui")
+	sgPlaque.Face = Enum.NormalId.Front
+	sgPlaque.LightInfluence = 0.5
+	sgPlaque.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	sgPlaque.PixelsPerStud = 60
+	sgPlaque.Parent = plaque
+	local textePlaque = Instance.new("TextLabel")
+	textePlaque.Name = "Deco"
+	textePlaque.Size = UDim2.fromScale(1, 1)
+	textePlaque.BackgroundTransparency = 1
+	textePlaque.TextScaled = true
+	textePlaque.Font = Enum.Font.GothamBlack
+	textePlaque.TextColor3 = Color3.fromRGB(20, 20, 24)
+	textePlaque.Parent = sgPlaque
+	-- Petit moteur électrique entre les roues arrière
+	piece("Moteur", Vector3.new(1.6, 0.6, 1), CFrame.new(0, 0.1, 2.65), Color3.fromRGB(45, 45, 52), nil, Enum.Material.Metal)
+	piece("BandeMoteur", Vector3.new(1.62, 0.12, 1.02), CFrame.new(0, 0.3, 2.65), Color3.fromRGB(250, 200, 20))
 	piece("Colonne", Vector3.new(0.3, 0.3, 2), CFrame.new(0, 1.1, -1.6) * CFrame.Angles(math.rad(35), 0, 0), GRIS)
 	piece("Volant", Vector3.new(0.2, 1.7, 1.7), CFrame.new(0, 1.7, -0.9) * CFrame.Angles(math.rad(-35), math.rad(90), 0), OR, nil, Enum.Material.Metal, CYL)
 	-- Petit écran sur la colonne de direction + gants du pilote posés sur le volant
@@ -202,15 +245,23 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	lumiereNeon.Shadows = false
 	lumiereNeon.Parent = attLumiere
 
-	piece("Dossier", Vector3.new(2.4, 2, 0.4), CFrame.new(0, 1.6, 2.2) * CFrame.Angles(math.rad(-10), 0, 0), NOIR, "Siege", Enum.Material.Fabric)
+	-- Siège baquet : dossier + renforts sur les côtés
+	piece("Dossier", Vector3.new(2.4, 2.2, 0.4), CFrame.new(0, 1.6, 2.15) * CFrame.Angles(math.rad(-10), 0, 0), NOIR, "Siege", Enum.Material.Fabric)
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("RenfortSiege", Vector3.new(0.35, 1.1, 2), CFrame.new(cote * 1.3, 1.05, 1.15), NOIR, "Siege", Enum.Material.Fabric)
+	end
 
-	-- Bandes de course sur le capot
-	piece("Bande", Vector3.new(0.45, 0.05, 3.6), CFrame.new(-0.6, 0.42, -1.2), Color3.new(1, 1, 1), "Bandes")
-	piece("Bande", Vector3.new(0.45, 0.05, 3.6), CFrame.new(0.6, 0.42, -1.2), Color3.new(1, 1, 1), "Bandes")
+	-- Bandes de course sur le carénage avant et sur les pontons
+	for _, x in ipairs({ -0.6, 0.6 }) do
+		piece("Bande", Vector3.new(0.45, 0.05, 1.6), CFrame.new(0, 0.45, -2.35) * CFrame.Angles(math.rad(-12), 0, 0) * CFrame.new(x, 0.26, 0), Color3.new(1, 1, 1), "Bandes")
+	end
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("Bande", Vector3.new(0.97, 0.05, 2.62), CFrame.new(cote * 2.3, 0.51, 0.2), Color3.new(1, 1, 1), "Bandes")
+	end
 
 	-- Flancs avec autocollant + numéro
 	for _, cote in ipairs({ -1, 1 }) do
-		local flanc = piece("Flanc", Vector3.new(0.05, 0.7, 3), CFrame.new(cote * 2.03, 0, -0.6), Color3.new(1, 1, 1), nil)
+		local flanc = piece("Flanc", Vector3.new(0.05, 0.55, 2.3), CFrame.new(cote * 2.8, 0.15, 0.2), Color3.new(1, 1, 1), nil)
 		flanc.Transparency = 1
 		local sg = Instance.new("SurfaceGui")
 		sg.Face = cote < 0 and Enum.NormalId.Left or Enum.NormalId.Right
@@ -241,7 +292,6 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 		piece("Aileron", Vector3.new(4.2, 0.2, 1), CFrame.new(0, 2.5, 3), NOIR, (not dore) and "Carrosserie" or nil, dore and Enum.Material.Foil or nil).Color = dore and OR or NOIR
 		piece("SupportAileron", Vector3.new(0.2, 1.4, 0.4), CFrame.new(-1.3, 1.8, 2.9), NOIR)
 		piece("SupportAileron", Vector3.new(0.2, 1.4, 0.4), CFrame.new(1.3, 1.8, 2.9), NOIR)
-		piece("Nez", Vector3.new(3, 0.6, 1.6), CFrame.new(0, 0.6, -2.4) * CFrame.Angles(math.rad(-12), 0, 0), Color3.new(1, 1, 1), "Carrosserie")
 		if dore then
 			for _, cote in ipairs({ -1, 1 }) do
 				piece("LiseretOr", Vector3.new(0.1, 0.15, 5.6), CFrame.new(cote * 2.05, 0.35, 0), OR, nil, Enum.Material.Foil)
