@@ -160,9 +160,10 @@ end
 -- Dehors (parking, garage), tu es en sécurité.
 ---------------------------------------------------------------------
 Config.Securite = {
-	Policiers = 3, -- nombre de policiers (sur gyropode)
-	VitessePatrouille = 14, -- en patrouille
-	VitessePoursuite = 44, -- en poursuite (le kart Basique monte à 50 : ça se joue à peu !)
+	Policiers = 3, -- nombre de policiers (ils patrouillent à pied)
+	VitessePatrouille = 10, -- à pied, en patrouille
+	TempsMonteeKart = 0.8, -- quand il te voit, il saute dans son kart de police (secondes)
+	VitessePoursuite = 44, -- en kart de police (le kart Basique monte à 50 : ça se joue à peu !)
 	DistanceVue = 110, -- jusqu'où un policier voit
 	AngleVue = 75, -- largeur du regard (degrés de chaque côté)
 	DistanceOuie = 20, -- trop près = il t'entend même de dos

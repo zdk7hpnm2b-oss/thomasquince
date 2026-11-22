@@ -731,6 +731,35 @@ kiosque(-75, "COQUES & CO", Color3.fromRGB(90, 160, 255))
 kiosque(75, "BARBE À PAPA", Color3.fromRGB(255, 150, 200))
 
 ---------------------------------------------------------------------
+-- LA LIGNE DE DÉPART dans le hall (allée centrale, à l'est de la fontaine)
+-- Les karts se placent devant, les feux font 3, 2, 1... PARTEZ !
+---------------------------------------------------------------------
+local LIGNE_X = 60
+local ligneDepart = Instance.new("Model")
+ligneDepart.Name = "LigneDepart"
+ligneDepart.Parent = carte
+for i = 0, 12 do
+	for rangee = 0, 1 do
+		local noir = (i + rangee) % 2 == 0
+		deco(bloc("Damier", Vector3.new(2, 0.06, 2), CFrame.new(LIGNE_X + rangee * 2, SOL + 0.04, -12 + i * 2), noir and Color3.fromRGB(20, 20, 20) or Color3.fromRGB(240, 240, 240), Enum.Material.SmoothPlastic, ligneDepart))
+	end
+end
+-- Portique au-dessus de la ligne
+for _, z in ipairs({ -12.4, 12.4 }) do
+	bloc("PilierPortique", Vector3.new(1, 15, 1), CFrame.new(LIGNE_X + 4, SOL + 7.5, z), Color3.fromRGB(30, 30, 34), Enum.Material.Metal, ligneDepart)
+end
+deco(bloc("PoutrePortique", Vector3.new(1.4, 1.4, 26), CFrame.new(LIGNE_X + 4, SOL + 15, 0), Color3.fromRGB(30, 30, 34), Enum.Material.Metal, ligneDepart))
+local bandeauDepart = deco(bloc("BandeauDepart", Vector3.new(0.4, 2.2, 14), CFrame.new(LIGNE_X + 3.4, SOL + 16.8, 0), Color3.fromRGB(20, 20, 24), Enum.Material.SmoothPlastic, ligneDepart))
+texte(bandeauDepart, Enum.NormalId.Left, "🏁 DÉPART 🏁", OR)
+-- Les 3 feux (le script du joueur les allume pendant le compte à rebours)
+for i, z in ipairs({ -4, 0, 4 }) do
+	deco(bloc("BoitierFeu", Vector3.new(1, 2.8, 2.8), CFrame.new(LIGNE_X + 4, SOL + 12.6, z), Color3.fromRGB(15, 15, 18), Enum.Material.SmoothPlastic, ligneDepart))
+	local feu = cylindreDebout("Feu" .. i, 0.25, 2, Vector3.new(LIGNE_X + 3.45, SOL + 12.6, z), Color3.fromRGB(60, 12, 12), Enum.Material.Neon, ligneDepart)
+	feu.CFrame = CFrame.new(feu.Position) -- disque tourné vers les karts (axe X)
+	deco(feu)
+end
+
+---------------------------------------------------------------------
 -- L'AQUARIUM GÉANT (mur nord, au bout de la place centrale)
 ---------------------------------------------------------------------
 local aquarium = Instance.new("Model")
@@ -1471,13 +1500,13 @@ local function sortirKart(joueur: Player)
 	if regard.Magnitude < 0.1 then
 		regard = Vector3.new(0, 0, -1)
 	end
-	-- Dans le garage : le kart sort garé devant le plateau, puis une petite
-	-- cinématique l'emmène jusqu'au mall (gérée par le script du joueur)
+	-- Dans le garage : le kart apparaît sur la ligne de départ du hall.
+	-- Le script du joueur joue l'animation + le compte à rebours 3, 2, 1, PARTEZ !
 	local p = racine.Position
 	if p.X > G_X1 and p.X < G_X2 and p.Z > G_Z1 and p.Z < G_Z2 then
 		local depart = nil
-		for _, x in ipairs({ 8, 16, 0, 22 }) do -- toutes face à la grande porte (largeur 50)
-			local candidat = Vector3.new(x, SOL + 0.6, G_Z1 + 26)
+		for _, place in ipairs({ Vector2.new(LIGNE_X - 8, -6), Vector2.new(LIGNE_X - 8, 6), Vector2.new(LIGNE_X - 16, -6), Vector2.new(LIGNE_X - 16, 6) }) do
+			local candidat = Vector3.new(place.X, SOL + 0.6, place.Y)
 			local libre = true
 			for _, k in pairs(kartsJoueurs) do
 				if k.Parent and k.PrimaryPart and (k.PrimaryPart.Position - candidat).Magnitude < 7 then
@@ -1489,9 +1518,11 @@ local function sortirKart(joueur: Player)
 				break
 			end
 		end
-		depart = depart or Vector3.new(12, SOL + 0.6, G_Z1 + 36)
-		local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1)))
-		kart:SetAttribute("SortieGarage", true)
+		depart = depart or Vector3.new(LIGNE_X - 24, SOL + 0.6, 0)
+		local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(1, 0, 0)))
+		kart:SetAttribute("DepartHall", true)
+		-- La police laisse tranquille pendant l'animation et le compte à rebours
+		kart:SetAttribute("ProtegeJusqua", workspace:GetServerTimeNow() + 9)
 		asseoir(joueur, kart)
 		return
 	end

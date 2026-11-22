@@ -362,10 +362,97 @@ end
 ---------------------------------------------------------------------
 local modeCamera = Config.Camera.VueParDefaut or "gopro" -- "gopro" ou "derriere"
 
--- Cinématique « sortie du garage » : le kart roule tout seul jusqu'au mall
-type Autopilote = { debut: number, points: { Vector3 }, index: number }
-local autopilote: Autopilote? = nil
-local cinematiquesJouees: { [Instance]: boolean } = {}
+-- Séquence de départ dans le hall : animation (~3 s) puis feux 3, 2, 1, PARTEZ !
+local DUREE_ANIM_DEPART = 3
+type Depart = { debut: number, etape: number }
+local depart: Depart? = nil
+local departsJoues: { [Instance]: boolean } = {}
+
+-- Les feux à l'écran (3 grosses lumières en haut au centre)
+local blocFeux = Instance.new("Frame")
+blocFeux.AnchorPoint = Vector2.new(0.5, 0)
+blocFeux.Size = UDim2.new(0, 330, 0, 120)
+blocFeux.Position = UDim2.new(0.5, 0, 0.14, 0)
+blocFeux.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+blocFeux.BackgroundTransparency = 0.15
+blocFeux.Visible = false
+blocFeux.ZIndex = 11
+blocFeux.Parent = gui
+Instance.new("UICorner", blocFeux).CornerRadius = UDim.new(0, 18)
+local feuxEcran = {}
+for i = 1, 3 do
+	local f = Instance.new("Frame")
+	f.Size = UDim2.new(0, 90, 0, 90)
+	f.Position = UDim2.new(0, 15 + (i - 1) * 105, 0, 15)
+	f.BackgroundColor3 = Color3.fromRGB(60, 15, 15)
+	f.ZIndex = 12
+	f.Parent = blocFeux
+	Instance.new("UICorner", f).CornerRadius = UDim.new(0.5, 0)
+	feuxEcran[i] = f
+end
+local chiffreDepart = Instance.new("TextLabel")
+chiffreDepart.AnchorPoint = Vector2.new(0.5, 0.5)
+chiffreDepart.Size = UDim2.new(0, 500, 0, 130)
+chiffreDepart.Position = UDim2.fromScale(0.5, 0.48)
+chiffreDepart.BackgroundTransparency = 1
+chiffreDepart.Font = Enum.Font.GothamBlack
+chiffreDepart.TextScaled = true
+chiffreDepart.TextColor3 = Color3.new(1, 1, 1)
+chiffreDepart.Text = ""
+chiffreDepart.ZIndex = 12
+local contourChiffre = Instance.new("UIStroke")
+contourChiffre.Thickness = 4
+contourChiffre.Color = Color3.fromRGB(15, 15, 20)
+contourChiffre.Parent = chiffreDepart
+chiffreDepart.Parent = gui
+local echelleChiffre = Instance.new("UIScale")
+echelleChiffre.Parent = chiffreDepart
+
+local noirDepart = Instance.new("Frame")
+noirDepart.Size = UDim2.fromScale(1, 1)
+noirDepart.BackgroundColor3 = Color3.new(0, 0, 0)
+noirDepart.BackgroundTransparency = 1
+noirDepart.ZIndex = 20
+noirDepart.Parent = gui
+
+-- Les vrais feux du portique (dans le mall), allumés seulement chez toi
+local function feuxPortique(): { BasePart }
+	local liste = {}
+	local carte = workspace:FindFirstChild("GoldenMall")
+	local ligne = carte and carte:FindFirstChild("LigneDepart")
+	if ligne then
+		for i = 1, 3 do
+			local f = ligne:FindFirstChild("Feu" .. i)
+			if f then
+				table.insert(liste, f :: BasePart)
+			end
+		end
+	end
+	return liste
+end
+
+local ROUGE_FEU = Color3.fromRGB(255, 40, 40)
+local VERT_FEU = Color3.fromRGB(40, 255, 90)
+local ETEINT = Color3.fromRGB(60, 15, 15)
+local function allumerFeux(nombreRouges: number, vert: boolean)
+	local portique = feuxPortique()
+	for i = 1, 3 do
+		local couleur = if vert then VERT_FEU elseif i <= nombreRouges then ROUGE_FEU else ETEINT
+		feuxEcran[i].BackgroundColor3 = couleur
+		if portique[i] then
+			portique[i].Color = couleur
+		end
+	end
+end
+
+local function afficherChiffre(texte: string, couleur: Color3)
+	chiffreDepart.Text = texte
+	chiffreDepart.TextColor3 = couleur
+	chiffreDepart.TextTransparency = 0
+	contourChiffre.Transparency = 0
+	echelleChiffre.Scale = 1.8
+	TweenService:Create(echelleChiffre, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
 
 local bandesCinema = {}
 for _, haut in ipairs({ true, false }) do
@@ -419,18 +506,17 @@ local function mettreAJourCamera(dt: number)
 	end
 	avant = avant.Unit
 
-	if autopilote then
+	if depart and os.clock() - depart.debut < DUREE_ANIM_DEPART then
+		-- Animation : la caméra fait le tour du kart sur la ligne de départ
 		cacherPilote(false)
-		local t = os.clock() - autopilote.debut
-		if t < 2.3 then
-			-- Plan de côté : on voit le kart sortir du garage
-			local pos = ch.Position + Vector3.new(15, 4, -4)
-			camera.CFrame = CFrame.lookAt(pos, ch.Position + Vector3.new(0, 1.5, 0))
-		else
-			-- Plan arrière, bas et proche : on fonce vers l'entrée du mall
-			local pos = ch.Position - avant * 11 + Vector3.new(0, 3.5, 0)
-			camera.CFrame = CFrame.lookAt(pos, ch.Position + avant * 12 + Vector3.new(0, 2, 0))
-		end
+		local a = (os.clock() - depart.debut) / DUREE_ANIM_DEPART
+		a = a * a * (3 - 2 * a)
+		local angle = math.rad(200 - 200 * a) -- de devant le kart jusqu'à derrière
+		local cote = Vector3.new(-avant.Z, 0, avant.X)
+		local direction = avant * math.cos(angle) + cote * math.sin(angle)
+		local distance = 16 - 4 * a
+		local pos = ch.Position + direction * distance + Vector3.new(0, 6 - 2 * a, 0)
+		camera.CFrame = CFrame.lookAt(pos, ch.Position + Vector3.new(0, 1.5, 0))
 		return
 	end
 
@@ -616,9 +702,11 @@ local function sortirDuKart()
 	ContextActionService:UnbindAction("MallDrift_Camera")
 	ContextActionService:UnbindAction("MallDrift_Nuit")
 	ContextActionService:UnbindAction("MallDrift_Redresser")
-	if autopilote then
-		autopilote = nil
+	if depart then
+		depart = nil
 		afficherBandes(false)
+		blocFeux.Visible = false
+		chiffreDepart.Text = ""
 	end
 	arreterCamera()
 	camera.FieldOfView = 70
@@ -673,17 +761,16 @@ local function entrerDansKart(siege: Seat)
 	hud.Visible = true
 	activerToucheConduire(false)
 	demarrerCamera()
-	if modele:GetAttribute("SortieGarage") and not cinematiquesJouees[modele] then
-		cinematiquesJouees[modele] = true
-		local pos = chassis.Position
-		autopilote = {
-			debut = os.clock(),
-			index = 1,
-			points = { Vector3.new(pos.X, pos.Y, 236), Vector3.new(0, pos.Y, 172), Vector3.new(0, pos.Y, 138) },
-		}
+	if modele:GetAttribute("DepartHall") and not departsJoues[modele] then
+		departsJoues[modele] = true
+		depart = { debut = os.clock(), etape = 0 }
 		hud.Visible = false
 		afficherBandes(true)
-		message("★ DIRECTION LE GOLDEN MALL ★", Color3.fromRGB(255, 215, 80), 2.5)
+		allumerFeux(0, false)
+		-- On arrive dans le hall en sortant du noir
+		noirDepart.BackgroundTransparency = 0
+		TweenService:Create(noirDepart, TweenInfo.new(0.8), { BackgroundTransparency = 1 }):Play()
+		message("★ BIENVENUE DANS LE HALL ★", Color3.fromRGB(255, 215, 80), 2.2)
 	end
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
@@ -750,21 +837,45 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local mv = controles:GetMoveVector()
 	local gaz = math.clamp(-mv.Z, -1, 1)
 	local volant = math.clamp(mv.X, -1, 1)
-	if autopilote then
-		local cible = autopilote.points[autopilote.index]
-		local versCible = Vector3.new(cible.X - ch.Position.X, 0, cible.Z - ch.Position.Z)
-		if versCible.Magnitude < 10 then
-			autopilote.index += 1
-		end
-		if autopilote.index > #autopilote.points or os.clock() - autopilote.debut > 8 then
-			autopilote = nil
-			hud.Visible = true
+	if depart then
+		local t = os.clock() - depart.debut
+		local tCompte = t - DUREE_ANIM_DEPART -- 0 = début du compte à rebours
+		if tCompte >= 0 and depart.etape == 0 then
+			depart.etape = 1
 			afficherBandes(false)
-			message("À TOI DE JOUER ! 🏁", Color3.fromRGB(120, 255, 140), 1.6)
-		else
-			local dir = versCible.Unit
-			gaz = 0.85
-			volant = math.clamp(-avant:Cross(dir).Y * 3, -1, 1)
+			blocFeux.Visible = true
+			allumerFeux(1, false)
+			afficherChiffre("3", ROUGE_FEU)
+		elseif tCompte >= 1 and depart.etape == 1 then
+			depart.etape = 2
+			allumerFeux(2, false)
+			afficherChiffre("2", ROUGE_FEU)
+		elseif tCompte >= 2 and depart.etape == 2 then
+			depart.etape = 3
+			allumerFeux(3, false)
+			afficherChiffre("1", ROUGE_FEU)
+		elseif tCompte >= 3 and depart.etape == 3 then
+			depart.etape = 4
+			allumerFeux(3, true)
+			afficherChiffre("PARTEZ ! 🏁", VERT_FEU)
+			hud.Visible = true
+			local fin = depart
+			task.delay(1.2, function()
+				if depart == fin then
+					depart = nil
+				end
+				blocFeux.Visible = false
+				TweenService:Create(chiffreDepart, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+				TweenService:Create(contourChiffre, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+				task.delay(3, function()
+					allumerFeux(0, false) -- on éteint le portique
+				end)
+			end)
+		end
+		if depart and depart.etape < 4 then
+			-- Avant le vert : le kart ne bouge pas
+			gaz = 0
+			volant = 0
 			driftAppuye = false
 		end
 	end

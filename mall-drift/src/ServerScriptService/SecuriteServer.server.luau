@@ -3,7 +3,8 @@
 	À placer dans : ServerScriptService   — nom conseillé : SecuriteServer
 
 	LA POLICE DU GOLDEN MALL
-	  • 3 policiers en gyropode patrouillent dans les allées
+	  • 3 policiers patrouillent À PIED dans les allées. Quand l'un d'eux te voit,
+	    il saute dans son KART DE POLICE et te prend en chasse
 	  • chaque policier a un champ de vision : s'il voit ton kart, il te poursuit (❗),
 	    allume son gyrophare et appelle ses collègues en renfort. Il vise l'endroit où
 	    tu vas, et garde ta trace par radio quelques secondes s'il te perd de vue
@@ -42,6 +43,7 @@ local ANIMATIONS = {
 	Marche = "rbxassetid://507777826",
 	Course = "rbxassetid://507767714",
 	Repos = "rbxassetid://507766388",
+	Assis = "rbxassetid://2506281703", -- assis au volant du kart de police
 }
 
 -- Les rondes des policiers (points x, z dans les allées du mall)
@@ -148,6 +150,8 @@ type Garde = {
 	prochainCalcul: number,
 	pistes: { [string]: AnimationTrack },
 	animEnCours: string?,
+	enKart: boolean,
+	hanchesBase: number,
 }
 
 local gardes: { Garde } = {}
@@ -286,6 +290,8 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 		prochainCalcul = 0,
 		pistes = pistes,
 		animEnCours = nil,
+		enKart = false,
+		hanchesBase = hum.HipHeight,
 	}
 	table.insert(gardes, g)
 	return g
@@ -307,6 +313,8 @@ local function animer(g: Garde)
 	local voulue = "Repos"
 	if g.etat == "glisse" then
 		voulue = "Aucune"
+	elseif g.enKart then
+		voulue = "Assis"
 	elseif not g.segway and vitesse > 16 then
 		voulue = "Course"
 	elseif not g.segway and vitesse > 1 then
@@ -334,7 +342,8 @@ local function mettreAJourKarts()
 		local proprietaire = Players:GetPlayerByUserId(kart:GetAttribute("Proprietaire") or 0)
 		local siege = kart:FindFirstChild("Siege") :: Seat?
 		local chassis = (kart :: Model).PrimaryPart
-		if proprietaire and siege and chassis and siege.Occupant and siege.Occupant.Parent == proprietaire.Character then
+		local protege = (kart:GetAttribute("ProtegeJusqua") or 0) > workspace:GetServerTimeNow()
+		if proprietaire and siege and chassis and not protege and siege.Occupant and siege.Occupant.Parent == proprietaire.Character then
 			table.insert(liste, { joueur = proprietaire, kart = kart :: Model, chassis = chassis })
 		end
 	end
@@ -432,6 +441,88 @@ local function allerVers(g: Garde, destination: Vector3)
 end
 
 ---------------------------------------------------------------------
+-- Le kart de police : il apparaît sous le policier quand il te prend en chasse
+---------------------------------------------------------------------
+local BLANC_POLICE = Color3.fromRGB(240, 242, 248)
+local BLEU_POLICE = Color3.fromRGB(25, 60, 170)
+
+local function monterEnKart(g: Garde)
+	if g.enKart then
+		return
+	end
+	g.enKart = true
+	g.hum.HipHeight = 0.7
+	local r = g.racine
+	-- Position du châssis : au ras du sol, sous les hanches du policier assis
+	local base = r.CFrame * CFrame.new(0, -(0.7 + r.Size.Y / 2) + 0.45, 0.6)
+	local kartPolice = Instance.new("Model")
+	kartPolice.Name = "KartPolice"
+	local function piece(nom: string, taille: Vector3, decalage: CFrame, couleur: Color3, matiere: Enum.Material?, forme: Enum.PartType?): Part
+		local p = Instance.new("Part")
+		p.Name = nom
+		p.Size = taille
+		p.CFrame = base * decalage
+		p.Color = couleur
+		p.Material = matiere or Enum.Material.SmoothPlastic
+		p.Shape = forme or Enum.PartType.Block
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		p.CollisionGroup = "Gardes"
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		souder(r, p)
+		p.Parent = kartPolice
+		return p
+	end
+	piece("Chassis", Vector3.new(4, 0.8, 6), CFrame.new(), BLANC_POLICE)
+	piece("Capot", Vector3.new(3.2, 0.6, 1.8), CFrame.new(0, 0.55, -2.2) * CFrame.Angles(math.rad(-12), 0, 0), BLEU_POLICE)
+	piece("PareChoc", Vector3.new(4.6, 0.5, 0.6), CFrame.new(0, 0, -3.2), Color3.fromRGB(25, 25, 25))
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("BandeBleue", Vector3.new(0.1, 0.45, 5.6), CFrame.new(cote * 2.02, 0.05, 0), BLEU_POLICE)
+		piece("RoueAvant", Vector3.new(0.8, 1.6, 1.6), CFrame.new(cote * 2.2, 0.2, -2.3), Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		piece("RoueArriere", Vector3.new(0.7, 1.3, 1.3), CFrame.new(cote * 2.1, 0.05, 2.4), Color3.fromRGB(20, 20, 20), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		local flanc = piece("Flanc", Vector3.new(0.05, 0.7, 3.4), CFrame.new(cote * 2.06, 0.05, -0.3), BLANC_POLICE)
+		flanc.Transparency = 1
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = if cote < 0 then Enum.NormalId.Left else Enum.NormalId.Right
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		sg.PixelsPerStud = 60
+		sg.Parent = flanc
+		local mot = Instance.new("TextLabel")
+		mot.Size = UDim2.fromScale(1, 1)
+		mot.BackgroundTransparency = 1
+		mot.TextScaled = true
+		mot.Font = Enum.Font.GothamBlack
+		mot.TextColor3 = BLEU_POLICE
+		mot.Text = "POLICE"
+		mot.Parent = sg
+	end
+	piece("Volant", Vector3.new(0.2, 1.5, 1.5), CFrame.new(0, 1.6, -1) * CFrame.Angles(math.rad(-35), math.rad(90), 0), Color3.fromRGB(25, 25, 25), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+	piece("MatGyrophare", Vector3.new(0.2, 1.8, 0.2), CFrame.new(0, 1.3, 2.7), Color3.fromRGB(40, 40, 45), Enum.Material.Metal)
+	local gyro = piece("Gyrophare", Vector3.new(2.2, 0.35, 0.6), CFrame.new(0, 2.25, 2.7), Color3.fromRGB(255, 40, 40), Enum.Material.Neon)
+	local lumiere = Instance.new("PointLight")
+	lumiere.Name = "LumiereGyro"
+	lumiere.Range = 14
+	lumiere.Brightness = 3
+	lumiere.Parent = gyro
+	kartPolice.Parent = g.modele
+end
+
+local function descendreDuKart(g: Garde)
+	if not g.enKart then
+		return
+	end
+	g.enKart = false
+	local k = g.modele:FindFirstChild("KartPolice")
+	if k then
+		k:Destroy()
+	end
+	g.hum.HipHeight = g.hanchesBase
+end
+
+---------------------------------------------------------------------
 -- Poursuites (qui poursuit qui) et messages envoyés aux joueurs
 ---------------------------------------------------------------------
 local poursuivants: { [Player]: { [Garde]: boolean } } = {}
@@ -449,14 +540,22 @@ local function commencerPoursuite(g: Garde, joueur: Player, position: Vector3, r
 	if enArrestation[joueur] then
 		return
 	end
-	g.etat = "poursuite"
 	g.cible = joueur
 	g.derniereVue = os.clock()
 	g.dernierePos = position
 	g.chemin = nil
-	g.hum.WalkSpeed = R.VitessePoursuite
-	g.bulle.Text = "❗"
 	g.bulle.TextColor3 = Color3.fromRGB(255, 60, 60)
+	if g.enKart then
+		g.etat = "poursuite"
+		g.hum.WalkSpeed = R.VitessePoursuite
+		g.bulle.Text = "❗"
+	else
+		-- Il s'arrête une fraction de seconde... et saute dans son kart de police !
+		g.etat = "monte"
+		g.finEtat = os.clock() + R.TempsMonteeKart
+		g.hum:MoveTo(g.racine.Position)
+		g.bulle.Text = "❗🚓"
+	end
 	local liste = poursuivants[joueur]
 	local premier = liste == nil or next(liste) == nil
 	if not liste then
@@ -482,6 +581,7 @@ local function finirPoursuite(g: Garde, nouvelEtat: string)
 	g.etat = nouvelEtat
 	g.cible = nil
 	g.chemin = nil
+	descendreDuKart(g)
 	g.hum.WalkSpeed = R.VitessePatrouille
 	if nouvelEtat == "recherche" then
 		g.bulle.Text = "❓"
@@ -518,6 +618,9 @@ local function arreter(g: Garde, joueur: Player)
 		autre.cible = nil
 		autre.chemin = nil
 		autre.bulle.Text = ""
+		if autre ~= g then
+			descendreDuKart(autre)
+		end
 		autre.hum.WalkSpeed = R.VitessePatrouille
 	end
 	poursuivants[joueur] = nil
@@ -592,7 +695,6 @@ end
 ---------------------------------------------------------------------
 local function cerveau(g: Garde)
 	g.hum.WalkSpeed = R.VitessePatrouille
-	local gyrophare = g.modele:FindFirstChild("Gyrophare") :: BasePart?
 	while g.modele.Parent and g.hum.Health > 0 do
 		task.wait(0.15)
 		local maintenant = os.clock()
@@ -605,6 +707,19 @@ local function cerveau(g: Garde)
 			if maintenant > g.finEtat then
 				g.etat = "patrouille"
 				g.bulle.Text = ""
+				descendreDuKart(g)
+				g.hum.WalkSpeed = R.VitessePatrouille
+			end
+		elseif g.etat == "monte" then
+			-- Le temps de sauter dans le kart, puis c'est parti
+			if not g.cible or enArrestation[g.cible] then
+				finirPoursuite(g, "patrouille")
+			elseif maintenant > g.finEtat then
+				monterEnKart(g)
+				g.etat = "poursuite"
+				g.hum.WalkSpeed = R.VitessePoursuite
+				g.derniereVue = maintenant
+				g.bulle.Text = "❗"
 			end
 		elseif g.etat == "recherche" then
 			-- Il regarde autour de lui... puis reprend sa ronde
@@ -661,12 +776,14 @@ local function cerveau(g: Garde)
 			allerVers(g, point)
 		end
 
-		-- Gyrophare : bleu / rouge en poursuite, éteint sinon
+		-- Gyrophare du kart de police : bleu / rouge
+		local gyrophare = g.modele:FindFirstChild("Gyrophare", true) :: BasePart?
 		if gyrophare then
-			if g.etat == "poursuite" then
-				gyrophare.Color = if math.floor(maintenant * 5) % 2 == 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 40)
-			else
-				gyrophare.Color = Color3.fromRGB(30, 40, 70)
+			local couleur = if math.floor(maintenant * 5) % 2 == 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 40)
+			gyrophare.Color = couleur
+			local lumiere = gyrophare:FindFirstChild("LumiereGyro") :: PointLight?
+			if lumiere then
+				lumiere.Color = couleur
 			end
 		end
 		animer(g)
@@ -678,7 +795,7 @@ end
 ---------------------------------------------------------------------
 for i = 1, R.Policiers do
 	local ronde = RONDES_SEGWAY[(i - 1) % #RONDES_SEGWAY + 1]
-	local g = creerGarde(ronde, true, i)
+	local g = creerGarde(ronde, false, i) -- à pied (il monte dans son kart en poursuite)
 	task.spawn(cerveau, g)
 end
 
