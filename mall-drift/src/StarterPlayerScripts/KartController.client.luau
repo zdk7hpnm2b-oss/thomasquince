@@ -770,7 +770,7 @@ local function entrerDansKart(siege: Seat)
 		-- On arrive dans le hall en sortant du noir
 		noirDepart.BackgroundTransparency = 0
 		TweenService:Create(noirDepart, TweenInfo.new(0.8), { BackgroundTransparency = 1 }):Play()
-		message("★ BIENVENUE DANS LE HALL ★", Color3.fromRGB(255, 215, 80), 2.2)
+		message("★ GOLDEN MALL · PRÊT ? ★", Color3.fromRGB(255, 215, 80), 2.2)
 	end
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end

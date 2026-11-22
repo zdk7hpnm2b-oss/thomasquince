@@ -20,10 +20,12 @@ Ce prototype contient :
   **renfort** (jusqu'à 🚨🚨🚨). S'il arrive tout près de toi : **ATTRAPÉ !**, retour au garage. Reste
   hors de vue quelques secondes pour le **semer** (+150 XP) : il redescend et repart à pied. Attire-le
   sur le **sol mouillé** : il glisse (+100 XP) 😂. À pied, tu es un client normal ; dehors, tu es à l'abri
-- **Le départ dans le hall** : en entrant dans le garage, une bannière « GARAGE VIP » s'affiche ; en
-  ouvrant le menu, la caméra glisse jusqu'au plateau. Quand tu prends ton kart au garage, tu arrives
-  **au milieu du hall** sur une **ligne de départ** : la caméra fait le tour de ton kart, puis les
-  feux du portique s'allument **3, 2, 1… PARTEZ !**
+- **Le départ devant le mall** : en appuyant sur **F** (ou « SORTIR MON KART »), ton kart arrive sur la
+  **ligne de départ, juste en face de l'entrée du mall** : la caméra fait le tour de ton kart, puis les
+  feux du portique s'allument **3, 2, 1… PARTEZ !** et tu fonces dans le mall
+- **Des obstacles** : slalom de plots, caddies abandonnés, palettes de cartons « PROMO », panneaux
+  « SOLDES », zone de travaux en chicane, et deux **autolaveuses** qui circulent en laissant une
+  traînée d'eau glissante derrière elles
 - **Une intro cinématique** (~6 s) à l'arrivée : la caméra tourne autour de la fontaine puis survole
   le parking jusqu'au garage, avec le titre du jeu (bouton « Passer »)
 - **Monter dans son kart en 1 clic** : gros bouton **🏎️ CONDUIRE** ou touche **F**, n'importe où.
@@ -124,7 +126,7 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 | Caméra GoPro / vue arrière | V | Y | Bouton CAM |
 | Jour / nuit | N | — | — |
 | Remettre le kart droit | R | X | Bouton R |
-| **Sortir / reprendre son kart** | **F** | Y | Bouton 🏎️ CONDUIRE |
+| **Prendre son kart (ligne de départ)** | **F** | Y | Bouton 🏎️ CONDUIRE |
 | Descendre du kart | Espace | A | Saut |
 | Remonter dans son kart | E (près du kart) | — | Bouton à l'écran |
 
