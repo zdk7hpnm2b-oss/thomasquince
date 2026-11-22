@@ -14,9 +14,12 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
-- **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : en arrivant, tu es **libre**
-  (garage, personnalisation, balade). Clique sur **🎮 LANCER UNE PARTIE** (en bas à droite) quand tu veux
-  jouer. Quand assez de joueurs sont prêts : une **page d'attente**
+- **☰ Un menu, deux modes de jeu** (il s'ouvre après l'intro, puis avec **☰ MENU** en bas à droite) :
+  **🏁 ENTRAÎNEMENT** (drift libre, la police du mall en bots te poursuit), **🌐 JOUER EN LIGNE**
+  (Police contre Fugitifs) et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
+  les manches en ligne des autres
+- **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : quand assez de joueurs
+  sont dans la file : une **page d'attente**
   (la caméra survole le mall, personne ne roule), puis le **tirage au sort** des équipes (moitié
   policiers 🚓, moitié fugitifs 🏃). L'entrée du mall se ferme ; les **fugitifs partent au sud**, la
   **police au nord** (à l'opposé). Feux 3, 2, 1, PARTEZ pour tous, mais la police reste bloquée
@@ -143,7 +146,7 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 ## 👥 Tester le mode en ligne dans Studio
 
 **Seul, avec un bot** : c'est activé par défaut (`Config.Partie.BotsTest = 1`). Lance **Play**, puis
-clique sur **🎮 LANCER UNE PARTIE** : un bot rejoint la partie et le tirage au sort se fait entre toi et lui. Si le bot est
+dans le menu, choisis **🌐 JOUER EN LIGNE** : un bot rejoint la partie et le tirage au sort se fait entre toi et lui. Si le bot est
 policier 🤖🚓, il te poursuit ; s'il est fugitif 🤖🏃, c'est à toi de l'attraper. **Avant de publier le
 jeu pour de vrai, remets `BotsTest = 0`** (sinon les joueurs seuls enchaînent des manches contre un bot).
 

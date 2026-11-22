@@ -558,8 +558,25 @@ workspace:SetAttribute("MancheEnCours", false)
 
 -- Le bouton « LANCER UNE PARTIE » (côté joueur) : on devient « prêt » ou non
 Partie.OnServerEvent:Connect(function(joueur: Player, info)
-	if type(info) == "table" and info.type == "pret" and joueur:GetAttribute("Role") == nil then
+	if type(info) ~= "table" or joueur:GetAttribute("Role") ~= nil then
+		return -- (pendant sa manche, le joueur ne peut rien changer)
+	end
+	if info.type == "pret" then
 		joueur:SetAttribute("Pret", info.valeur == true)
+	elseif info.type == "garage" then
+		-- Bouton « GARAGE VIP » du menu : retour au garage
+		RetirerKart:Invoke(joueur)
+		local cf = nil
+		local garage = carte:FindFirstChild("GarageVIP")
+		local apparition = garage and garage:FindFirstChild("ApparitionGarage") :: BasePart?
+		if apparition then
+			cf = apparition.CFrame + Vector3.new(0, 4, 0)
+		end
+		task.delay(0.2, function()
+			if cf and joueur.Character then
+				joueur.Character:PivotTo(cf)
+			end
+		end)
 	end
 end)
 

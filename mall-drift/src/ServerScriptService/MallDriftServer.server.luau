@@ -1718,12 +1718,25 @@ AjouterXP.Parent = game:GetService("ServerStorage")
 
 -- Groupes de collision : les gardes ne se font pas renverser par les karts
 local PhysicsService = game:GetService("PhysicsService")
-for _, groupe in ipairs({ "Karts", "Gardes" }) do
+for _, groupe in ipairs({ "Karts", "Gardes", "KartsManche", "BarriereManche" }) do
 	if not PhysicsService:IsCollisionGroupRegistered(groupe) then
 		PhysicsService:RegisterCollisionGroup(groupe)
 	end
 end
 PhysicsService:CollisionGroupSetCollidable("Karts", "Gardes", false)
+PhysicsService:CollisionGroupSetCollidable("KartsManche", "Gardes", false)
+-- La barrière de l'entrée (pendant une manche) ne bloque QUE les karts de la manche :
+-- les joueurs en entraînement passent librement
+PhysicsService:CollisionGroupSetCollidable("BarriereManche", "Default", false)
+PhysicsService:CollisionGroupSetCollidable("BarriereManche", "Karts", false)
+PhysicsService:CollisionGroupSetCollidable("BarriereManche", "Gardes", false)
+PhysicsService:CollisionGroupSetCollidable("BarriereManche", "KartsManche", true)
+do
+	local barriere = carte:FindFirstChild("BarriereManche", true)
+	if barriere then
+		(barriere :: BasePart).CollisionGroup = "BarriereManche"
+	end
+end
 remotes.Parent = ReplicatedStorage
 
 ---------------------------------------------------------------------
@@ -2008,6 +2021,12 @@ local function placerKart(joueur: Player, avecDepart: boolean): Model?
 		-- Mode libre : la police du mall laisse tranquille pendant le départ
 		kart:SetAttribute("ProtegeJusqua", workspace:GetServerTimeNow() + 12)
 	else
+		-- Mode en ligne : les karts de la manche sont bloqués par la barrière de l'entrée
+		for _, piece in ipairs(kart:GetDescendants()) do
+			if piece:IsA("BasePart") then
+				piece.CollisionGroup = "KartsManche"
+			end
+		end
 		-- Mode en ligne : un repère au-dessus du kart (🚓 ou 🏃) pour reconnaître les équipes
 		local repere = Instance.new("BillboardGui")
 		repere.Name = "RepereEquipe"
@@ -2051,8 +2070,8 @@ local function sortirKart(joueur: Player)
 	if ancien and humanoide and humanoide.SeatPart and humanoide.SeatPart:IsDescendantOf(ancien) then
 		return -- déjà au volant
 	end
-	if joueur:GetAttribute("EnSalle") or (workspace:GetAttribute("MancheEnCours") and joueur:GetAttribute("Role") == nil) then
-		return -- page d'attente, ou manche en cours : on attend la suivante
+	if joueur:GetAttribute("EnSalle") then
+		return -- page d'attente : la manche va commencer
 	end
 	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
 	placerKart(joueur, joueur:GetAttribute("Role") == nil)

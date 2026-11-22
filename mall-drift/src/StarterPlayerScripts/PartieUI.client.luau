@@ -205,45 +205,165 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 ---------------------------------------------------------------------
--- LE BOUTON « LANCER UNE PARTIE » (en bas à droite)
--- En arrivant, on est libre : garage, personnalisation, balade. On clique ici
--- quand on veut jouer à Police vs Fugitifs.
+-- LE MENU : choisir son mode de jeu
+--   🏁 ENTRAÎNEMENT : drift libre, la police du mall (bots) te poursuit
+--   🌐 JOUER EN LIGNE : Police contre Fugitifs avec de vrais joueurs
+--   🎨 GARAGE VIP : personnaliser son kart
+-- Il s'ouvre après l'intro, puis avec le bouton « ☰ MENU » (en bas à droite).
 ---------------------------------------------------------------------
-local boutonPartie = Instance.new("TextButton")
-boutonPartie.Name = "LancerPartie"
-boutonPartie.AnchorPoint = Vector2.new(1, 1)
-boutonPartie.Size = UDim2.new(0, 280, 0, 58)
-boutonPartie.Position = UDim2.new(1, -20, 1, -40)
-boutonPartie.Font = Enum.Font.GothamBlack
-boutonPartie.TextScaled = true
-boutonPartie.TextColor3 = Color3.new(1, 1, 1)
-boutonPartie.ZIndex = 5
-boutonPartie.Parent = gui
-Instance.new("UICorner", boutonPartie).CornerRadius = UDim.new(0, 14)
-local bordBouton = Instance.new("UIStroke")
-bordBouton.Thickness = 3
-bordBouton.Color = Color3.new(1, 1, 1)
-bordBouton.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-bordBouton.Parent = boutonPartie
-local margeBouton = Instance.new("UIPadding")
-margeBouton.PaddingTop = UDim.new(0, 10)
-margeBouton.PaddingBottom = UDim.new(0, 10)
-margeBouton.PaddingLeft = UDim.new(0, 10)
-margeBouton.PaddingRight = UDim.new(0, 10)
-margeBouton.Parent = boutonPartie
+local VIOLET = Color3.fromRGB(110, 60, 220)
 
-local function majBoutonPartie()
-	local pret = joueur:GetAttribute("Pret") == true
-	boutonPartie.Visible = joueur:GetAttribute("Role") == nil and joueur:GetAttribute("IntroFinie") == true
-	boutonPartie.Text = if pret then "✅ PRÊT · ANNULER" else "🎮 LANCER UNE PARTIE"
-	boutonPartie.BackgroundColor3 = if pret then Color3.fromRGB(40, 150, 80) else Color3.fromRGB(110, 60, 220)
+local boutonMenu = Instance.new("TextButton")
+boutonMenu.Name = "BoutonMenu"
+boutonMenu.AnchorPoint = Vector2.new(1, 1)
+boutonMenu.Size = UDim2.new(0, 190, 0, 54)
+boutonMenu.Position = UDim2.new(1, -20, 1, -40)
+boutonMenu.Font = Enum.Font.GothamBlack
+boutonMenu.TextScaled = true
+boutonMenu.TextColor3 = Color3.new(1, 1, 1)
+boutonMenu.BackgroundColor3 = VIOLET
+boutonMenu.Text = "☰ MENU"
+boutonMenu.ZIndex = 5
+boutonMenu.Parent = gui
+Instance.new("UICorner", boutonMenu).CornerRadius = UDim.new(0, 14)
+local bordMenu = Instance.new("UIStroke")
+bordMenu.Thickness = 3
+bordMenu.Color = Color3.new(1, 1, 1)
+bordMenu.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+bordMenu.Parent = boutonMenu
+local margeMenu = Instance.new("UIPadding")
+margeMenu.PaddingTop = UDim.new(0, 10)
+margeMenu.PaddingBottom = UDim.new(0, 10)
+margeMenu.Parent = boutonMenu
+
+local fondMenu = Instance.new("Frame")
+fondMenu.Name = "Menu"
+fondMenu.Size = UDim2.fromScale(1, 1)
+fondMenu.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+fondMenu.BackgroundTransparency = 0.35
+fondMenu.Visible = false
+fondMenu.ZIndex = 20
+fondMenu.Parent = gui
+local titreMenu = texte(fondMenu, UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.1, 0), Color3.fromRGB(255, 205, 70))
+titreMenu.Text = "GOLDEN MALL DRIFT"
+titreMenu.ZIndex = 21
+local sousTitreMenu = texte(fondMenu, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.1, 64), Color3.new(1, 1, 1), Enum.Font.GothamBold)
+sousTitreMenu.Text = "Choisis ton mode de jeu"
+sousTitreMenu.ZIndex = 21
+
+local rangeeCartes = Instance.new("Frame")
+rangeeCartes.AnchorPoint = Vector2.new(0.5, 0.5)
+rangeeCartes.Size = UDim2.new(0.9, 0, 0, 250)
+rangeeCartes.Position = UDim2.fromScale(0.5, 0.55)
+rangeeCartes.BackgroundTransparency = 1
+rangeeCartes.ZIndex = 21
+rangeeCartes.Parent = fondMenu
+local dispositionCartes = Instance.new("UIListLayout")
+dispositionCartes.FillDirection = Enum.FillDirection.Horizontal
+dispositionCartes.HorizontalAlignment = Enum.HorizontalAlignment.Center
+dispositionCartes.Padding = UDim.new(0, 18)
+dispositionCartes.Parent = rangeeCartes
+
+local function carteMode(icone: string, titre: string, description: string, couleur: Color3): (TextButton, TextLabel, TextLabel)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(0, 260, 1, 0)
+	b.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	b.Text = ""
+	b.AutoButtonColor = true
+	b.ZIndex = 22
+	b.Parent = rangeeCartes
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 18)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 4
+	bord.Color = couleur
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	local i = texte(b, UDim2.new(1, 0, 0, 70), UDim2.new(0, 0, 0, 14), Color3.new(1, 1, 1))
+	i.Text = icone
+	i.ZIndex = 23
+	local t = texte(b, UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 0, 92), couleur)
+	t.Text = titre
+	t.ZIndex = 23
+	local d = texte(b, UDim2.new(1, -24, 0, 90), UDim2.new(0, 12, 0, 140), Color3.fromRGB(210, 210, 220), Enum.Font.GothamMedium)
+	d.Text = description
+	d.ZIndex = 23
+	return b, t, d
 end
-for _, nom in ipairs({ "Pret", "Role", "IntroFinie" }) do
-	joueur:GetAttributeChangedSignal(nom):Connect(majBoutonPartie)
+
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et travaille tes drifts. La police du mall (des bots) te poursuit !", Color3.fromRGB(80, 220, 120))
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
+local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
+
+local boutonFermerMenu = Instance.new("TextButton")
+boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
+boutonFermerMenu.Size = UDim2.new(0, 54, 0, 54)
+boutonFermerMenu.Position = UDim2.new(1, -24, 0, 60)
+boutonFermerMenu.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+boutonFermerMenu.TextColor3 = Color3.new(1, 1, 1)
+boutonFermerMenu.Font = Enum.Font.GothamBlack
+boutonFermerMenu.TextScaled = true
+boutonFermerMenu.Text = "✕"
+boutonFermerMenu.ZIndex = 22
+boutonFermerMenu.Parent = fondMenu
+Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
+
+local function majMenu()
+	local enManche = joueur:GetAttribute("Role") ~= nil
+	local prete = joueur:GetAttribute("Pret") == true
+	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true)
+	if enManche then
+		fondMenu.Visible = false
+	end
+	titreEnLigne.Text = if prete then "QUITTER LA FILE" else "JOUER EN LIGNE"
+	descEnLigne.Text = if prete
+		then "Tu es dans la file d'attente de Police contre Fugitifs. Clique pour la quitter."
+		else "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !"
+	boutonMenu.Text = if prete then "☰ MENU · ✅ EN FILE" else "☰ MENU"
+	boutonMenu.Size = UDim2.new(0, if prete then 300 else 190, 0, 54)
 end
-majBoutonPartie()
-boutonPartie.Activated:Connect(function()
-	Partie:FireServer({ type = "pret", valeur = not (joueur:GetAttribute("Pret") == true) })
+for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle" }) do
+	joueur:GetAttributeChangedSignal(nom):Connect(majMenu)
+end
+majMenu()
+
+local function ouvrirMenu(ouvert: boolean)
+	fondMenu.Visible = ouvert
+	majMenu()
+end
+boutonMenu.Activated:Connect(function()
+	ouvrirMenu(not fondMenu.Visible)
+end)
+boutonFermerMenu.Activated:Connect(function()
+	ouvrirMenu(false)
+end)
+carteEntrainement.Activated:Connect(function()
+	ouvrirMenu(false)
+	if joueur:GetAttribute("Pret") then
+		Partie:FireServer({ type = "pret", valeur = false })
+	end
+	-- On part directement sur la ligne de départ (survol + 3, 2, 1, PARTEZ)
+	remotes:WaitForChild("SortirKart"):FireServer()
+end)
+carteEnLigne.Activated:Connect(function()
+	ouvrirMenu(false)
+	local prete = joueur:GetAttribute("Pret") == true
+	Partie:FireServer({ type = "pret", valeur = not prete })
+	ajouterAuFil(if prete then "Tu as quitté la file d'attente." else "🌐 Tu es dans la file pour Police contre Fugitifs !", Color3.fromRGB(90, 150, 255))
+end)
+carteGarage.Activated:Connect(function()
+	ouvrirMenu(false)
+	Partie:FireServer({ type = "garage" })
+end)
+
+-- Le menu s'ouvre tout seul à la fin de l'intro (la première fois)
+task.spawn(function()
+	while not joueur:GetAttribute("IntroFinie") do
+		task.wait(0.3)
+	end
+	task.wait(0.5)
+	if joueur:GetAttribute("Role") == nil then
+		ouvrirMenu(true)
+	end
 end)
 
 ---------------------------------------------------------------------
@@ -257,7 +377,7 @@ Partie.OnClientEvent:Connect(function(info)
 		if info.etat == "attente" then
 			texteBarre.Text = if joueur:GetAttribute("Pret")
 				then ("✅ Prêt ! En attente de joueurs (%d/%d prêts)"):format(info.joueurs or 0, info.min or 2)
-				else ("🎮 MODE LIBRE · Police vs Fugitifs : %d/%d joueurs prêts"):format(info.joueurs or 0, info.min or 2)
+				else ("🏁 ENTRAÎNEMENT · en ligne : %d/%d joueurs dans la file (☰ MENU pour rejoindre)"):format(info.joueurs or 0, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
 			nombreBots = info.bots or 0
@@ -265,7 +385,7 @@ Partie.OnClientEvent:Connect(function(info)
 			majListe()
 			texteBarre.Text = if joueur:GetAttribute("Pret")
 				then ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0)
-				else ("🎮 Une partie va commencer dans %d s · clique sur LANCER UNE PARTIE pour la rejoindre"):format(info.temps or 0)
+				else ("🌐 Une partie en ligne commence dans %d s · ☰ MENU > JOUER EN LIGNE pour la rejoindre"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)
 		elseif info.etat == "manche" then
