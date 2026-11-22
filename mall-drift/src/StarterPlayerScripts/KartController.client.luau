@@ -224,6 +224,7 @@ local driftAppuye = false
 local driftAppuyeAvant = false
 local vitesseRotation = 0
 local tempsBoost = 0
+local forceBoost = 1 -- puissance du boost en cours (selon les étoiles du drift)
 local derniereVitesse = 0
 local etaitMouille = false
 local prochaineGoutte = 0
@@ -313,9 +314,16 @@ local function terminerDrift(reussi: boolean)
 		local couleurs = { [0] = Color3.new(1, 1, 1), Color3.fromRGB(150, 230, 255), Color3.fromRGB(255, 215, 60), Color3.fromRGB(255, 120, 220) }
 		local titre = titres[math.min(etoiles, 3)]
 		message(("%s %s  +%d"):format(titre, etoiles > 0 and texteEtoiles(etoiles) or "", points), couleurs[math.min(etoiles, 3)], 1.8)
-		if etoiles >= 2 then
-			tempsBoost = Config.Score.DureeBoost
-			message("BOOST !", Color3.fromRGB(120, 255, 140), 0.9)
+		-- Un beau drift = un BOOST (plus il y a d'étoiles, plus il est fort)
+		local reglageBoost = Config.Score.BoostEtoiles and Config.Score.BoostEtoiles[math.min(etoiles, 3)]
+		if reglageBoost then
+			-- La police te poursuit ? Boost d'évasion !
+			local poursuivi = joueur:GetAttribute("Poursuivi") == true or joueur:GetAttribute("Role") == "Fugitif"
+			local multiplicateur = if poursuivi then (Config.Score.BoostEvasion or 1.5) else 1
+			tempsBoost = reglageBoost.Duree * (if poursuivi then 1.2 else 1)
+			forceBoost = reglageBoost.Force * multiplicateur
+			message(if poursuivi then ("🚨 BOOST D'ÉVASION %s !"):format(string.rep("★", etoiles)) else ("BOOST %s !"):format(string.rep("★", etoiles)),
+				if poursuivi then Color3.fromRGB(255, 140, 60) else Color3.fromRGB(120, 255, 140), 0.9)
 		end
 		majScore()
 	elseif not reussi and points > 0 then
@@ -985,7 +993,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	tempsBoost = math.max(tempsBoost - dt, 0)
 
 	-- 1) Accélérer / freiner
-	local vMax = s.VitesseMax + (tempsBoost > 0 and s.Boost or 0)
+	local vMax = s.VitesseMax + (if tempsBoost > 0 then s.Boost * forceBoost else 0)
 	local cible = if gaz >= 0 then gaz * vMax else gaz * s.VitesseMax * 0.5
 	local taux
 	if math.abs(gaz) < 0.05 then

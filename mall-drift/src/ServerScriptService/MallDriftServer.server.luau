@@ -1715,6 +1715,10 @@ Alerte.Parent = remotes
 local AjouterXP = Instance.new("BindableEvent")
 AjouterXP.Name = "AjouterXP"
 AjouterXP.Parent = game:GetService("ServerStorage")
+-- Chaque drift validé est signalé au script des manches (classements, Drift Battle)
+local DriftEnregistre = Instance.new("BindableEvent")
+DriftEnregistre.Name = "DriftEnregistre"
+DriftEnregistre.Parent = game:GetService("ServerStorage")
 
 -- Groupes de collision : les gardes ne se font pas renverser par les karts
 local PhysicsService = game:GetService("PhysicsService")
@@ -2040,8 +2044,8 @@ local function placerKart(joueur: Player, avecDepart: boolean): Model?
 		etiquette.BackgroundTransparency = 1
 		etiquette.TextScaled = true
 		etiquette.Font = Enum.Font.GothamBlack
-		etiquette.Text = (if role == "Police" then "🚓 " else "🏃 ") .. joueur.DisplayName
-		etiquette.TextColor3 = if role == "Police" then Color3.fromRGB(90, 150, 255) else Color3.fromRGB(255, 150, 40)
+		etiquette.Text = (if role == "Police" then "🚓 " elseif role == "Battle" then "🔥 " else "🏃 ") .. joueur.DisplayName
+		etiquette.TextColor3 = if role == "Police" then Color3.fromRGB(90, 150, 255) elseif role == "Battle" then Color3.fromRGB(255, 90, 170) else Color3.fromRGB(255, 150, 40)
 		local contour = Instance.new("UIStroke")
 		contour.Thickness = 2
 		contour.Parent = etiquette
@@ -2163,6 +2167,7 @@ DriftTermine.OnServerEvent:Connect(function(joueur: Player, points: any)
 		return
 	end
 	points = math.clamp(math.floor(points), 0, Config.Score.MaxParDrift)
+	DriftEnregistre:Fire(joueur, points)
 
 	local niveauAvant = niveauDe(profil)
 	profil.XP += points

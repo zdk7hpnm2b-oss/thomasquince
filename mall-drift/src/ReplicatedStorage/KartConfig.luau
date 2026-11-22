@@ -192,6 +192,11 @@ Config.Partie = {
 	XPVictoire = 300, -- XP pour chaque joueur de l'équipe gagnante
 	XPParticipation = 50, -- XP pour tous les participants
 	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
+	XPRoiDuDrift = 150, -- bonus pour le joueur qui a fait le plus de points de drift dans la manche
+	-- DRIFT BATTLE : pas de police, celui qui fait le plus de points de drift gagne
+	DureeBattle = 180, -- 3 minutes
+	BattleJoueursMin = 1, -- seul, ça devient un défi contre le chrono
+	XPPodium = { 300, 200, 100 }, -- XP pour le 1er, le 2e et le 3e
 	-- BOTS DE TEST : s'il manque des joueurs, des bots complètent la partie
 	-- (pratique pour tester seul). Mets 0 pour les désactiver.
 	BotsTest = 1,
@@ -244,6 +249,13 @@ Config.Score = {
 	Minimum = 20,
 	Etoiles = { 150, 500, 1200 }, -- points pour 1, 2, 3 étoiles
 	DureeBoost = 1.5,
+	-- Un beau drift = un BOOST, selon les étoiles (durée en secondes, puissance x le Boost du kart)
+	BoostEtoiles = {
+		[1] = { Duree = 0.8, Force = 0.6 },
+		[2] = { Duree = 1.4, Force = 1 },
+		[3] = { Duree = 2.2, Force = 1.4 },
+	},
+	BoostEvasion = 1.5, -- si la police te poursuit, le boost est multiplié par 1,5
 	MaxParDrift = 8000, -- sécurité anti-triche côté serveur
 }
 

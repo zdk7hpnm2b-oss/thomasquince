@@ -16,7 +16,8 @@ Ce prototype contient :
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
 - **☰ Un menu, deux modes de jeu** (il s'ouvre après l'intro, puis avec **☰ MENU** en bas à droite) :
   **🏁 ENTRAÎNEMENT** (drift libre, la police du mall en bots te poursuit), **🌐 JOUER EN LIGNE**
-  (Police contre Fugitifs) et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
+  (Police contre Fugitifs), **🔥 DRIFT BATTLE** (3 minutes, le plus de points de drift gagne, podium et XP ;
+  seul, c'est un défi) et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
   les manches en ligne des autres
 - **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : quand assez de joueurs
   sont dans la file : une **page d'attente**
@@ -26,6 +27,9 @@ Ce prototype contient :
   8 secondes de plus. Un policier qui colle un fugitif l'**arrête** (il part au garage). **La police
   gagne** si tous les fugitifs sont arrêtés, sinon **les fugitifs gagnent** au bout de 5 minutes. XP pour
   tous, bonus pour les gagnants et pour chaque arrestation. Seul, un **bot de test** complète la partie
+- **💨 Un beau drift = un boost** : ★ petit boost, ★★ boost moyen, ★★★ gros boost. Si la police te
+  poursuit, c'est un **boost d'évasion** encore plus fort. À la fin de chaque manche Police vs Fugitifs :
+  **classement des drifts** (total et meilleur drift) et bonus XP pour le **👑 Roi du drift**
 - **🏬 Deux étages** : au-dessus du rez-de-chaussée, un **1er étage** avec ses propres boutiques. Au
   centre, un grand **atrium** ouvert sur les deux étages, traversé par une **passerelle**. On change d'étage
   en kart par **deux tapis roulants** au-dessus de la place centrale : celui de gauche **monte**, celui de

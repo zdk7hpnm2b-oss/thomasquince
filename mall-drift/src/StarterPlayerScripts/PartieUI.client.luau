@@ -132,6 +132,57 @@ local function montrerCarte(petit: string, grand: string, sous: string, couleur:
 end
 
 ---------------------------------------------------------------------
+-- LE TABLEAU DE CLASSEMENT (fin de manche) : total de drift et meilleur drift
+---------------------------------------------------------------------
+local tableau = Instance.new("Frame")
+tableau.AnchorPoint = Vector2.new(0.5, 0)
+tableau.Size = UDim2.new(0, 520, 0, 300)
+tableau.Position = UDim2.new(0.5, 0, 0.45, 140)
+tableau.BackgroundColor3 = FOND
+tableau.BackgroundTransparency = 0.1
+tableau.Visible = false
+tableau.ZIndex = 2
+tableau.Parent = gui
+Instance.new("UICorner", tableau).CornerRadius = UDim.new(0, 16)
+local bordTableau = Instance.new("UIStroke")
+bordTableau.Thickness = 3
+bordTableau.Color = Color3.fromRGB(255, 205, 70)
+bordTableau.Parent = tableau
+local titreTableau = texte(tableau, UDim2.new(1, -20, 0, 34), UDim2.new(0, 10, 0, 8), Color3.fromRGB(255, 205, 70))
+local lignesTableau = Instance.new("Frame")
+lignesTableau.Size = UDim2.new(1, -24, 1, -54)
+lignesTableau.Position = UDim2.new(0, 12, 0, 48)
+lignesTableau.BackgroundTransparency = 1
+lignesTableau.Parent = tableau
+local dispositionLignes = Instance.new("UIListLayout")
+dispositionLignes.Padding = UDim.new(0, 4)
+dispositionLignes.SortOrder = Enum.SortOrder.LayoutOrder
+dispositionLignes.Parent = lignesTableau
+
+local function montrerClassement(titre: string, classement, duree: number)
+	titreTableau.Text = titre
+	for _, enfant in ipairs(lignesTableau:GetChildren()) do
+		if enfant:IsA("TextLabel") then
+			enfant:Destroy()
+		end
+	end
+	local medailles = { "🥇", "🥈", "🥉" }
+	for i, ligne in ipairs(classement or {}) do
+		if i > 8 then
+			break
+		end
+		local l = texte(lignesTableau, UDim2.new(1, 0, 0, 26), UDim2.new(), if ligne.nom == joueur.DisplayName then Color3.fromRGB(255, 230, 120) else Color3.new(1, 1, 1), Enum.Font.GothamBold)
+		l.LayoutOrder = i
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.Text = ("%s %d. %s   ·   %d pts   ·   meilleur drift %d"):format(medailles[i] or "  ", i, ligne.nom, ligne.total, ligne.meilleur)
+	end
+	tableau.Visible = true
+	task.delay(duree, function()
+		tableau.Visible = false
+	end)
+end
+
+---------------------------------------------------------------------
 -- LA PAGE D'ATTENTE (avant chaque manche) : on ne roule pas, on attend
 -- le tirage au sort pendant que la caméra survole le mall
 ---------------------------------------------------------------------
@@ -266,7 +317,7 @@ dispositionCartes.Parent = rangeeCartes
 
 local function carteMode(icone: string, titre: string, description: string, couleur: Color3): (TextButton, TextLabel, TextLabel)
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(0, 260, 1, 0)
+	b.Size = UDim2.new(0, 230, 1, 0)
 	b.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 	b.Text = ""
 	b.AutoButtonColor = true
@@ -292,6 +343,7 @@ end
 
 local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et travaille tes drifts. La police du mall (des bots) te poursuit !", Color3.fromRGB(80, 220, 120))
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
+local carteBattle, titreBattle, descBattle = carteMode("🔥", "DRIFT BATTLE", "3 minutes, pas de police : fais le plus de points de drift ! Seul, c'est un défi.", Color3.fromRGB(255, 90, 170))
 local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
 
 local boutonFermerMenu = Instance.new("TextButton")
@@ -310,6 +362,11 @@ Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
 local function majMenu()
 	local enManche = joueur:GetAttribute("Role") ~= nil
 	local prete = joueur:GetAttribute("Pret") == true
+	local preteBattle = joueur:GetAttribute("PretBattle") == true
+	titreBattle.Text = if preteBattle then "QUITTER LA FILE" else "DRIFT BATTLE"
+	descBattle.Text = if preteBattle
+		then "Tu es dans la file du Drift Battle. Clique pour la quitter."
+		else "3 minutes, pas de police : fais le plus de points de drift ! Seul, c'est un défi."
 	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true)
 	if enManche then
 		fondMenu.Visible = false
@@ -318,10 +375,10 @@ local function majMenu()
 	descEnLigne.Text = if prete
 		then "Tu es dans la file d'attente de Police contre Fugitifs. Clique pour la quitter."
 		else "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !"
-	boutonMenu.Text = if prete then "☰ MENU · ✅ EN FILE" else "☰ MENU"
-	boutonMenu.Size = UDim2.new(0, if prete then 300 else 190, 0, 54)
+	boutonMenu.Text = if prete or preteBattle then "☰ MENU · ✅ EN FILE" else "☰ MENU"
+	boutonMenu.Size = UDim2.new(0, if prete or preteBattle then 300 else 190, 0, 54)
 end
-for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle" }) do
+for _, nom in ipairs({ "Pret", "PretBattle", "Role", "IntroFinie", "EnSalle" }) do
 	joueur:GetAttributeChangedSignal(nom):Connect(majMenu)
 end
 majMenu()
@@ -341,6 +398,9 @@ carteEntrainement.Activated:Connect(function()
 	if joueur:GetAttribute("Pret") then
 		Partie:FireServer({ type = "pret", valeur = false })
 	end
+	if joueur:GetAttribute("PretBattle") then
+		Partie:FireServer({ type = "pretBattle", valeur = false })
+	end
 	-- On part directement sur la ligne de départ (survol + 3, 2, 1, PARTEZ)
 	remotes:WaitForChild("SortirKart"):FireServer()
 end)
@@ -349,6 +409,12 @@ carteEnLigne.Activated:Connect(function()
 	local prete = joueur:GetAttribute("Pret") == true
 	Partie:FireServer({ type = "pret", valeur = not prete })
 	ajouterAuFil(if prete then "Tu as quitté la file d'attente." else "🌐 Tu es dans la file pour Police contre Fugitifs !", Color3.fromRGB(90, 150, 255))
+end)
+carteBattle.Activated:Connect(function()
+	ouvrirMenu(false)
+	local prete = joueur:GetAttribute("PretBattle") == true
+	Partie:FireServer({ type = "pretBattle", valeur = not prete })
+	ajouterAuFil(if prete then "Tu as quitté la file du Drift Battle." else "🔥 Tu es dans la file du Drift Battle !", Color3.fromRGB(255, 90, 170))
 end)
 carteGarage.Activated:Connect(function()
 	ouvrirMenu(false)
@@ -377,17 +443,25 @@ Partie.OnClientEvent:Connect(function(info)
 		if info.etat == "attente" then
 			texteBarre.Text = if joueur:GetAttribute("Pret")
 				then ("✅ Prêt ! En attente de joueurs (%d/%d prêts)"):format(info.joueurs or 0, info.min or 2)
-				else ("🏁 ENTRAÎNEMENT · en ligne : %d/%d joueurs dans la file (☰ MENU pour rejoindre)"):format(info.joueurs or 0, info.min or 2)
+				elseif joueur:GetAttribute("PretBattle") then "🔥 Drift Battle : ça commence dans un instant…"
+				else ("🏁 ENTRAÎNEMENT · Police vs Fugitifs : %d/%d dans la file · ☰ MENU pour jouer en ligne"):format(info.joueurs or 0, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
 			nombreBots = info.bots or 0
-			comptePage.Text = ("🎲 Tirage au sort dans %d s"):format(info.temps or 0)
+			comptePage.Text = if info.mode == "battle" then ("🔥 Départ dans %d s"):format(info.temps or 0) else ("🎲 Tirage au sort dans %d s"):format(info.temps or 0)
 			majListe()
-			texteBarre.Text = if joueur:GetAttribute("Pret")
-				then ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0)
+			local enBattle = info.mode == "battle"
+			sousTitrePage.Text = if enBattle then "🔥 DRIFT BATTLE 🔥" else "🚓 POLICE  vs  FUGITIFS 🏃"
+			aidePage.Text = if enBattle then "3 minutes pour faire le plus de points de drift. Les plus longs drifts rapportent le plus !"
+				else "Le tirage au sort décide de ton équipe. Les fugitifs partent au sud, la police au nord !"
+			texteBarre.Text = if joueur:GetAttribute("Pret") or joueur:GetAttribute("PretBattle")
+				then (if enBattle then ("🔥 DRIFT BATTLE · départ dans %d s"):format(info.temps or 0) else ("🚓 POLICE vs FUGITIFS 🏃 · tirage au sort dans %d s"):format(info.temps or 0))
 				else ("🌐 Une partie en ligne commence dans %d s · ☰ MENU > JOUER EN LIGNE pour la rejoindre"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)
+		elseif info.etat == "battle" then
+			texteBarre.Text = ("🔥 %s   ·   %de / %d   ·   %d pts   ·   1er : %s (%d)"):format(formatTemps(info.temps or 0), info.monRang or 1, info.nb or 1, info.monScore or 0, info.premier or "", info.scorePremier or 0)
+			texteBarre.TextColor3 = Color3.fromRGB(255, 120, 190)
 		elseif info.etat == "manche" then
 			texteBarre.Text = ("⏱ %s   ·   🏃 %d/%d fugitifs libres"):format(formatTemps(info.temps or 0), info.restants or 0, info.total or 0)
 			texteBarre.TextColor3 = if joueur:GetAttribute("Role") == "Police" then BLEU else ORANGE
@@ -411,6 +485,15 @@ Partie.OnClientEvent:Connect(function(info)
 					"Échappe à la police jusqu'à la fin du temps ! Ne te laisse pas coller par un kart de police.", ORANGE, 4)
 			end
 		end)
+	elseif info.type == "battle" then
+		montrerCarte(("🔥 DRIFT BATTLE · %d joueur%s"):format(info.nb or 1, if (info.nb or 1) > 1 then "s" else ""), "🔥 DRIFT BATTLE",
+			("%d minutes pour faire le plus de points de drift. Enchaîne les longs drifts et les 360 !"):format(math.floor((info.duree or 180) / 60)),
+			Color3.fromRGB(255, 90, 170), 3.5)
+	elseif info.type == "finBattle" then
+		local premier = info.classement and info.classement[1]
+		montrerCarte("🏁 FIN DU DRIFT BATTLE", if premier then ("🏆 %s GAGNE !"):format(string.upper(premier.nom)) else "FIN !",
+			if premier then ("%d points de drift · meilleur drift %d"):format(premier.total, premier.meilleur) else "", Color3.fromRGB(255, 90, 170), 6.5)
+		montrerClassement("🏆 CLASSEMENT DU DRIFT BATTLE", info.classement, 6.5)
 	elseif info.type == "info" then
 		ajouterAuFil(info.texte or "", Color3.fromRGB(255, 215, 80))
 	elseif info.type == "arrestation" then
@@ -429,5 +512,8 @@ Partie.OnClientEvent:Connect(function(info)
 			if police then BLEU else ORANGE,
 			5.5
 		)
+		if info.classement and #info.classement > 0 then
+			montrerClassement(if info.roi then ("👑 ROI DU DRIFT : %s"):format(info.roi) else "🏆 CLASSEMENT DES DRIFTS", info.classement, 5.5)
+		end
 	end
 end)

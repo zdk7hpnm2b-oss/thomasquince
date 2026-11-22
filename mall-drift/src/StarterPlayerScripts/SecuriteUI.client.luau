@@ -102,6 +102,7 @@ local niveauAlerte = 0
 
 local function afficherNiveau(niveau: number)
 	niveauAlerte = niveau
+	joueur:SetAttribute("Poursuivi", niveau > 0) -- (lu par le script de conduite : boost d'évasion)
 	if niveau <= 0 then
 		barre.Visible = false
 		return
