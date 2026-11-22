@@ -21,7 +21,11 @@ local OR = Color3.fromRGB(225, 175, 45)
 -- Vérifie une personnalisation : tout ce qui est inconnu ou pas encore
 -- débloqué au niveau du joueur est remplacé par la valeur par défaut.
 ---------------------------------------------------------------------
-function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
+-- possessions : { Couleurs = { [nom] = true }, Premium = { [nom] = true } } (ce que le joueur a acheté)
+function KartBuilder.Nettoyer(perso: any, niveau: number, possessions: any?): { [string]: any }
+	local achats = type(possessions) == "table" and possessions or {}
+	local couleursAchetees = type(achats.Couleurs) == "table" and achats.Couleurs or {}
+	local premiumAchetees = type(achats.Premium) == "table" and achats.Premium or {}
 	local defaut = Config.PersoParDefaut
 	local propre = table.clone(defaut)
 	if type(perso) ~= "table" then
@@ -30,7 +34,7 @@ function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
 
 	local function couleurOk(nom)
 		local c = type(nom) == "string" and Config.Couleur(nom)
-		return c and c.Niveau <= niveau
+		return c and c.Niveau <= niveau and ((c.Prix or 0) == 0 or couleursAchetees[c.Nom] == true)
 	end
 
 	local kart = Config.Karts[perso.Kart]
@@ -57,6 +61,10 @@ function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
 	if type(perso.BandesActives) == "boolean" then
 		propre.BandesActives = perso.BandesActives
 	end
+	-- Peinture premium (achetée en Robux) : elle remplace la couleur de la carrosserie
+	if type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) and premiumAchetees[perso.Premium] == true then
+		propre.Premium = perso.Premium
+	end
 	if type(perso.Numero) == "number" and perso.Numero == perso.Numero then
 		propre.Numero = math.clamp(math.floor(perso.Numero), 0, 99)
 	end
@@ -72,6 +80,8 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 		return c and c.Couleur or Color3.new(1, 1, 1)
 	end
 	local finition = Config.Finition(perso.Finition) or Config.Finitions[1]
+	local premium = type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) or nil
+	modele:SetAttribute("CarrosserieArcEnCiel", premium ~= nil and premium.ArcEnCiel == true)
 	local neon = Config.Neon(perso.Neon) or Config.Neons[2]
 	local sansNeon = neon.Nom == "Aucun"
 	modele:SetAttribute("NeonArcEnCiel", neon.Nom == "Arc-en-ciel")
@@ -80,9 +90,15 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 		if p:IsA("BasePart") then
 			local role = p:GetAttribute("Peinture")
 			if role == "Carrosserie" then
-				p.Color = couleur(perso.Carrosserie)
-				p.Material = finition.Materiau
-				p.Reflectance = finition.Reflet
+				if premium then
+					p.Color = premium.Couleur
+					p.Material = premium.Materiau
+					p.Reflectance = premium.Reflet
+				else
+					p.Color = couleur(perso.Carrosserie)
+					p.Material = finition.Materiau
+					p.Reflectance = finition.Reflet
+				end
 			elseif role == "Jantes" then
 				p.Color = couleur(perso.Jantes)
 			elseif role == "Siege" then
@@ -483,23 +499,54 @@ Config.Karts = {
 ---------------------------------------------------------------------
 -- PERSONNALISATION (le garage VIP)
 ---------------------------------------------------------------------
+-- Les couleurs s'ACHÈTENT avec des pièces 💰 (Prix = 0 : gratuite). Une couleur
+-- achetée sert partout : carrosserie, jantes, siège, bandes.
 Config.Couleurs = {
-	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 240, 240), Niveau = 1 },
-	{ Nom = "Noir", Couleur = Color3.fromRGB(25, 25, 28), Niveau = 1 },
-	{ Nom = "Rouge", Couleur = Color3.fromRGB(215, 35, 40), Niveau = 1 },
-	{ Nom = "Bleu", Couleur = Color3.fromRGB(35, 105, 215), Niveau = 1 },
-	{ Nom = "Gris", Couleur = Color3.fromRGB(140, 145, 155), Niveau = 1 },
-	{ Nom = "Jaune", Couleur = Color3.fromRGB(250, 205, 30), Niveau = 2 },
-	{ Nom = "Vert", Couleur = Color3.fromRGB(40, 170, 80), Niveau = 2 },
-	{ Nom = "Orange", Couleur = Color3.fromRGB(245, 130, 30), Niveau = 2 },
-	{ Nom = "Rose", Couleur = Color3.fromRGB(245, 120, 180), Niveau = 4 },
-	{ Nom = "Violet", Couleur = Color3.fromRGB(130, 70, 200), Niveau = 4 },
-	{ Nom = "Turquoise", Couleur = Color3.fromRGB(30, 200, 200), Niveau = 4 },
-	{ Nom = "Bleu nuit", Couleur = Color3.fromRGB(20, 35, 90), Niveau = 5 },
-	{ Nom = "Bordeaux", Couleur = Color3.fromRGB(110, 20, 40), Niveau = 5 },
-	{ Nom = "Sable", Couleur = Color3.fromRGB(215, 190, 140), Niveau = 7 },
-	{ Nom = "Vert menthe", Couleur = Color3.fromRGB(150, 230, 190), Niveau = 7 },
-	{ Nom = "Or", Couleur = Color3.fromRGB(225, 175, 45), Niveau = 10 },
+	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 240, 240), Niveau = 1, Prix = 0 },
+	{ Nom = "Noir", Couleur = Color3.fromRGB(25, 25, 28), Niveau = 1, Prix = 0 },
+	{ Nom = "Bleu", Couleur = Color3.fromRGB(35, 105, 215), Niveau = 1, Prix = 0 },
+	{ Nom = "Gris", Couleur = Color3.fromRGB(140, 145, 155), Niveau = 1, Prix = 5 },
+	{ Nom = "Rouge", Couleur = Color3.fromRGB(215, 35, 40), Niveau = 1, Prix = 10 },
+	{ Nom = "Jaune", Couleur = Color3.fromRGB(250, 205, 30), Niveau = 1, Prix = 10 },
+	{ Nom = "Orange", Couleur = Color3.fromRGB(245, 130, 30), Niveau = 1, Prix = 50 },
+	{ Nom = "Vert", Couleur = Color3.fromRGB(40, 170, 80), Niveau = 1, Prix = 50 },
+	{ Nom = "Turquoise", Couleur = Color3.fromRGB(30, 200, 200), Niveau = 1, Prix = 50 },
+	{ Nom = "Bleu nuit", Couleur = Color3.fromRGB(20, 35, 90), Niveau = 1, Prix = 75 },
+	{ Nom = "Bordeaux", Couleur = Color3.fromRGB(110, 20, 40), Niveau = 1, Prix = 75 },
+	{ Nom = "Rose", Couleur = Color3.fromRGB(245, 120, 180), Niveau = 1, Prix = 75 },
+	{ Nom = "Violet", Couleur = Color3.fromRGB(130, 70, 200), Niveau = 1, Prix = 100 },
+	{ Nom = "Sable", Couleur = Color3.fromRGB(215, 190, 140), Niveau = 1, Prix = 100 },
+	{ Nom = "Vert menthe", Couleur = Color3.fromRGB(150, 230, 190), Niveau = 1, Prix = 150 },
+	{ Nom = "Or", Couleur = Color3.fromRGB(225, 175, 45), Niveau = 1, Prix = 150 },
+}
+
+---------------------------------------------------------------------
+-- LA MONNAIE DU JEU : les pièces 💰 (gagnées en jouant)
+---------------------------------------------------------------------
+Config.Monnaie = {
+	PointsParPiece = 20, -- 1 pièce pour 20 points de drift
+	XPParPiece = 10, -- et 1 pièce pour 10 XP gagnés dans les modes (victoires, défis…)
+}
+
+---------------------------------------------------------------------
+-- LES PEINTURES PREMIUM (Robux) et LE MAGASIN
+-- Crée chaque produit sur le Creator Hub (ton expérience > Monétisation >
+-- Produits pour développeurs), puis colle son numéro dans ProduitId.
+-- Tant que ProduitId = 0 : dans Studio, l'achat est GRATUIT (pour tester).
+---------------------------------------------------------------------
+Config.PeinturesPremium = {
+	{ Nom = "Chrome miroir", Couleur = Color3.fromRGB(225, 228, 235), Materiau = Enum.Material.Foil, Reflet = 0.6, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Nom = "Or 24 carats", Couleur = Color3.fromRGB(240, 185, 40), Materiau = Enum.Material.Foil, Reflet = 0.45, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Nom = "Arc-en-ciel", Couleur = Color3.fromRGB(255, 80, 80), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.2, ProduitId = 0, PrixAffiche = "R$ 99", ArcEnCiel = true },
+	{ Nom = "Rouge bonbon", Couleur = Color3.fromRGB(200, 10, 30), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.4, ProduitId = 0, PrixAffiche = "R$ 29" },
+	{ Nom = "Cyan néon", Couleur = Color3.fromRGB(40, 230, 255), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 39" },
+	{ Nom = "Vert toxique", Couleur = Color3.fromRGB(110, 255, 60), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 39" },
+}
+
+Config.Boutique = {
+	{ Id = "PackDemarrage", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats", Pieces = 1000, Premium = "Or 24 carats", ProduitId = 0, PrixAffiche = "R$ 45", Promo = true },
+	{ Id = "Pieces1000", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Pieces5000", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
 }
 
 -- Finition de la peinture (aspect réaliste)
@@ -561,6 +608,7 @@ local function chercher(liste, nom)
 	return nil
 end
 function Config.Couleur(nom: string) return chercher(Config.Couleurs, nom) end
+function Config.PeinturePremium(nom: string) return chercher(Config.PeinturesPremium, nom) end
 function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
 function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
 function Config.Neon(nom: string) return chercher(Config.Neons, nom) end
@@ -2496,7 +2544,14 @@ if not okStore then
 	magasin = nil
 end
 
-type Profil = { XP: number, Record: number, Perso: { [string]: any }, Charge: boolean }
+type Profil = {
+	XP: number,
+	Record: number,
+	Perso: { [string]: any },
+	Charge: boolean,
+	Pieces: number, -- la monnaie du jeu 💰
+	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean } },
+}
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
 local derniereAction: { [Player]: { [string]: number } } = {}
@@ -2518,6 +2573,8 @@ local function versionPublique(profil: Profil)
 		XPRequis = xpRequis,
 		Record = profil.Record,
 		Perso = profil.Perso,
+		Pieces = profil.Pieces,
+		Possessions = profil.Possessions,
 	}
 end
 
@@ -2548,7 +2605,7 @@ local function sauvegarder(joueur: Player)
 	if not profil or not profil.Charge or not magasin then
 		return
 	end
-	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso }
+	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -2558,7 +2615,14 @@ local function sauvegarder(joueur: Player)
 end
 
 local function chargerProfil(joueur: Player)
-	local profil: Profil = { XP = 0, Record = 0, Perso = table.clone(Config.PersoParDefaut), Charge = magasin == nil }
+	local profil: Profil = {
+		XP = 0,
+		Record = 0,
+		Perso = table.clone(Config.PersoParDefaut),
+		Charge = magasin == nil,
+		Pieces = 0,
+		Possessions = { Couleurs = {}, Premium = {}, Produits = {} },
+	}
 	if magasin then
 		local ok, donnees = pcall(function()
 			return magasin:GetAsync("joueur_" .. joueur.UserId)
@@ -2568,7 +2632,19 @@ local function chargerProfil(joueur: Player)
 			if type(donnees) == "table" then
 				profil.XP = type(donnees.XP) == "number" and math.max(0, math.floor(donnees.XP)) or 0
 				profil.Record = type(donnees.Record) == "number" and math.max(0, math.floor(donnees.Record)) or 0
-				profil.Perso = KartBuilder.Nettoyer(donnees.Perso, Config.NiveauDepuisXP(profil.XP))
+				profil.Pieces = type(donnees.Pieces) == "number" and math.max(0, math.floor(donnees.Pieces)) or 0
+				if type(donnees.Possessions) == "table" then
+					for _, liste in ipairs({ "Couleurs", "Premium", "Produits" }) do
+						if type(donnees.Possessions[liste]) == "table" then
+							for nom, possede in pairs(donnees.Possessions[liste]) do
+								if type(nom) == "string" and possede == true then
+									profil.Possessions[liste][nom] = true
+								end
+							end
+						end
+					end
+				end
+				profil.Perso = KartBuilder.Nettoyer(donnees.Perso, (Config.NiveauDepuisXP(profil.XP)), profil.Possessions)
 			end
 		else
 			-- On ne sauvegardera pas ce joueur, pour ne pas écraser ses vraies données
@@ -2904,7 +2980,7 @@ Personnaliser.OnServerEvent:Connect(function(joueur: Player, perso: any)
 		return
 	end
 	local ancienType = profil.Perso.Kart
-	profil.Perso = KartBuilder.Nettoyer(perso, niveauDe(profil))
+	profil.Perso = KartBuilder.Nettoyer(perso, niveauDe(profil), profil.Possessions)
 
 	-- Met à jour le kart déjà sorti (sauf pendant une manche en ligne)
 	local kart = kartsJoueurs[joueur]
@@ -2938,6 +3014,7 @@ DriftTermine.OnServerEvent:Connect(function(joueur: Player, points: any)
 
 	local niveauAvant = niveauDe(profil)
 	profil.XP += points
+	profil.Pieces += math.floor(points / ((Config.Monnaie and Config.Monnaie.PointsParPiece) or 20))
 	if points > profil.Record then
 		profil.Record = points
 	end
@@ -2953,10 +3030,114 @@ AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
 	end
 	local niveauAvant = niveauDe(profil)
 	profil.XP += math.max(0, math.floor(quantite))
+	profil.Pieces += math.floor(math.max(0, quantite) / ((Config.Monnaie and Config.Monnaie.XPParPiece) or 10))
 	local niveauApres = niveauDe(profil)
 	majClassement(joueur, profil)
 	ProfilMisAJour:FireClient(joueur, versionPublique(profil), niveauApres > niveauAvant and niveauApres or nil)
 end)
+
+---------------------------------------------------------------------
+-- LES ACHATS
+--   • couleurs : avec les pièces 💰 gagnées en jouant
+--   • peintures premium + magasin : en Robux (produits pour développeurs).
+--     Dans Studio, tant que ProduitId = 0, c'est gratuit (pour tester).
+---------------------------------------------------------------------
+local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService("RunService")
+local Acheter = Instance.new("RemoteFunction")
+Acheter.Name = "Acheter"
+Acheter.Parent = remotes
+
+local function accorderProduit(joueur: Player, profil: Profil, produit: { [string]: any })
+	if produit.Pieces then
+		profil.Pieces += produit.Pieces
+	end
+	if produit.Premium then
+		profil.Possessions.Premium[produit.Premium] = true
+	end
+	if produit.Id then
+		profil.Possessions.Produits[produit.Id] = true
+	end
+	if produit.Nom and Config.PeinturePremium(produit.Nom) then
+		profil.Possessions.Premium[produit.Nom] = true
+	end
+	ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+end
+
+-- Retrouve ce qu'on vend à partir du numéro de produit Roblox
+local function produitDepuisId(produitId: number): { [string]: any }?
+	for _, peinture in ipairs(Config.PeinturesPremium or {}) do
+		if peinture.ProduitId ~= 0 and peinture.ProduitId == produitId then
+			return peinture
+		end
+	end
+	for _, offre in ipairs(Config.Boutique or {}) do
+		if offre.ProduitId ~= 0 and offre.ProduitId == produitId then
+			return offre
+		end
+	end
+	return nil
+end
+
+Acheter.OnServerInvoke = function(joueur: Player, info: any)
+	local profil = profils[joueur]
+	if not profil or type(info) ~= "table" or tropRapide(joueur, "achat", 0.3) then
+		return { ok = false, message = "Patiente un instant…" }
+	end
+	if info.type == "couleur" then
+		local c = type(info.nom) == "string" and Config.Couleur(info.nom)
+		if not c then
+			return { ok = false, message = "Couleur inconnue." }
+		end
+		if (c.Prix or 0) == 0 or profil.Possessions.Couleurs[c.Nom] then
+			return { ok = true, message = "Tu l'as déjà !", profil = versionPublique(profil) }
+		end
+		if profil.Pieces < c.Prix then
+			return { ok = false, message = ("Il te manque %d 💰 : drifte pour en gagner !"):format(c.Prix - profil.Pieces) }
+		end
+		profil.Pieces -= c.Prix
+		profil.Possessions.Couleurs[c.Nom] = true
+		task.spawn(sauvegarder, joueur)
+		return { ok = true, message = ("%s achetée ! -%d 💰"):format(c.Nom, c.Prix), profil = versionPublique(profil) }
+	elseif info.type == "test" then
+		-- Achat Robux pas encore configuré : gratuit dans Studio pour tester
+		if not RunService:IsStudio() then
+			return { ok = false, message = "Ce produit n'est pas encore en vente." }
+		end
+		local produit = type(info.nom) == "string" and (Config.PeinturePremium(info.nom) or nil)
+		if not produit then
+			for _, offre in ipairs(Config.Boutique or {}) do
+				if offre.Id == info.nom then
+					produit = offre
+				end
+			end
+		end
+		if not produit then
+			return { ok = false, message = "Produit inconnu." }
+		end
+		accorderProduit(joueur, profil, produit)
+		return { ok = true, message = "(Test Studio : gratuit) " .. tostring(produit.Nom) .. " débloqué !", profil = versionPublique(profil) }
+	end
+	return { ok = false, message = "Achat inconnu." }
+end
+
+-- Les achats en Robux : Roblox appelle cette fonction quand un paiement a réussi
+MarketplaceService.ProcessReceipt = function(recu)
+	local joueur = Players:GetPlayerByUserId(recu.PlayerId)
+	local profil = joueur and profils[joueur]
+	local produit = produitDepuisId(recu.ProductId)
+	if not joueur or not profil or not produit or not profil.Charge then
+		return Enum.ProductPurchaseDecision.NotProcessedYet -- Roblox réessaiera plus tard
+	end
+	local recus = profil.Possessions.Produits
+	local cle = "recu_" .. tostring(recu.PurchaseId)
+	if not recus[cle] then
+		recus[cle] = true -- (pour ne jamais donner deux fois le même achat)
+		accorderProduit(joueur, profil, produit)
+	end
+	local ok = pcall(sauvegarder, joueur)
+	return if ok then Enum.ProductPurchaseDecision.PurchaseGranted else Enum.ProductPurchaseDecision.NotProcessedYet
+end
 
 ObtenirProfil.OnServerInvoke = function(joueur: Player)
 	local debut = os.clock()
@@ -5502,7 +5683,7 @@ local function rafraichir()
 	for _, f in ipairs(miseAJour) do
 		f()
 	end
-	sousTitre.Text = ("Niveau %d · drifte pour débloquer plus de styles !"):format(niveau())
+	sousTitre.Text = ("Niveau %d  ·  💰 %d pièces  ·  drifte pour en gagner !"):format(niveau(), profil and profil.Pieces or 0)
 	if menuOuvert then
 		majApercu(persoEdite)
 	end
@@ -5599,6 +5780,37 @@ for _, e in ipairs(kartsTries) do
 end
 
 -- 2) LES COULEURS (carrosserie, jantes, siège, bandes)
+-- Ce que le joueur a acheté
+local function possede(liste: string, nom: string): boolean
+	local p = profil and profil.Possessions
+	return p ~= nil and type(p[liste]) == "table" and p[liste][nom] == true
+end
+
+-- Acheter une couleur avec des pièces (2 clics : le 1er demande confirmation)
+local achatEnAttente: string? = nil
+local function acheterCouleur(c): boolean
+	if achatEnAttente ~= c.Nom then
+		achatEnAttente = c.Nom
+		afficherStatut(("Acheter « %s » pour %d 💰 ? Clique encore pour confirmer"):format(c.Nom, c.Prix), Color3.fromRGB(255, 220, 90))
+		task.delay(4, function()
+			if achatEnAttente == c.Nom then
+				achatEnAttente = nil
+			end
+		end)
+		return false
+	end
+	achatEnAttente = nil
+	local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "couleur", nom = c.Nom })
+	if type(resultat) == "table" then
+		if resultat.profil then
+			profil = resultat.profil
+		end
+		afficherStatut(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+		return resultat.ok == true
+	end
+	return false
+end
+
 local function choixCouleur(titreSection: string, champ: string, liste: { any }?)
 	local entete = section(titreSection)
 	local g = grille(Vector2.new(40, 40))
@@ -5625,17 +5837,27 @@ local function choixCouleur(titreSection: string, champ: string, liste: { any }?
 			degrade.Parent = b
 		end
 		b.Parent = g
+		local payante = (c.Prix or 0) > 0
 		table.insert(miseAJour, function()
 			local bloque = c.Niveau > niveau()
-			b.Text = if bloque then "🔒" elseif c.Nom == "Aucun" then "∅" else ""
-			b.BackgroundTransparency = bloque and 0.55 or 0
-			trait.Thickness = persoEdite[champ] == c.Nom and 3 or 0
+			local aAcheter = payante and not possede("Couleurs", c.Nom)
+			b.Text = if bloque then "🔒" elseif aAcheter then (tostring(c.Prix) .. "💰") elseif c.Nom == "Aucun" then "∅" else ""
+			b.BackgroundTransparency = if bloque then 0.55 elseif aAcheter then 0.25 else 0
+			trait.Thickness = if persoEdite[champ] == c.Nom and not (champ == "Carrosserie" and persoEdite.Premium) then 3 else 0
 		end)
 		b.Activated:Connect(function()
-			if not verrouille(c.Niveau) then
-				persoEdite[champ] = c.Nom
-				rafraichir()
+			if verrouille(c.Niveau) then
+				return
 			end
+			if payante and not possede("Couleurs", c.Nom) and not acheterCouleur(c) then
+				rafraichir()
+				return
+			end
+			persoEdite[champ] = c.Nom
+			if champ == "Carrosserie" then
+				persoEdite.Premium = nil -- une couleur normale remplace la peinture premium
+			end
+			rafraichir()
 		end)
 	end
 	table.insert(miseAJour, function()
@@ -5644,6 +5866,58 @@ local function choixCouleur(titreSection: string, champ: string, liste: { any }?
 end
 
 choixCouleur("🎨  CARROSSERIE", "Carrosserie")
+
+-- 2 bis) LES PEINTURES PREMIUM (Robux)
+local MarketplaceService = game:GetService("MarketplaceService")
+local entetePremium = section("💎  PEINTURES PREMIUM")
+local grillePremium = grille(Vector2.new(40, 40))
+for i, pp in ipairs(Config.PeinturesPremium or {}) do
+	local b = Instance.new("TextButton")
+	b.LayoutOrder = i
+	b.BackgroundColor3 = pp.Couleur
+	b.Font = Enum.Font.GothamBlack
+	b.TextScaled = true
+	b.TextColor3 = Color3.new(1, 1, 1)
+	coins(b, 8)
+	local trait = contour(b, OR, 0)
+	if pp.ArcEnCiel then
+		local degrade = Instance.new("UIGradient")
+		degrade.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
+		})
+		degrade.Parent = b
+	end
+	b.Parent = grillePremium
+	table.insert(miseAJour, function()
+		b.Text = if possede("Premium", pp.Nom) then "" else "R$"
+		trait.Thickness = if persoEdite.Premium == pp.Nom then 3 else 0
+	end)
+	b.Activated:Connect(function()
+		if possede("Premium", pp.Nom) then
+			persoEdite.Premium = if persoEdite.Premium == pp.Nom then nil else pp.Nom
+			rafraichir()
+		elseif (pp.ProduitId or 0) ~= 0 then
+			MarketplaceService:PromptProductPurchase(joueur, pp.ProduitId) -- achat Roblox
+		else
+			-- Pas encore configuré : gratuit dans Studio pour tester
+			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = pp.Nom })
+			if type(resultat) == "table" then
+				if resultat.profil then
+					profil = resultat.profil
+					persoEdite.Premium = pp.Nom
+				end
+				afficherStatut(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+			end
+			rafraichir()
+		end
+	end)
+end
+table.insert(miseAJour, function()
+	entetePremium.Text = "💎  PEINTURES PREMIUM" .. (if persoEdite.Premium then ("  ·  " .. persoEdite.Premium) else "  ·  " .. (Config.PeinturesPremium[1] and Config.PeinturesPremium[1].PrixAffiche or "") .. " et +")
+end)
 
 -- 3) LA FINITION
 local enteteFinition = section("✨  FINITION")
@@ -6272,6 +6546,11 @@ Instance.new("UICorner", barreXP).CornerRadius = UDim.new(0.5, 0)
 local xpLabel = label("XP", blocNiveau, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, 47))
 xpLabel.TextXAlignment = Enum.TextXAlignment.Left
 xpLabel.TextTransparency = 0.2
+-- Les pièces 💰 (la monnaie du jeu)
+local piecesLabel = label("Pieces", blocNiveau, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0, 68))
+piecesLabel.TextXAlignment = Enum.TextXAlignment.Left
+piecesLabel.TextColor3 = Color3.fromRGB(255, 220, 90)
+piecesLabel.Text = "💰 0"
 
 local scoreLabel = label("Score", hud, UDim2.new(0, 320, 0, 40), UDim2.new(1, -336, 0, 56))
 scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -6433,6 +6712,15 @@ local function afficherProfil(profil, niveauGagne: number?)
 		return
 	end
 	niveauLabel.Text = ("NIV. %d"):format(profil.Niveau)
+	local avant = tonumber((piecesLabel.Text:gsub("[^%d]", ""))) or 0
+	piecesLabel.Text = ("💰 %d"):format(profil.Pieces or 0)
+	if (profil.Pieces or 0) > avant then
+		-- petite animation quand on gagne des pièces
+		local echelle = piecesLabel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+		echelle.Parent = piecesLabel
+		echelle.Scale = 1.3
+		TweenService:Create(echelle, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end
 	local pleinNiveau = profil.Niveau >= Config.NiveauMax
 	xpLabel.Text = if pleinNiveau then "NIVEAU MAX !" else ("%d / %d XP"):format(profil.XPDansNiveau, profil.XPRequis)
 	local ratio = if pleinNiveau then 1 else math.clamp(profil.XPDansNiveau / profil.XPRequis, 0, 1)
@@ -7377,6 +7665,15 @@ local function scannerArcEnCiel()
 				end
 			end
 		end
+		if m:GetAttribute("CarrosserieArcEnCiel") then
+			local entree = { parties = {}, lumieres = {} }
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Carrosserie" then
+					table.insert(entree.parties, d)
+				end
+			end
+			table.insert(kartsArcEnCiel, entree)
+		end
 		if m:GetAttribute("NeonArcEnCiel") then
 			local entree = { parties = {}, lumieres = {} }
 			for _, d in ipairs(m:GetDescendants()) do
@@ -7876,72 +8173,193 @@ local fondMenu = Instance.new("Frame")
 fondMenu.Name = "Menu"
 fondMenu.Size = UDim2.fromScale(1, 1)
 fondMenu.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
-fondMenu.BackgroundTransparency = 0.35
+fondMenu.BackgroundTransparency = 0
 fondMenu.Visible = false
 fondMenu.ZIndex = 20
 fondMenu.Parent = gui
-local titreMenu = texte(fondMenu, UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.1, 0), Color3.fromRGB(255, 205, 70))
-titreMenu.Text = "GOLDEN MALL DRIFT"
-titreMenu.ZIndex = 21
-local sousTitreMenu = texte(fondMenu, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.1, 64), Color3.new(1, 1, 1), Enum.Font.GothamBold)
-sousTitreMenu.Text = "Choisis ton mode de jeu"
-sousTitreMenu.ZIndex = 21
+-- Dégradé : sombre à gauche (sous les boutons), transparent à droite (on voit la carte)
+local degradeMenu = Instance.new("UIGradient")
+degradeMenu.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.15),
+	NumberSequenceKeypoint.new(0.42, 0.55),
+	NumberSequenceKeypoint.new(0.7, 1),
+	NumberSequenceKeypoint.new(1, 1),
+})
+degradeMenu.Parent = fondMenu
 
-local rangeeCartes = Instance.new("Frame")
-rangeeCartes.AnchorPoint = Vector2.new(0.5, 0.5)
-rangeeCartes.Size = UDim2.new(0.9, 0, 0, 250)
-rangeeCartes.Position = UDim2.fromScale(0.5, 0.55)
-rangeeCartes.BackgroundTransparency = 1
-rangeeCartes.ZIndex = 21
-rangeeCartes.Parent = fondMenu
-local dispositionCartes = Instance.new("UIListLayout")
-dispositionCartes.FillDirection = Enum.FillDirection.Horizontal
-dispositionCartes.HorizontalAlignment = Enum.HorizontalAlignment.Center
-dispositionCartes.Padding = UDim.new(0, 18)
-dispositionCartes.Parent = rangeeCartes
+local colonne = Instance.new("Frame")
+colonne.Name = "Colonne"
+colonne.Size = UDim2.new(0, 470, 1, 0)
+colonne.Position = UDim2.new(0, 46, 0, 0)
+colonne.BackgroundTransparency = 1
+colonne.ZIndex = 21
+colonne.Parent = fondMenu
 
-local function carteMode(icone: string, titre: string, description: string, couleur: Color3): (TextButton, TextLabel, TextLabel)
+local bienvenue = texte(colonne, UDim2.new(1, 0, 0, 22), UDim2.new(0, 0, 0.17, 0), Color3.fromRGB(220, 220, 230), Enum.Font.GothamBold)
+bienvenue.Text = "BIENVENUE AU"
+bienvenue.TextXAlignment = Enum.TextXAlignment.Left
+bienvenue.ZIndex = 22
+local titreMenu = texte(colonne, UDim2.new(1, 0, 0, 64), UDim2.new(0, 0, 0.17, 24), Color3.new(1, 1, 1))
+titreMenu.Text = Config.NomDuJeu
+titreMenu.TextXAlignment = Enum.TextXAlignment.Left
+titreMenu.ZIndex = 22
+local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0.17, 90), Color3.fromRGB(255, 205, 70), Enum.Font.GothamBold)
+sousTitreMenu.Text = "✦ " .. Config.Lieu .. " ✦"
+sousTitreMenu.TextXAlignment = Enum.TextXAlignment.Left
+sousTitreMenu.ZIndex = 22
+
+local listeBoutons = Instance.new("Frame")
+listeBoutons.Size = UDim2.new(1, 0, 0, 420)
+listeBoutons.Position = UDim2.new(0, 0, 0.17, 130)
+listeBoutons.BackgroundTransparency = 1
+listeBoutons.ZIndex = 21
+listeBoutons.Parent = colonne
+local dispositionBoutons = Instance.new("UIListLayout")
+dispositionBoutons.Padding = UDim.new(0, 10)
+dispositionBoutons.SortOrder = Enum.SortOrder.LayoutOrder
+dispositionBoutons.Parent = listeBoutons
+
+local boutonsMenu = {} -- (pour l'animation d'arrivée)
+local ROUGE_MENU = Color3.fromRGB(215, 35, 40)
+
+-- Un grand bouton du menu : icône + titre + description + flèche
+local function carteMode(icone: string, titre: string, description: string, couleur: Color3, principal: boolean?): (TextButton, TextLabel, TextLabel)
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(0, 230, 1, 0)
-	b.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	b.Size = UDim2.new(1, 0, 0, 64)
+	b.LayoutOrder = #boutonsMenu + 1
+	b.BackgroundColor3 = if principal then ROUGE_MENU else Color3.fromRGB(22, 22, 28)
+	b.BackgroundTransparency = if principal then 0 else 0.1
 	b.Text = ""
-	b.AutoButtonColor = true
+	b.AutoButtonColor = false
 	b.ZIndex = 22
-	b.Parent = rangeeCartes
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 18)
+	b.Parent = listeBoutons
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
 	local bord = Instance.new("UIStroke")
-	bord.Thickness = 4
-	bord.Color = couleur
+	bord.Thickness = 2
+	bord.Color = if principal then Color3.fromRGB(255, 120, 120) else couleur
+	bord.Transparency = if principal then 0 else 0.5
 	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bord.Parent = b
-	local i = texte(b, UDim2.new(1, 0, 0, 70), UDim2.new(0, 0, 0, 14), Color3.new(1, 1, 1))
+	local i = texte(b, UDim2.new(0, 50, 0, 44), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
 	i.Text = icone
 	i.ZIndex = 23
-	local t = texte(b, UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 0, 92), couleur)
+	local t = texte(b, UDim2.new(1, -120, 0, 26), UDim2.new(0, 76, 0, 9), Color3.new(1, 1, 1))
 	t.Text = titre
+	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 23
-	local d = texte(b, UDim2.new(1, -24, 0, 90), UDim2.new(0, 12, 0, 140), Color3.fromRGB(210, 210, 220), Enum.Font.GothamMedium)
+	local d = texte(b, UDim2.new(1, -120, 0, 18), UDim2.new(0, 76, 0, 38), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
 	d.Text = description
+	d.TextXAlignment = Enum.TextXAlignment.Left
 	d.ZIndex = 23
+	local fleche = texte(b, UDim2.new(0, 30, 0, 30), UDim2.new(1, -44, 0, 17), Color3.new(1, 1, 1))
+	fleche.Text = if principal then "»" else "›"
+	fleche.ZIndex = 23
+	-- Reflet qui balaie le bouton principal
+	if principal then
+		local reflet = Instance.new("UIGradient")
+		reflet.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		reflet.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.45, 0),
+			NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(0.55, 0), NumberSequenceKeypoint.new(1, 0),
+		})
+		reflet.Rotation = 20
+		reflet.Parent = b
+		task.spawn(function()
+			while b.Parent do
+				reflet.Offset = Vector2.new(-1, 0)
+				TweenService:Create(reflet, TweenInfo.new(1.2, Enum.EasingStyle.Sine), { Offset = Vector2.new(1, 0) }):Play()
+				task.wait(3)
+			end
+		end)
+	end
+	-- Survol : le bouton s'avance et s'éclaire
+	local echelle = Instance.new("UIScale")
+	echelle.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1.04 }):Play()
+		TweenService:Create(bord, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = UDim2.new(1, -36, 0, 17) }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1 }):Play()
+		TweenService:Create(bord, TweenInfo.new(0.15), { Transparency = if principal then 0 else 0.5 }):Play()
+		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = UDim2.new(1, -44, 0, 17) }):Play()
+	end)
+	table.insert(boutonsMenu, b)
 	return b, t, d
 end
 
-local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et travaille tes drifts. La police du mall (des bots) te poursuit !", Color3.fromRGB(80, 220, 120))
-local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
-local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour faire le plus de points de drift. Ça part tout de suite !", Color3.fromRGB(255, 90, 170))
-local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
-local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Retourne au lobby pour changer de mode ou personnaliser ton kart.", Color3.fromRGB(255, 205, 70))
--- Dans une place de jeu (entraînement, partie, défi) : seulement « retour au lobby »
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", ROUGE_MENU, true)
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(80, 220, 120))
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(90, 150, 255))
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 90, 170))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Pièces, peintures premium et packs", Color3.fromRGB(255, 205, 70))
+local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", Color3.fromRGB(255, 205, 70), true)
+-- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » + magasin
 carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
 for _, carteJeu in ipairs({ carteEntrainement, carteEnLigne, carteBattle, carteGarage }) do
 	carteJeu.Visible = not DANS_UNE_PLACE_DE_JEU
 end
 
+-- La carte promo (Pack de démarrage)
+local offrePromo = nil
+for _, offre in ipairs(Config.Boutique or {}) do
+	if offre.Promo then
+		offrePromo = offre
+	end
+end
+local cartePromo = Instance.new("TextButton")
+cartePromo.Size = UDim2.new(0.8, 0, 0, 62)
+cartePromo.LayoutOrder = 99
+cartePromo.BackgroundColor3 = Color3.fromRGB(25, 20, 10)
+cartePromo.Text = ""
+cartePromo.ZIndex = 22
+cartePromo.Visible = offrePromo ~= nil
+cartePromo.Parent = listeBoutons
+Instance.new("UICorner", cartePromo).CornerRadius = UDim.new(0, 12)
+local bordPromo = Instance.new("UIStroke")
+bordPromo.Thickness = 3
+bordPromo.Color = Color3.fromRGB(255, 205, 40)
+bordPromo.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+bordPromo.Parent = cartePromo
+local textePromo = texte(cartePromo, UDim2.new(1, -24, 0, 28), UDim2.new(0, 12, 0, 6), Color3.new(1, 1, 1))
+textePromo.Text = offrePromo and offrePromo.Nom or ""
+textePromo.TextXAlignment = Enum.TextXAlignment.Left
+textePromo.ZIndex = 23
+local prixPromo = texte(cartePromo, UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 36), Color3.fromRGB(120, 255, 140), Enum.Font.GothamBold)
+prixPromo.Text = offrePromo and (offrePromo.PrixAffiche .. "  ·  " .. offrePromo.Description) or ""
+prixPromo.TextXAlignment = Enum.TextXAlignment.Left
+prixPromo.ZIndex = 23
+task.spawn(function() -- le cadre doré « respire »
+	while cartePromo.Parent do
+		TweenService:Create(bordPromo, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { Transparency = 0.6 }):Play()
+		task.wait(0.8)
+		TweenService:Create(bordPromo, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { Transparency = 0 }):Play()
+		task.wait(0.8)
+	end
+end)
+
+local piecesMenu = texte(colonne, UDim2.new(1, 0, 0, 26), UDim2.new(0, 0, 0.17, 560), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+piecesMenu.TextXAlignment = Enum.TextXAlignment.Left
+piecesMenu.ZIndex = 22
+piecesMenu.Text = "💰 0 pièces"
+remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(function(profil)
+	if type(profil) == "table" then
+		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
+	end
+end)
+task.spawn(function()
+	local profil = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
+	if type(profil) == "table" then
+		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
+	end
+end)
+
 local boutonFermerMenu = Instance.new("TextButton")
 boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
 boutonFermerMenu.Size = UDim2.new(0, 54, 0, 54)
 boutonFermerMenu.Position = UDim2.new(1, -24, 0, 60)
-boutonFermerMenu.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+boutonFermerMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 boutonFermerMenu.TextColor3 = Color3.new(1, 1, 1)
 boutonFermerMenu.Font = Enum.Font.GothamBlack
 boutonFermerMenu.TextScaled = true
@@ -7949,6 +8367,221 @@ boutonFermerMenu.Text = "✕"
 boutonFermerMenu.ZIndex = 22
 boutonFermerMenu.Parent = fondMenu
 Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
+
+---------------------------------------------------------------------
+-- LE MAGASIN : packs de pièces et Pack de démarrage (Robux)
+---------------------------------------------------------------------
+local MarketplaceService = game:GetService("MarketplaceService")
+local panneauMagasin = Instance.new("Frame")
+panneauMagasin.AnchorPoint = Vector2.new(0.5, 0.5)
+panneauMagasin.Size = UDim2.new(0, 520, 0, 380)
+panneauMagasin.Position = UDim2.fromScale(0.62, 0.5)
+panneauMagasin.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+panneauMagasin.Visible = false
+panneauMagasin.ZIndex = 30
+panneauMagasin.Parent = fondMenu
+Instance.new("UICorner", panneauMagasin).CornerRadius = UDim.new(0, 16)
+local bordMagasin = Instance.new("UIStroke")
+bordMagasin.Thickness = 3
+bordMagasin.Color = Color3.fromRGB(255, 205, 70)
+bordMagasin.Parent = panneauMagasin
+local titreMagasin = texte(panneauMagasin, UDim2.new(1, -30, 0, 34), UDim2.new(0, 15, 0, 14), Color3.fromRGB(255, 205, 70))
+titreMagasin.Text = "🛒 MAGASIN"
+titreMagasin.ZIndex = 31
+local listeMagasin = Instance.new("Frame")
+listeMagasin.Size = UDim2.new(1, -30, 1, -70)
+listeMagasin.Position = UDim2.new(0, 15, 0, 58)
+listeMagasin.BackgroundTransparency = 1
+listeMagasin.ZIndex = 31
+listeMagasin.Parent = panneauMagasin
+local dispoMagasin = Instance.new("UIListLayout")
+dispoMagasin.Padding = UDim.new(0, 10)
+dispoMagasin.Parent = listeMagasin
+for _, offre in ipairs(Config.Boutique or {}) do
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(1, 0, 0, 80)
+	b.BackgroundColor3 = if offre.Promo then Color3.fromRGB(40, 30, 10) else Color3.fromRGB(28, 28, 36)
+	b.Text = ""
+	b.ZIndex = 32
+	b.Parent = listeMagasin
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 2
+	bord.Color = if offre.Promo then Color3.fromRGB(255, 205, 40) else Color3.fromRGB(80, 80, 95)
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	local n = texte(b, UDim2.new(0.68, 0, 0, 30), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
+	n.Text = offre.Nom
+	n.TextXAlignment = Enum.TextXAlignment.Left
+	n.ZIndex = 33
+	local dsc = texte(b, UDim2.new(0.68, 0, 0, 22), UDim2.new(0, 14, 0, 46), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+	dsc.Text = offre.Description
+	dsc.TextXAlignment = Enum.TextXAlignment.Left
+	dsc.ZIndex = 33
+	local prix = Instance.new("TextLabel")
+	prix.AnchorPoint = Vector2.new(1, 0.5)
+	prix.Size = UDim2.new(0, 130, 0, 46)
+	prix.Position = UDim2.new(1, -12, 0.5, 0)
+	prix.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+	prix.TextColor3 = Color3.new(1, 1, 1)
+	prix.Font = Enum.Font.GothamBlack
+	prix.TextScaled = true
+	prix.Text = offre.PrixAffiche
+	prix.ZIndex = 33
+	prix.Parent = b
+	Instance.new("UICorner", prix).CornerRadius = UDim.new(0, 10)
+	-- Le vrai prix Roblox, si le produit est configuré
+	if (offre.ProduitId or 0) ~= 0 then
+		task.spawn(function()
+			local ok, infos = pcall(function()
+				return MarketplaceService:GetProductInfo(offre.ProduitId, Enum.InfoType.Product)
+			end)
+			if ok and infos and infos.PriceInRobux then
+				prix.Text = "R$ " .. tostring(infos.PriceInRobux)
+			end
+		end)
+	end
+	b.Activated:Connect(function()
+		if (offre.ProduitId or 0) ~= 0 then
+			MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
+		else
+			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
+			if type(resultat) == "table" then
+				ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+			end
+		end
+	end)
+end
+local fermerMagasin = Instance.new("TextButton")
+fermerMagasin.AnchorPoint = Vector2.new(1, 0)
+fermerMagasin.Size = UDim2.new(0, 40, 0, 40)
+fermerMagasin.Position = UDim2.new(1, -12, 0, 12)
+fermerMagasin.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+fermerMagasin.TextColor3 = Color3.new(1, 1, 1)
+fermerMagasin.Font = Enum.Font.GothamBlack
+fermerMagasin.TextScaled = true
+fermerMagasin.Text = "✕"
+fermerMagasin.ZIndex = 33
+fermerMagasin.Parent = panneauMagasin
+Instance.new("UICorner", fermerMagasin).CornerRadius = UDim.new(0, 10)
+fermerMagasin.Activated:Connect(function()
+	panneauMagasin.Visible = false
+end)
+local function ouvrirMagasin()
+	panneauMagasin.Visible = true
+	local e = panneauMagasin:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	e.Parent = panneauMagasin
+	e.Scale = 0.6
+	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+carteMagasin.Activated:Connect(ouvrirMagasin)
+cartePromo.Activated:Connect(ouvrirMagasin)
+
+-- EN FOND DU MENU : la partie EN DIRECT. La caméra suit un kart qui roule
+-- (un autre joueur, un bot ou la police en poursuite) et change de pilote
+-- toutes les 8 secondes. Si personne ne roule : elle survole le mall.
+local angleMenu = 0
+local cameraMenu = false
+local cibleDirect: BasePart? = nil
+local nomDirect = ""
+local prochainChangement = 0
+local cfCamera: CFrame? = nil
+
+local badgeDirect = Instance.new("TextLabel")
+badgeDirect.AnchorPoint = Vector2.new(1, 0)
+badgeDirect.Size = UDim2.new(0, 320, 0, 36)
+badgeDirect.Position = UDim2.new(1, -96, 0, 68)
+badgeDirect.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+badgeDirect.BackgroundTransparency = 0.2
+badgeDirect.TextColor3 = Color3.new(1, 1, 1)
+badgeDirect.Font = Enum.Font.GothamBlack
+badgeDirect.TextScaled = true
+badgeDirect.Visible = false
+badgeDirect.ZIndex = 22
+badgeDirect.Parent = fondMenu
+Instance.new("UICorner", badgeDirect).CornerRadius = UDim.new(0, 10)
+local margeBadge = Instance.new("UIPadding")
+margeBadge.PaddingTop = UDim.new(0, 6)
+margeBadge.PaddingBottom = UDim.new(0, 6)
+margeBadge.Parent = badgeDirect
+
+-- Les karts qui roulent en ce moment : { pièce à suivre, nom }
+local function kartsEnJeu(): { { BasePart | string } }
+	local liste = {}
+	local dossier = workspace:FindFirstChild("KartsJoueurs")
+	if dossier then
+		for _, k in ipairs(dossier:GetChildren()) do
+			local siege = k:FindFirstChild("Siege") :: Seat?
+			local chassis = (k :: Model).PrimaryPart
+			local pilote = siege and siege.Occupant and Players:GetPlayerFromCharacter(siege.Occupant.Parent)
+			if chassis and pilote and pilote ~= joueur then
+				table.insert(liste, { chassis, pilote.DisplayName })
+			end
+		end
+	end
+	local bots = workspace:FindFirstChild("BotsManche")
+	if bots then
+		for _, b in ipairs(bots:GetChildren()) do
+			local racine = b:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if racine then
+				table.insert(liste, { racine, "🤖 " .. b.Name })
+			end
+		end
+	end
+	local police = workspace:FindFirstChild("Securite")
+	if police then
+		for _, g in ipairs(police:GetChildren()) do
+			local racine = g:FindFirstChild("HumanoidRootPart") :: BasePart?
+			-- (seulement les policiers en poursuite, dans leur kart de police)
+			if racine and g:FindFirstChild("KartPolice") then
+				table.insert(liste, { racine, "🚓 Police du mall" })
+			end
+		end
+	end
+	return liste
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	if not cameraMenu then
+		badgeDirect.Visible = false
+		return
+	end
+	local maintenant = os.clock()
+	if not cibleDirect or not cibleDirect.Parent or maintenant > prochainChangement then
+		local liste = kartsEnJeu()
+		if #liste > 0 then
+			local choix = liste[math.random(1, #liste)]
+			cibleDirect = choix[1] :: BasePart
+			nomDirect = choix[2] :: string
+		else
+			cibleDirect = nil
+		end
+		prochainChangement = maintenant + 8
+	end
+
+	local voulu: CFrame
+	if cibleDirect and cibleDirect.Parent then
+		-- Caméra de télé : derrière et au-dessus du kart, qui le suit en douceur
+		local avant = Vector3.new(cibleDirect.CFrame.LookVector.X, 0, cibleDirect.CFrame.LookVector.Z)
+		if avant.Magnitude < 0.1 then
+			avant = Vector3.new(0, 0, -1)
+		end
+		avant = avant.Unit
+		local pos = cibleDirect.Position - avant * 16 + Vector3.new(0, 7, 0)
+		voulu = CFrame.lookAt(pos, cibleDirect.Position + avant * 6 + Vector3.new(0, 1.5, 0))
+		badgeDirect.Text = "🔴 EN DIRECT · " .. nomDirect
+		badgeDirect.Visible = true
+	else
+		-- Personne ne roule : survol du mall
+		angleMenu += dt * 0.06
+		local centre = Vector3.new(0, 10, -20)
+		local pos = centre + Vector3.new(math.cos(angleMenu) * 26, 22 + math.sin(angleMenu * 2) * 3, math.sin(angleMenu) * 110)
+		voulu = CFrame.lookAt(pos, centre + Vector3.new(math.sin(angleMenu) * 30, -4, -math.cos(angleMenu) * 40))
+		badgeDirect.Visible = false
+	end
+	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 3, 0, 1)) else voulu
+	camera.CFrame = cfCamera :: CFrame
+end)
 
 local function majMenu()
 	local enManche = joueur:GetAttribute("Role") ~= nil
@@ -7971,8 +8604,41 @@ end
 majMenu()
 
 local function ouvrirMenu(ouvert: boolean)
+	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
+	panneauMagasin.Visible = false
 	majMenu()
+	local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+	local auVolant = h and h.SeatPart ~= nil
+	if ouvert and not dejaOuvert then
+		-- La caméra montre la carte (sauf si on est au volant)
+		if not auVolant and not joueur:GetAttribute("EnSalle") then
+			cameraMenu = true
+			cfCamera = nil -- (on repart d'une caméra neuve)
+			prochainChangement = 0
+			camera.CameraType = Enum.CameraType.Scriptable
+		end
+		-- Les boutons arrivent en glissant, l'un après l'autre
+		for i, b in ipairs(boutonsMenu) do
+			local e = b:FindFirstChildOfClass("UIScale")
+			b.Position = UDim2.new(-0.6, 0, 0, 0)
+			if e then
+				e.Scale = 0.9
+			end
+			task.delay(i * 0.06, function()
+				if e then
+					TweenService:Create(e, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+				end
+			end)
+		end
+		titreMenu.TextTransparency = 1
+		TweenService:Create(titreMenu, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
+	elseif not ouvert and cameraMenu then
+		cameraMenu = false
+		if not auVolant then
+			camera.CameraType = Enum.CameraType.Custom
+		end
+	end
 end
 boutonMenu.Activated:Connect(function()
 	ouvrirMenu(not fondMenu.Visible)

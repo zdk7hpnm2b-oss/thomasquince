@@ -21,7 +21,11 @@ local OR = Color3.fromRGB(225, 175, 45)
 -- Vérifie une personnalisation : tout ce qui est inconnu ou pas encore
 -- débloqué au niveau du joueur est remplacé par la valeur par défaut.
 ---------------------------------------------------------------------
-function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
+-- possessions : { Couleurs = { [nom] = true }, Premium = { [nom] = true } } (ce que le joueur a acheté)
+function KartBuilder.Nettoyer(perso: any, niveau: number, possessions: any?): { [string]: any }
+	local achats = type(possessions) == "table" and possessions or {}
+	local couleursAchetees = type(achats.Couleurs) == "table" and achats.Couleurs or {}
+	local premiumAchetees = type(achats.Premium) == "table" and achats.Premium or {}
 	local defaut = Config.PersoParDefaut
 	local propre = table.clone(defaut)
 	if type(perso) ~= "table" then
@@ -30,7 +34,7 @@ function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
 
 	local function couleurOk(nom)
 		local c = type(nom) == "string" and Config.Couleur(nom)
-		return c and c.Niveau <= niveau
+		return c and c.Niveau <= niveau and ((c.Prix or 0) == 0 or couleursAchetees[c.Nom] == true)
 	end
 
 	local kart = Config.Karts[perso.Kart]
@@ -57,6 +61,10 @@ function KartBuilder.Nettoyer(perso: any, niveau: number): { [string]: any }
 	if type(perso.BandesActives) == "boolean" then
 		propre.BandesActives = perso.BandesActives
 	end
+	-- Peinture premium (achetée en Robux) : elle remplace la couleur de la carrosserie
+	if type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) and premiumAchetees[perso.Premium] == true then
+		propre.Premium = perso.Premium
+	end
 	if type(perso.Numero) == "number" and perso.Numero == perso.Numero then
 		propre.Numero = math.clamp(math.floor(perso.Numero), 0, 99)
 	end
@@ -72,6 +80,8 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 		return c and c.Couleur or Color3.new(1, 1, 1)
 	end
 	local finition = Config.Finition(perso.Finition) or Config.Finitions[1]
+	local premium = type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) or nil
+	modele:SetAttribute("CarrosserieArcEnCiel", premium ~= nil and premium.ArcEnCiel == true)
 	local neon = Config.Neon(perso.Neon) or Config.Neons[2]
 	local sansNeon = neon.Nom == "Aucun"
 	modele:SetAttribute("NeonArcEnCiel", neon.Nom == "Arc-en-ciel")
@@ -80,9 +90,15 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 		if p:IsA("BasePart") then
 			local role = p:GetAttribute("Peinture")
 			if role == "Carrosserie" then
-				p.Color = couleur(perso.Carrosserie)
-				p.Material = finition.Materiau
-				p.Reflectance = finition.Reflet
+				if premium then
+					p.Color = premium.Couleur
+					p.Material = premium.Materiau
+					p.Reflectance = premium.Reflet
+				else
+					p.Color = couleur(perso.Carrosserie)
+					p.Material = finition.Materiau
+					p.Reflectance = finition.Reflet
+				end
 			elseif role == "Jantes" then
 				p.Color = couleur(perso.Jantes)
 			elseif role == "Siege" then

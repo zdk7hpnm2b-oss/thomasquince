@@ -341,72 +341,193 @@ local fondMenu = Instance.new("Frame")
 fondMenu.Name = "Menu"
 fondMenu.Size = UDim2.fromScale(1, 1)
 fondMenu.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
-fondMenu.BackgroundTransparency = 0.35
+fondMenu.BackgroundTransparency = 0
 fondMenu.Visible = false
 fondMenu.ZIndex = 20
 fondMenu.Parent = gui
-local titreMenu = texte(fondMenu, UDim2.new(0.8, 0, 0, 60), UDim2.new(0.1, 0, 0.1, 0), Color3.fromRGB(255, 205, 70))
-titreMenu.Text = "GOLDEN MALL DRIFT"
-titreMenu.ZIndex = 21
-local sousTitreMenu = texte(fondMenu, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.1, 64), Color3.new(1, 1, 1), Enum.Font.GothamBold)
-sousTitreMenu.Text = "Choisis ton mode de jeu"
-sousTitreMenu.ZIndex = 21
+-- Dégradé : sombre à gauche (sous les boutons), transparent à droite (on voit la carte)
+local degradeMenu = Instance.new("UIGradient")
+degradeMenu.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.15),
+	NumberSequenceKeypoint.new(0.42, 0.55),
+	NumberSequenceKeypoint.new(0.7, 1),
+	NumberSequenceKeypoint.new(1, 1),
+})
+degradeMenu.Parent = fondMenu
 
-local rangeeCartes = Instance.new("Frame")
-rangeeCartes.AnchorPoint = Vector2.new(0.5, 0.5)
-rangeeCartes.Size = UDim2.new(0.9, 0, 0, 250)
-rangeeCartes.Position = UDim2.fromScale(0.5, 0.55)
-rangeeCartes.BackgroundTransparency = 1
-rangeeCartes.ZIndex = 21
-rangeeCartes.Parent = fondMenu
-local dispositionCartes = Instance.new("UIListLayout")
-dispositionCartes.FillDirection = Enum.FillDirection.Horizontal
-dispositionCartes.HorizontalAlignment = Enum.HorizontalAlignment.Center
-dispositionCartes.Padding = UDim.new(0, 18)
-dispositionCartes.Parent = rangeeCartes
+local colonne = Instance.new("Frame")
+colonne.Name = "Colonne"
+colonne.Size = UDim2.new(0, 470, 1, 0)
+colonne.Position = UDim2.new(0, 46, 0, 0)
+colonne.BackgroundTransparency = 1
+colonne.ZIndex = 21
+colonne.Parent = fondMenu
 
-local function carteMode(icone: string, titre: string, description: string, couleur: Color3): (TextButton, TextLabel, TextLabel)
+local bienvenue = texte(colonne, UDim2.new(1, 0, 0, 22), UDim2.new(0, 0, 0.17, 0), Color3.fromRGB(220, 220, 230), Enum.Font.GothamBold)
+bienvenue.Text = "BIENVENUE AU"
+bienvenue.TextXAlignment = Enum.TextXAlignment.Left
+bienvenue.ZIndex = 22
+local titreMenu = texte(colonne, UDim2.new(1, 0, 0, 64), UDim2.new(0, 0, 0.17, 24), Color3.new(1, 1, 1))
+titreMenu.Text = Config.NomDuJeu
+titreMenu.TextXAlignment = Enum.TextXAlignment.Left
+titreMenu.ZIndex = 22
+local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0.17, 90), Color3.fromRGB(255, 205, 70), Enum.Font.GothamBold)
+sousTitreMenu.Text = "✦ " .. Config.Lieu .. " ✦"
+sousTitreMenu.TextXAlignment = Enum.TextXAlignment.Left
+sousTitreMenu.ZIndex = 22
+
+local listeBoutons = Instance.new("Frame")
+listeBoutons.Size = UDim2.new(1, 0, 0, 420)
+listeBoutons.Position = UDim2.new(0, 0, 0.17, 130)
+listeBoutons.BackgroundTransparency = 1
+listeBoutons.ZIndex = 21
+listeBoutons.Parent = colonne
+local dispositionBoutons = Instance.new("UIListLayout")
+dispositionBoutons.Padding = UDim.new(0, 10)
+dispositionBoutons.SortOrder = Enum.SortOrder.LayoutOrder
+dispositionBoutons.Parent = listeBoutons
+
+local boutonsMenu = {} -- (pour l'animation d'arrivée)
+local ROUGE_MENU = Color3.fromRGB(215, 35, 40)
+
+-- Un grand bouton du menu : icône + titre + description + flèche
+local function carteMode(icone: string, titre: string, description: string, couleur: Color3, principal: boolean?): (TextButton, TextLabel, TextLabel)
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(0, 230, 1, 0)
-	b.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	b.Size = UDim2.new(1, 0, 0, 64)
+	b.LayoutOrder = #boutonsMenu + 1
+	b.BackgroundColor3 = if principal then ROUGE_MENU else Color3.fromRGB(22, 22, 28)
+	b.BackgroundTransparency = if principal then 0 else 0.1
 	b.Text = ""
-	b.AutoButtonColor = true
+	b.AutoButtonColor = false
 	b.ZIndex = 22
-	b.Parent = rangeeCartes
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 18)
+	b.Parent = listeBoutons
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
 	local bord = Instance.new("UIStroke")
-	bord.Thickness = 4
-	bord.Color = couleur
+	bord.Thickness = 2
+	bord.Color = if principal then Color3.fromRGB(255, 120, 120) else couleur
+	bord.Transparency = if principal then 0 else 0.5
 	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bord.Parent = b
-	local i = texte(b, UDim2.new(1, 0, 0, 70), UDim2.new(0, 0, 0, 14), Color3.new(1, 1, 1))
+	local i = texte(b, UDim2.new(0, 50, 0, 44), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
 	i.Text = icone
 	i.ZIndex = 23
-	local t = texte(b, UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 0, 92), couleur)
+	local t = texte(b, UDim2.new(1, -120, 0, 26), UDim2.new(0, 76, 0, 9), Color3.new(1, 1, 1))
 	t.Text = titre
+	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 23
-	local d = texte(b, UDim2.new(1, -24, 0, 90), UDim2.new(0, 12, 0, 140), Color3.fromRGB(210, 210, 220), Enum.Font.GothamMedium)
+	local d = texte(b, UDim2.new(1, -120, 0, 18), UDim2.new(0, 76, 0, 38), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
 	d.Text = description
+	d.TextXAlignment = Enum.TextXAlignment.Left
 	d.ZIndex = 23
+	local fleche = texte(b, UDim2.new(0, 30, 0, 30), UDim2.new(1, -44, 0, 17), Color3.new(1, 1, 1))
+	fleche.Text = if principal then "»" else "›"
+	fleche.ZIndex = 23
+	-- Reflet qui balaie le bouton principal
+	if principal then
+		local reflet = Instance.new("UIGradient")
+		reflet.Color = ColorSequence.new(Color3.new(1, 1, 1))
+		reflet.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.45, 0),
+			NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(0.55, 0), NumberSequenceKeypoint.new(1, 0),
+		})
+		reflet.Rotation = 20
+		reflet.Parent = b
+		task.spawn(function()
+			while b.Parent do
+				reflet.Offset = Vector2.new(-1, 0)
+				TweenService:Create(reflet, TweenInfo.new(1.2, Enum.EasingStyle.Sine), { Offset = Vector2.new(1, 0) }):Play()
+				task.wait(3)
+			end
+		end)
+	end
+	-- Survol : le bouton s'avance et s'éclaire
+	local echelle = Instance.new("UIScale")
+	echelle.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1.04 }):Play()
+		TweenService:Create(bord, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = UDim2.new(1, -36, 0, 17) }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1 }):Play()
+		TweenService:Create(bord, TweenInfo.new(0.15), { Transparency = if principal then 0 else 0.5 }):Play()
+		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = UDim2.new(1, -44, 0, 17) }):Play()
+	end)
+	table.insert(boutonsMenu, b)
 	return b, t, d
 end
 
-local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Roule librement et travaille tes drifts. La police du mall (des bots) te poursuit !", Color3.fromRGB(80, 220, 120))
-local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !", Color3.fromRGB(90, 150, 255))
-local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour faire le plus de points de drift. Ça part tout de suite !", Color3.fromRGB(255, 90, 170))
-local carteGarage = carteMode("🎨", "GARAGE VIP", "Personnalise ton kart : couleurs, néons, autocollants…", Color3.fromRGB(200, 140, 255))
-local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Retourne au lobby pour changer de mode ou personnaliser ton kart.", Color3.fromRGB(255, 205, 70))
--- Dans une place de jeu (entraînement, partie, défi) : seulement « retour au lobby »
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", ROUGE_MENU, true)
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(80, 220, 120))
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(90, 150, 255))
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 90, 170))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Pièces, peintures premium et packs", Color3.fromRGB(255, 205, 70))
+local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", Color3.fromRGB(255, 205, 70), true)
+-- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » + magasin
 carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
 for _, carteJeu in ipairs({ carteEntrainement, carteEnLigne, carteBattle, carteGarage }) do
 	carteJeu.Visible = not DANS_UNE_PLACE_DE_JEU
 end
 
+-- La carte promo (Pack de démarrage)
+local offrePromo = nil
+for _, offre in ipairs(Config.Boutique or {}) do
+	if offre.Promo then
+		offrePromo = offre
+	end
+end
+local cartePromo = Instance.new("TextButton")
+cartePromo.Size = UDim2.new(0.8, 0, 0, 62)
+cartePromo.LayoutOrder = 99
+cartePromo.BackgroundColor3 = Color3.fromRGB(25, 20, 10)
+cartePromo.Text = ""
+cartePromo.ZIndex = 22
+cartePromo.Visible = offrePromo ~= nil
+cartePromo.Parent = listeBoutons
+Instance.new("UICorner", cartePromo).CornerRadius = UDim.new(0, 12)
+local bordPromo = Instance.new("UIStroke")
+bordPromo.Thickness = 3
+bordPromo.Color = Color3.fromRGB(255, 205, 40)
+bordPromo.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+bordPromo.Parent = cartePromo
+local textePromo = texte(cartePromo, UDim2.new(1, -24, 0, 28), UDim2.new(0, 12, 0, 6), Color3.new(1, 1, 1))
+textePromo.Text = offrePromo and offrePromo.Nom or ""
+textePromo.TextXAlignment = Enum.TextXAlignment.Left
+textePromo.ZIndex = 23
+local prixPromo = texte(cartePromo, UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 36), Color3.fromRGB(120, 255, 140), Enum.Font.GothamBold)
+prixPromo.Text = offrePromo and (offrePromo.PrixAffiche .. "  ·  " .. offrePromo.Description) or ""
+prixPromo.TextXAlignment = Enum.TextXAlignment.Left
+prixPromo.ZIndex = 23
+task.spawn(function() -- le cadre doré « respire »
+	while cartePromo.Parent do
+		TweenService:Create(bordPromo, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { Transparency = 0.6 }):Play()
+		task.wait(0.8)
+		TweenService:Create(bordPromo, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { Transparency = 0 }):Play()
+		task.wait(0.8)
+	end
+end)
+
+local piecesMenu = texte(colonne, UDim2.new(1, 0, 0, 26), UDim2.new(0, 0, 0.17, 560), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+piecesMenu.TextXAlignment = Enum.TextXAlignment.Left
+piecesMenu.ZIndex = 22
+piecesMenu.Text = "💰 0 pièces"
+remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(function(profil)
+	if type(profil) == "table" then
+		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
+	end
+end)
+task.spawn(function()
+	local profil = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
+	if type(profil) == "table" then
+		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
+	end
+end)
+
 local boutonFermerMenu = Instance.new("TextButton")
 boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
 boutonFermerMenu.Size = UDim2.new(0, 54, 0, 54)
 boutonFermerMenu.Position = UDim2.new(1, -24, 0, 60)
-boutonFermerMenu.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+boutonFermerMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 boutonFermerMenu.TextColor3 = Color3.new(1, 1, 1)
 boutonFermerMenu.Font = Enum.Font.GothamBlack
 boutonFermerMenu.TextScaled = true
@@ -414,6 +535,221 @@ boutonFermerMenu.Text = "✕"
 boutonFermerMenu.ZIndex = 22
 boutonFermerMenu.Parent = fondMenu
 Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
+
+---------------------------------------------------------------------
+-- LE MAGASIN : packs de pièces et Pack de démarrage (Robux)
+---------------------------------------------------------------------
+local MarketplaceService = game:GetService("MarketplaceService")
+local panneauMagasin = Instance.new("Frame")
+panneauMagasin.AnchorPoint = Vector2.new(0.5, 0.5)
+panneauMagasin.Size = UDim2.new(0, 520, 0, 380)
+panneauMagasin.Position = UDim2.fromScale(0.62, 0.5)
+panneauMagasin.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
+panneauMagasin.Visible = false
+panneauMagasin.ZIndex = 30
+panneauMagasin.Parent = fondMenu
+Instance.new("UICorner", panneauMagasin).CornerRadius = UDim.new(0, 16)
+local bordMagasin = Instance.new("UIStroke")
+bordMagasin.Thickness = 3
+bordMagasin.Color = Color3.fromRGB(255, 205, 70)
+bordMagasin.Parent = panneauMagasin
+local titreMagasin = texte(panneauMagasin, UDim2.new(1, -30, 0, 34), UDim2.new(0, 15, 0, 14), Color3.fromRGB(255, 205, 70))
+titreMagasin.Text = "🛒 MAGASIN"
+titreMagasin.ZIndex = 31
+local listeMagasin = Instance.new("Frame")
+listeMagasin.Size = UDim2.new(1, -30, 1, -70)
+listeMagasin.Position = UDim2.new(0, 15, 0, 58)
+listeMagasin.BackgroundTransparency = 1
+listeMagasin.ZIndex = 31
+listeMagasin.Parent = panneauMagasin
+local dispoMagasin = Instance.new("UIListLayout")
+dispoMagasin.Padding = UDim.new(0, 10)
+dispoMagasin.Parent = listeMagasin
+for _, offre in ipairs(Config.Boutique or {}) do
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(1, 0, 0, 80)
+	b.BackgroundColor3 = if offre.Promo then Color3.fromRGB(40, 30, 10) else Color3.fromRGB(28, 28, 36)
+	b.Text = ""
+	b.ZIndex = 32
+	b.Parent = listeMagasin
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 2
+	bord.Color = if offre.Promo then Color3.fromRGB(255, 205, 40) else Color3.fromRGB(80, 80, 95)
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	local n = texte(b, UDim2.new(0.68, 0, 0, 30), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
+	n.Text = offre.Nom
+	n.TextXAlignment = Enum.TextXAlignment.Left
+	n.ZIndex = 33
+	local dsc = texte(b, UDim2.new(0.68, 0, 0, 22), UDim2.new(0, 14, 0, 46), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+	dsc.Text = offre.Description
+	dsc.TextXAlignment = Enum.TextXAlignment.Left
+	dsc.ZIndex = 33
+	local prix = Instance.new("TextLabel")
+	prix.AnchorPoint = Vector2.new(1, 0.5)
+	prix.Size = UDim2.new(0, 130, 0, 46)
+	prix.Position = UDim2.new(1, -12, 0.5, 0)
+	prix.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+	prix.TextColor3 = Color3.new(1, 1, 1)
+	prix.Font = Enum.Font.GothamBlack
+	prix.TextScaled = true
+	prix.Text = offre.PrixAffiche
+	prix.ZIndex = 33
+	prix.Parent = b
+	Instance.new("UICorner", prix).CornerRadius = UDim.new(0, 10)
+	-- Le vrai prix Roblox, si le produit est configuré
+	if (offre.ProduitId or 0) ~= 0 then
+		task.spawn(function()
+			local ok, infos = pcall(function()
+				return MarketplaceService:GetProductInfo(offre.ProduitId, Enum.InfoType.Product)
+			end)
+			if ok and infos and infos.PriceInRobux then
+				prix.Text = "R$ " .. tostring(infos.PriceInRobux)
+			end
+		end)
+	end
+	b.Activated:Connect(function()
+		if (offre.ProduitId or 0) ~= 0 then
+			MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
+		else
+			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
+			if type(resultat) == "table" then
+				ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+			end
+		end
+	end)
+end
+local fermerMagasin = Instance.new("TextButton")
+fermerMagasin.AnchorPoint = Vector2.new(1, 0)
+fermerMagasin.Size = UDim2.new(0, 40, 0, 40)
+fermerMagasin.Position = UDim2.new(1, -12, 0, 12)
+fermerMagasin.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+fermerMagasin.TextColor3 = Color3.new(1, 1, 1)
+fermerMagasin.Font = Enum.Font.GothamBlack
+fermerMagasin.TextScaled = true
+fermerMagasin.Text = "✕"
+fermerMagasin.ZIndex = 33
+fermerMagasin.Parent = panneauMagasin
+Instance.new("UICorner", fermerMagasin).CornerRadius = UDim.new(0, 10)
+fermerMagasin.Activated:Connect(function()
+	panneauMagasin.Visible = false
+end)
+local function ouvrirMagasin()
+	panneauMagasin.Visible = true
+	local e = panneauMagasin:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	e.Parent = panneauMagasin
+	e.Scale = 0.6
+	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+carteMagasin.Activated:Connect(ouvrirMagasin)
+cartePromo.Activated:Connect(ouvrirMagasin)
+
+-- EN FOND DU MENU : la partie EN DIRECT. La caméra suit un kart qui roule
+-- (un autre joueur, un bot ou la police en poursuite) et change de pilote
+-- toutes les 8 secondes. Si personne ne roule : elle survole le mall.
+local angleMenu = 0
+local cameraMenu = false
+local cibleDirect: BasePart? = nil
+local nomDirect = ""
+local prochainChangement = 0
+local cfCamera: CFrame? = nil
+
+local badgeDirect = Instance.new("TextLabel")
+badgeDirect.AnchorPoint = Vector2.new(1, 0)
+badgeDirect.Size = UDim2.new(0, 320, 0, 36)
+badgeDirect.Position = UDim2.new(1, -96, 0, 68)
+badgeDirect.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+badgeDirect.BackgroundTransparency = 0.2
+badgeDirect.TextColor3 = Color3.new(1, 1, 1)
+badgeDirect.Font = Enum.Font.GothamBlack
+badgeDirect.TextScaled = true
+badgeDirect.Visible = false
+badgeDirect.ZIndex = 22
+badgeDirect.Parent = fondMenu
+Instance.new("UICorner", badgeDirect).CornerRadius = UDim.new(0, 10)
+local margeBadge = Instance.new("UIPadding")
+margeBadge.PaddingTop = UDim.new(0, 6)
+margeBadge.PaddingBottom = UDim.new(0, 6)
+margeBadge.Parent = badgeDirect
+
+-- Les karts qui roulent en ce moment : { pièce à suivre, nom }
+local function kartsEnJeu(): { { BasePart | string } }
+	local liste = {}
+	local dossier = workspace:FindFirstChild("KartsJoueurs")
+	if dossier then
+		for _, k in ipairs(dossier:GetChildren()) do
+			local siege = k:FindFirstChild("Siege") :: Seat?
+			local chassis = (k :: Model).PrimaryPart
+			local pilote = siege and siege.Occupant and Players:GetPlayerFromCharacter(siege.Occupant.Parent)
+			if chassis and pilote and pilote ~= joueur then
+				table.insert(liste, { chassis, pilote.DisplayName })
+			end
+		end
+	end
+	local bots = workspace:FindFirstChild("BotsManche")
+	if bots then
+		for _, b in ipairs(bots:GetChildren()) do
+			local racine = b:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if racine then
+				table.insert(liste, { racine, "🤖 " .. b.Name })
+			end
+		end
+	end
+	local police = workspace:FindFirstChild("Securite")
+	if police then
+		for _, g in ipairs(police:GetChildren()) do
+			local racine = g:FindFirstChild("HumanoidRootPart") :: BasePart?
+			-- (seulement les policiers en poursuite, dans leur kart de police)
+			if racine and g:FindFirstChild("KartPolice") then
+				table.insert(liste, { racine, "🚓 Police du mall" })
+			end
+		end
+	end
+	return liste
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	if not cameraMenu then
+		badgeDirect.Visible = false
+		return
+	end
+	local maintenant = os.clock()
+	if not cibleDirect or not cibleDirect.Parent or maintenant > prochainChangement then
+		local liste = kartsEnJeu()
+		if #liste > 0 then
+			local choix = liste[math.random(1, #liste)]
+			cibleDirect = choix[1] :: BasePart
+			nomDirect = choix[2] :: string
+		else
+			cibleDirect = nil
+		end
+		prochainChangement = maintenant + 8
+	end
+
+	local voulu: CFrame
+	if cibleDirect and cibleDirect.Parent then
+		-- Caméra de télé : derrière et au-dessus du kart, qui le suit en douceur
+		local avant = Vector3.new(cibleDirect.CFrame.LookVector.X, 0, cibleDirect.CFrame.LookVector.Z)
+		if avant.Magnitude < 0.1 then
+			avant = Vector3.new(0, 0, -1)
+		end
+		avant = avant.Unit
+		local pos = cibleDirect.Position - avant * 16 + Vector3.new(0, 7, 0)
+		voulu = CFrame.lookAt(pos, cibleDirect.Position + avant * 6 + Vector3.new(0, 1.5, 0))
+		badgeDirect.Text = "🔴 EN DIRECT · " .. nomDirect
+		badgeDirect.Visible = true
+	else
+		-- Personne ne roule : survol du mall
+		angleMenu += dt * 0.06
+		local centre = Vector3.new(0, 10, -20)
+		local pos = centre + Vector3.new(math.cos(angleMenu) * 26, 22 + math.sin(angleMenu * 2) * 3, math.sin(angleMenu) * 110)
+		voulu = CFrame.lookAt(pos, centre + Vector3.new(math.sin(angleMenu) * 30, -4, -math.cos(angleMenu) * 40))
+		badgeDirect.Visible = false
+	end
+	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 3, 0, 1)) else voulu
+	camera.CFrame = cfCamera :: CFrame
+end)
 
 local function majMenu()
 	local enManche = joueur:GetAttribute("Role") ~= nil
@@ -436,8 +772,41 @@ end
 majMenu()
 
 local function ouvrirMenu(ouvert: boolean)
+	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
+	panneauMagasin.Visible = false
 	majMenu()
+	local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+	local auVolant = h and h.SeatPart ~= nil
+	if ouvert and not dejaOuvert then
+		-- La caméra montre la carte (sauf si on est au volant)
+		if not auVolant and not joueur:GetAttribute("EnSalle") then
+			cameraMenu = true
+			cfCamera = nil -- (on repart d'une caméra neuve)
+			prochainChangement = 0
+			camera.CameraType = Enum.CameraType.Scriptable
+		end
+		-- Les boutons arrivent en glissant, l'un après l'autre
+		for i, b in ipairs(boutonsMenu) do
+			local e = b:FindFirstChildOfClass("UIScale")
+			b.Position = UDim2.new(-0.6, 0, 0, 0)
+			if e then
+				e.Scale = 0.9
+			end
+			task.delay(i * 0.06, function()
+				if e then
+					TweenService:Create(e, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+				end
+			end)
+		end
+		titreMenu.TextTransparency = 1
+		TweenService:Create(titreMenu, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
+	elseif not ouvert and cameraMenu then
+		cameraMenu = false
+		if not auVolant then
+			camera.CameraType = Enum.CameraType.Custom
+		end
+	end
 end
 boutonMenu.Activated:Connect(function()
 	ouvrirMenu(not fondMenu.Visible)

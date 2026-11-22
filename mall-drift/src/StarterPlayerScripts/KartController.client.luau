@@ -105,6 +105,11 @@ Instance.new("UICorner", barreXP).CornerRadius = UDim.new(0.5, 0)
 local xpLabel = label("XP", blocNiveau, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, 47))
 xpLabel.TextXAlignment = Enum.TextXAlignment.Left
 xpLabel.TextTransparency = 0.2
+-- Les pièces 💰 (la monnaie du jeu)
+local piecesLabel = label("Pieces", blocNiveau, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0, 68))
+piecesLabel.TextXAlignment = Enum.TextXAlignment.Left
+piecesLabel.TextColor3 = Color3.fromRGB(255, 220, 90)
+piecesLabel.Text = "💰 0"
 
 local scoreLabel = label("Score", hud, UDim2.new(0, 320, 0, 40), UDim2.new(1, -336, 0, 56))
 scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -266,6 +271,15 @@ local function afficherProfil(profil, niveauGagne: number?)
 		return
 	end
 	niveauLabel.Text = ("NIV. %d"):format(profil.Niveau)
+	local avant = tonumber((piecesLabel.Text:gsub("[^%d]", ""))) or 0
+	piecesLabel.Text = ("💰 %d"):format(profil.Pieces or 0)
+	if (profil.Pieces or 0) > avant then
+		-- petite animation quand on gagne des pièces
+		local echelle = piecesLabel:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+		echelle.Parent = piecesLabel
+		echelle.Scale = 1.3
+		TweenService:Create(echelle, TweenInfo.new(0.3, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end
 	local pleinNiveau = profil.Niveau >= Config.NiveauMax
 	xpLabel.Text = if pleinNiveau then "NIVEAU MAX !" else ("%d / %d XP"):format(profil.XPDansNiveau, profil.XPRequis)
 	local ratio = if pleinNiveau then 1 else math.clamp(profil.XPDansNiveau / profil.XPRequis, 0, 1)
@@ -1209,6 +1223,15 @@ local function scannerArcEnCiel()
 					table.insert(gyrosPolice, d)
 				end
 			end
+		end
+		if m:GetAttribute("CarrosserieArcEnCiel") then
+			local entree = { parties = {}, lumieres = {} }
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Carrosserie" then
+					table.insert(entree.parties, d)
+				end
+			end
+			table.insert(kartsArcEnCiel, entree)
 		end
 		if m:GetAttribute("NeonArcEnCiel") then
 			local entree = { parties = {}, lumieres = {} }

@@ -14,6 +14,15 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **💰 Pièces et peintures** : les pièces se gagnent en driftant (1 pour 20 points) et en jouant les modes.
+  Au garage, les couleurs s'achètent avec des pièces (5 à 150 💰) et les **💎 peintures premium**
+  (Chrome miroir, Or 24 carats, Arc-en-ciel animé, Rouge bonbon, Cyan néon, Vert toxique) en Robux.
+  **🛒 Magasin** : Pack de démarrage et packs de pièces. Crée les produits sur le Creator Hub (Monétisation >
+  Produits pour développeurs) et colle leurs numéros dans `Config.PeinturesPremium` et `Config.Boutique`
+  (tant que le numéro est 0, l'achat est gratuit dans Studio pour tester)
+- **Le menu** : « Bienvenue au Golden Mall », grands boutons à gauche (Garage, Entraînement, Jouer en
+  ligne, Drift Battle, Magasin, promo du Pack de démarrage), et en fond **la partie en direct** : la
+  caméra suit un kart qui roule (🔴 EN DIRECT · pseudo), sinon elle survole le mall
 - **☰ Un menu pour choisir son mode** : en arrivant, tu visites le garage, puis tu ouvres **☰ MENU** (en bas à droite) :
   **🏁 ENTRAÎNEMENT** (drift libre, la police du mall en bots te poursuit), **🌐 JOUER EN LIGNE**
   (Police contre Fugitifs), **🔥 DRIFT BATTLE** (défi solo instantané : petit titre de 2 s, 3-2-1, puis

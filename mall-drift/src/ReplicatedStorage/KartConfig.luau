@@ -83,23 +83,54 @@ Config.Karts = {
 ---------------------------------------------------------------------
 -- PERSONNALISATION (le garage VIP)
 ---------------------------------------------------------------------
+-- Les couleurs s'ACHÈTENT avec des pièces 💰 (Prix = 0 : gratuite). Une couleur
+-- achetée sert partout : carrosserie, jantes, siège, bandes.
 Config.Couleurs = {
-	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 240, 240), Niveau = 1 },
-	{ Nom = "Noir", Couleur = Color3.fromRGB(25, 25, 28), Niveau = 1 },
-	{ Nom = "Rouge", Couleur = Color3.fromRGB(215, 35, 40), Niveau = 1 },
-	{ Nom = "Bleu", Couleur = Color3.fromRGB(35, 105, 215), Niveau = 1 },
-	{ Nom = "Gris", Couleur = Color3.fromRGB(140, 145, 155), Niveau = 1 },
-	{ Nom = "Jaune", Couleur = Color3.fromRGB(250, 205, 30), Niveau = 2 },
-	{ Nom = "Vert", Couleur = Color3.fromRGB(40, 170, 80), Niveau = 2 },
-	{ Nom = "Orange", Couleur = Color3.fromRGB(245, 130, 30), Niveau = 2 },
-	{ Nom = "Rose", Couleur = Color3.fromRGB(245, 120, 180), Niveau = 4 },
-	{ Nom = "Violet", Couleur = Color3.fromRGB(130, 70, 200), Niveau = 4 },
-	{ Nom = "Turquoise", Couleur = Color3.fromRGB(30, 200, 200), Niveau = 4 },
-	{ Nom = "Bleu nuit", Couleur = Color3.fromRGB(20, 35, 90), Niveau = 5 },
-	{ Nom = "Bordeaux", Couleur = Color3.fromRGB(110, 20, 40), Niveau = 5 },
-	{ Nom = "Sable", Couleur = Color3.fromRGB(215, 190, 140), Niveau = 7 },
-	{ Nom = "Vert menthe", Couleur = Color3.fromRGB(150, 230, 190), Niveau = 7 },
-	{ Nom = "Or", Couleur = Color3.fromRGB(225, 175, 45), Niveau = 10 },
+	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 240, 240), Niveau = 1, Prix = 0 },
+	{ Nom = "Noir", Couleur = Color3.fromRGB(25, 25, 28), Niveau = 1, Prix = 0 },
+	{ Nom = "Bleu", Couleur = Color3.fromRGB(35, 105, 215), Niveau = 1, Prix = 0 },
+	{ Nom = "Gris", Couleur = Color3.fromRGB(140, 145, 155), Niveau = 1, Prix = 5 },
+	{ Nom = "Rouge", Couleur = Color3.fromRGB(215, 35, 40), Niveau = 1, Prix = 10 },
+	{ Nom = "Jaune", Couleur = Color3.fromRGB(250, 205, 30), Niveau = 1, Prix = 10 },
+	{ Nom = "Orange", Couleur = Color3.fromRGB(245, 130, 30), Niveau = 1, Prix = 50 },
+	{ Nom = "Vert", Couleur = Color3.fromRGB(40, 170, 80), Niveau = 1, Prix = 50 },
+	{ Nom = "Turquoise", Couleur = Color3.fromRGB(30, 200, 200), Niveau = 1, Prix = 50 },
+	{ Nom = "Bleu nuit", Couleur = Color3.fromRGB(20, 35, 90), Niveau = 1, Prix = 75 },
+	{ Nom = "Bordeaux", Couleur = Color3.fromRGB(110, 20, 40), Niveau = 1, Prix = 75 },
+	{ Nom = "Rose", Couleur = Color3.fromRGB(245, 120, 180), Niveau = 1, Prix = 75 },
+	{ Nom = "Violet", Couleur = Color3.fromRGB(130, 70, 200), Niveau = 1, Prix = 100 },
+	{ Nom = "Sable", Couleur = Color3.fromRGB(215, 190, 140), Niveau = 1, Prix = 100 },
+	{ Nom = "Vert menthe", Couleur = Color3.fromRGB(150, 230, 190), Niveau = 1, Prix = 150 },
+	{ Nom = "Or", Couleur = Color3.fromRGB(225, 175, 45), Niveau = 1, Prix = 150 },
+}
+
+---------------------------------------------------------------------
+-- LA MONNAIE DU JEU : les pièces 💰 (gagnées en jouant)
+---------------------------------------------------------------------
+Config.Monnaie = {
+	PointsParPiece = 20, -- 1 pièce pour 20 points de drift
+	XPParPiece = 10, -- et 1 pièce pour 10 XP gagnés dans les modes (victoires, défis…)
+}
+
+---------------------------------------------------------------------
+-- LES PEINTURES PREMIUM (Robux) et LE MAGASIN
+-- Crée chaque produit sur le Creator Hub (ton expérience > Monétisation >
+-- Produits pour développeurs), puis colle son numéro dans ProduitId.
+-- Tant que ProduitId = 0 : dans Studio, l'achat est GRATUIT (pour tester).
+---------------------------------------------------------------------
+Config.PeinturesPremium = {
+	{ Nom = "Chrome miroir", Couleur = Color3.fromRGB(225, 228, 235), Materiau = Enum.Material.Foil, Reflet = 0.6, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Nom = "Or 24 carats", Couleur = Color3.fromRGB(240, 185, 40), Materiau = Enum.Material.Foil, Reflet = 0.45, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Nom = "Arc-en-ciel", Couleur = Color3.fromRGB(255, 80, 80), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.2, ProduitId = 0, PrixAffiche = "R$ 99", ArcEnCiel = true },
+	{ Nom = "Rouge bonbon", Couleur = Color3.fromRGB(200, 10, 30), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.4, ProduitId = 0, PrixAffiche = "R$ 29" },
+	{ Nom = "Cyan néon", Couleur = Color3.fromRGB(40, 230, 255), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 39" },
+	{ Nom = "Vert toxique", Couleur = Color3.fromRGB(110, 255, 60), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 39" },
+}
+
+Config.Boutique = {
+	{ Id = "PackDemarrage", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats", Pieces = 1000, Premium = "Or 24 carats", ProduitId = 0, PrixAffiche = "R$ 45", Promo = true },
+	{ Id = "Pieces1000", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Pieces5000", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
 }
 
 -- Finition de la peinture (aspect réaliste)
@@ -161,6 +192,7 @@ local function chercher(liste, nom)
 	return nil
 end
 function Config.Couleur(nom: string) return chercher(Config.Couleurs, nom) end
+function Config.PeinturePremium(nom: string) return chercher(Config.PeinturesPremium, nom) end
 function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
 function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
 function Config.Neon(nom: string) return chercher(Config.Neons, nom) end

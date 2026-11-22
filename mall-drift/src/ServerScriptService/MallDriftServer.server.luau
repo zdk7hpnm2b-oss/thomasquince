@@ -1758,7 +1758,14 @@ if not okStore then
 	magasin = nil
 end
 
-type Profil = { XP: number, Record: number, Perso: { [string]: any }, Charge: boolean }
+type Profil = {
+	XP: number,
+	Record: number,
+	Perso: { [string]: any },
+	Charge: boolean,
+	Pieces: number, -- la monnaie du jeu 💰
+	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean } },
+}
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
 local derniereAction: { [Player]: { [string]: number } } = {}
@@ -1780,6 +1787,8 @@ local function versionPublique(profil: Profil)
 		XPRequis = xpRequis,
 		Record = profil.Record,
 		Perso = profil.Perso,
+		Pieces = profil.Pieces,
+		Possessions = profil.Possessions,
 	}
 end
 
@@ -1810,7 +1819,7 @@ local function sauvegarder(joueur: Player)
 	if not profil or not profil.Charge or not magasin then
 		return
 	end
-	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso }
+	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -1820,7 +1829,14 @@ local function sauvegarder(joueur: Player)
 end
 
 local function chargerProfil(joueur: Player)
-	local profil: Profil = { XP = 0, Record = 0, Perso = table.clone(Config.PersoParDefaut), Charge = magasin == nil }
+	local profil: Profil = {
+		XP = 0,
+		Record = 0,
+		Perso = table.clone(Config.PersoParDefaut),
+		Charge = magasin == nil,
+		Pieces = 0,
+		Possessions = { Couleurs = {}, Premium = {}, Produits = {} },
+	}
 	if magasin then
 		local ok, donnees = pcall(function()
 			return magasin:GetAsync("joueur_" .. joueur.UserId)
@@ -1830,7 +1846,19 @@ local function chargerProfil(joueur: Player)
 			if type(donnees) == "table" then
 				profil.XP = type(donnees.XP) == "number" and math.max(0, math.floor(donnees.XP)) or 0
 				profil.Record = type(donnees.Record) == "number" and math.max(0, math.floor(donnees.Record)) or 0
-				profil.Perso = KartBuilder.Nettoyer(donnees.Perso, Config.NiveauDepuisXP(profil.XP))
+				profil.Pieces = type(donnees.Pieces) == "number" and math.max(0, math.floor(donnees.Pieces)) or 0
+				if type(donnees.Possessions) == "table" then
+					for _, liste in ipairs({ "Couleurs", "Premium", "Produits" }) do
+						if type(donnees.Possessions[liste]) == "table" then
+							for nom, possede in pairs(donnees.Possessions[liste]) do
+								if type(nom) == "string" and possede == true then
+									profil.Possessions[liste][nom] = true
+								end
+							end
+						end
+					end
+				end
+				profil.Perso = KartBuilder.Nettoyer(donnees.Perso, (Config.NiveauDepuisXP(profil.XP)), profil.Possessions)
 			end
 		else
 			-- On ne sauvegardera pas ce joueur, pour ne pas écraser ses vraies données
@@ -2166,7 +2194,7 @@ Personnaliser.OnServerEvent:Connect(function(joueur: Player, perso: any)
 		return
 	end
 	local ancienType = profil.Perso.Kart
-	profil.Perso = KartBuilder.Nettoyer(perso, niveauDe(profil))
+	profil.Perso = KartBuilder.Nettoyer(perso, niveauDe(profil), profil.Possessions)
 
 	-- Met à jour le kart déjà sorti (sauf pendant une manche en ligne)
 	local kart = kartsJoueurs[joueur]
@@ -2200,6 +2228,7 @@ DriftTermine.OnServerEvent:Connect(function(joueur: Player, points: any)
 
 	local niveauAvant = niveauDe(profil)
 	profil.XP += points
+	profil.Pieces += math.floor(points / ((Config.Monnaie and Config.Monnaie.PointsParPiece) or 20))
 	if points > profil.Record then
 		profil.Record = points
 	end
@@ -2215,10 +2244,114 @@ AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
 	end
 	local niveauAvant = niveauDe(profil)
 	profil.XP += math.max(0, math.floor(quantite))
+	profil.Pieces += math.floor(math.max(0, quantite) / ((Config.Monnaie and Config.Monnaie.XPParPiece) or 10))
 	local niveauApres = niveauDe(profil)
 	majClassement(joueur, profil)
 	ProfilMisAJour:FireClient(joueur, versionPublique(profil), niveauApres > niveauAvant and niveauApres or nil)
 end)
+
+---------------------------------------------------------------------
+-- LES ACHATS
+--   • couleurs : avec les pièces 💰 gagnées en jouant
+--   • peintures premium + magasin : en Robux (produits pour développeurs).
+--     Dans Studio, tant que ProduitId = 0, c'est gratuit (pour tester).
+---------------------------------------------------------------------
+local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService("RunService")
+local Acheter = Instance.new("RemoteFunction")
+Acheter.Name = "Acheter"
+Acheter.Parent = remotes
+
+local function accorderProduit(joueur: Player, profil: Profil, produit: { [string]: any })
+	if produit.Pieces then
+		profil.Pieces += produit.Pieces
+	end
+	if produit.Premium then
+		profil.Possessions.Premium[produit.Premium] = true
+	end
+	if produit.Id then
+		profil.Possessions.Produits[produit.Id] = true
+	end
+	if produit.Nom and Config.PeinturePremium(produit.Nom) then
+		profil.Possessions.Premium[produit.Nom] = true
+	end
+	ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+end
+
+-- Retrouve ce qu'on vend à partir du numéro de produit Roblox
+local function produitDepuisId(produitId: number): { [string]: any }?
+	for _, peinture in ipairs(Config.PeinturesPremium or {}) do
+		if peinture.ProduitId ~= 0 and peinture.ProduitId == produitId then
+			return peinture
+		end
+	end
+	for _, offre in ipairs(Config.Boutique or {}) do
+		if offre.ProduitId ~= 0 and offre.ProduitId == produitId then
+			return offre
+		end
+	end
+	return nil
+end
+
+Acheter.OnServerInvoke = function(joueur: Player, info: any)
+	local profil = profils[joueur]
+	if not profil or type(info) ~= "table" or tropRapide(joueur, "achat", 0.3) then
+		return { ok = false, message = "Patiente un instant…" }
+	end
+	if info.type == "couleur" then
+		local c = type(info.nom) == "string" and Config.Couleur(info.nom)
+		if not c then
+			return { ok = false, message = "Couleur inconnue." }
+		end
+		if (c.Prix or 0) == 0 or profil.Possessions.Couleurs[c.Nom] then
+			return { ok = true, message = "Tu l'as déjà !", profil = versionPublique(profil) }
+		end
+		if profil.Pieces < c.Prix then
+			return { ok = false, message = ("Il te manque %d 💰 : drifte pour en gagner !"):format(c.Prix - profil.Pieces) }
+		end
+		profil.Pieces -= c.Prix
+		profil.Possessions.Couleurs[c.Nom] = true
+		task.spawn(sauvegarder, joueur)
+		return { ok = true, message = ("%s achetée ! -%d 💰"):format(c.Nom, c.Prix), profil = versionPublique(profil) }
+	elseif info.type == "test" then
+		-- Achat Robux pas encore configuré : gratuit dans Studio pour tester
+		if not RunService:IsStudio() then
+			return { ok = false, message = "Ce produit n'est pas encore en vente." }
+		end
+		local produit = type(info.nom) == "string" and (Config.PeinturePremium(info.nom) or nil)
+		if not produit then
+			for _, offre in ipairs(Config.Boutique or {}) do
+				if offre.Id == info.nom then
+					produit = offre
+				end
+			end
+		end
+		if not produit then
+			return { ok = false, message = "Produit inconnu." }
+		end
+		accorderProduit(joueur, profil, produit)
+		return { ok = true, message = "(Test Studio : gratuit) " .. tostring(produit.Nom) .. " débloqué !", profil = versionPublique(profil) }
+	end
+	return { ok = false, message = "Achat inconnu." }
+end
+
+-- Les achats en Robux : Roblox appelle cette fonction quand un paiement a réussi
+MarketplaceService.ProcessReceipt = function(recu)
+	local joueur = Players:GetPlayerByUserId(recu.PlayerId)
+	local profil = joueur and profils[joueur]
+	local produit = produitDepuisId(recu.ProductId)
+	if not joueur or not profil or not produit or not profil.Charge then
+		return Enum.ProductPurchaseDecision.NotProcessedYet -- Roblox réessaiera plus tard
+	end
+	local recus = profil.Possessions.Produits
+	local cle = "recu_" .. tostring(recu.PurchaseId)
+	if not recus[cle] then
+		recus[cle] = true -- (pour ne jamais donner deux fois le même achat)
+		accorderProduit(joueur, profil, produit)
+	end
+	local ok = pcall(sauvegarder, joueur)
+	return if ok then Enum.ProductPurchaseDecision.PurchaseGranted else Enum.ProductPurchaseDecision.NotProcessedYet
+end
 
 ObtenirProfil.OnServerInvoke = function(joueur: Player)
 	local debut = os.clock()

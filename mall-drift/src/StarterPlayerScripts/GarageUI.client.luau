@@ -261,7 +261,7 @@ local function rafraichir()
 	for _, f in ipairs(miseAJour) do
 		f()
 	end
-	sousTitre.Text = ("Niveau %d · drifte pour débloquer plus de styles !"):format(niveau())
+	sousTitre.Text = ("Niveau %d  ·  💰 %d pièces  ·  drifte pour en gagner !"):format(niveau(), profil and profil.Pieces or 0)
 	if menuOuvert then
 		majApercu(persoEdite)
 	end
@@ -358,6 +358,37 @@ for _, e in ipairs(kartsTries) do
 end
 
 -- 2) LES COULEURS (carrosserie, jantes, siège, bandes)
+-- Ce que le joueur a acheté
+local function possede(liste: string, nom: string): boolean
+	local p = profil and profil.Possessions
+	return p ~= nil and type(p[liste]) == "table" and p[liste][nom] == true
+end
+
+-- Acheter une couleur avec des pièces (2 clics : le 1er demande confirmation)
+local achatEnAttente: string? = nil
+local function acheterCouleur(c): boolean
+	if achatEnAttente ~= c.Nom then
+		achatEnAttente = c.Nom
+		afficherStatut(("Acheter « %s » pour %d 💰 ? Clique encore pour confirmer"):format(c.Nom, c.Prix), Color3.fromRGB(255, 220, 90))
+		task.delay(4, function()
+			if achatEnAttente == c.Nom then
+				achatEnAttente = nil
+			end
+		end)
+		return false
+	end
+	achatEnAttente = nil
+	local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "couleur", nom = c.Nom })
+	if type(resultat) == "table" then
+		if resultat.profil then
+			profil = resultat.profil
+		end
+		afficherStatut(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+		return resultat.ok == true
+	end
+	return false
+end
+
 local function choixCouleur(titreSection: string, champ: string, liste: { any }?)
 	local entete = section(titreSection)
 	local g = grille(Vector2.new(40, 40))
@@ -384,17 +415,27 @@ local function choixCouleur(titreSection: string, champ: string, liste: { any }?
 			degrade.Parent = b
 		end
 		b.Parent = g
+		local payante = (c.Prix or 0) > 0
 		table.insert(miseAJour, function()
 			local bloque = c.Niveau > niveau()
-			b.Text = if bloque then "🔒" elseif c.Nom == "Aucun" then "∅" else ""
-			b.BackgroundTransparency = bloque and 0.55 or 0
-			trait.Thickness = persoEdite[champ] == c.Nom and 3 or 0
+			local aAcheter = payante and not possede("Couleurs", c.Nom)
+			b.Text = if bloque then "🔒" elseif aAcheter then (tostring(c.Prix) .. "💰") elseif c.Nom == "Aucun" then "∅" else ""
+			b.BackgroundTransparency = if bloque then 0.55 elseif aAcheter then 0.25 else 0
+			trait.Thickness = if persoEdite[champ] == c.Nom and not (champ == "Carrosserie" and persoEdite.Premium) then 3 else 0
 		end)
 		b.Activated:Connect(function()
-			if not verrouille(c.Niveau) then
-				persoEdite[champ] = c.Nom
-				rafraichir()
+			if verrouille(c.Niveau) then
+				return
 			end
+			if payante and not possede("Couleurs", c.Nom) and not acheterCouleur(c) then
+				rafraichir()
+				return
+			end
+			persoEdite[champ] = c.Nom
+			if champ == "Carrosserie" then
+				persoEdite.Premium = nil -- une couleur normale remplace la peinture premium
+			end
+			rafraichir()
 		end)
 	end
 	table.insert(miseAJour, function()
@@ -403,6 +444,58 @@ local function choixCouleur(titreSection: string, champ: string, liste: { any }?
 end
 
 choixCouleur("🎨  CARROSSERIE", "Carrosserie")
+
+-- 2 bis) LES PEINTURES PREMIUM (Robux)
+local MarketplaceService = game:GetService("MarketplaceService")
+local entetePremium = section("💎  PEINTURES PREMIUM")
+local grillePremium = grille(Vector2.new(40, 40))
+for i, pp in ipairs(Config.PeinturesPremium or {}) do
+	local b = Instance.new("TextButton")
+	b.LayoutOrder = i
+	b.BackgroundColor3 = pp.Couleur
+	b.Font = Enum.Font.GothamBlack
+	b.TextScaled = true
+	b.TextColor3 = Color3.new(1, 1, 1)
+	coins(b, 8)
+	local trait = contour(b, OR, 0)
+	if pp.ArcEnCiel then
+		local degrade = Instance.new("UIGradient")
+		degrade.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
+		})
+		degrade.Parent = b
+	end
+	b.Parent = grillePremium
+	table.insert(miseAJour, function()
+		b.Text = if possede("Premium", pp.Nom) then "" else "R$"
+		trait.Thickness = if persoEdite.Premium == pp.Nom then 3 else 0
+	end)
+	b.Activated:Connect(function()
+		if possede("Premium", pp.Nom) then
+			persoEdite.Premium = if persoEdite.Premium == pp.Nom then nil else pp.Nom
+			rafraichir()
+		elseif (pp.ProduitId or 0) ~= 0 then
+			MarketplaceService:PromptProductPurchase(joueur, pp.ProduitId) -- achat Roblox
+		else
+			-- Pas encore configuré : gratuit dans Studio pour tester
+			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = pp.Nom })
+			if type(resultat) == "table" then
+				if resultat.profil then
+					profil = resultat.profil
+					persoEdite.Premium = pp.Nom
+				end
+				afficherStatut(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+			end
+			rafraichir()
+		end
+	end)
+end
+table.insert(miseAJour, function()
+	entetePremium.Text = "💎  PEINTURES PREMIUM" .. (if persoEdite.Premium then ("  ·  " .. persoEdite.Premium) else "  ·  " .. (Config.PeinturesPremium[1] and Config.PeinturesPremium[1].PrixAffiche or "") .. " et +")
+end)
 
 -- 3) LA FINITION
 local enteteFinition = section("✨  FINITION")
