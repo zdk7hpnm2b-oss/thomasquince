@@ -286,7 +286,7 @@ task.spawn(function()
 	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 12 do
 		task.wait(0.2)
 	end
-	message("Appuie sur F (ou le bouton 🏎️) pour conduire !", Color3.fromRGB(255, 215, 80), 3.5)
+	message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
 	task.wait(3.8)
 	message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
 end)

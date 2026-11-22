@@ -631,6 +631,152 @@ workspace:SetAttribute("MancheEnCours", false)
 local DUREE_BATTLE = P.DureeBattle or 60
 local scoresBattle: { [Player]: Score } = {}
 
+---------------------------------------------------------------------
+-- LE CLASSEMENT MONDIAL DU DRIFT BATTLE (tous les joueurs qui ont joué au jeu)
+-- Meilleur score de chaque joueur, enregistré par Roblox (OrderedDataStore).
+-- Dans Studio sans accès aux services API : classement local de secours.
+---------------------------------------------------------------------
+local DataStoreService = game:GetService("DataStoreService")
+local okDS, tableauRecords = pcall(function()
+	return DataStoreService:GetOrderedDataStore("DriftBattle_Records_v1")
+end)
+if not okDS then
+	tableauRecords = nil
+end
+local recordsLocaux: { [number]: number } = {} -- secours : userId → meilleur score
+local cacheNoms: { [number]: string } = {}
+
+local function nomDe(userId: number): string
+	if cacheNoms[userId] then
+		return cacheNoms[userId]
+	end
+	local present = Players:GetPlayerByUserId(userId)
+	local nom = present and present.DisplayName or nil
+	if not nom then
+		local ok, resultat = pcall(function()
+			return Players:GetNameFromUserIdAsync(userId)
+		end)
+		nom = if ok and resultat then resultat else ("Joueur " .. userId)
+	end
+	cacheNoms[userId] = nom
+	return nom
+end
+
+-- Enregistre le score s'il bat le record du joueur ; renvoie le record
+local function enregistrerRecord(joueur: Player, score: number): number
+	local id = joueur.UserId
+	recordsLocaux[id] = math.max(recordsLocaux[id] or 0, score)
+	local record = recordsLocaux[id]
+	if tableauRecords then
+		local ok, valeur = pcall(function()
+			return tableauRecords:UpdateAsync(tostring(id), function(ancien)
+				if ancien == nil or score > ancien then
+					return score
+				end
+				return nil -- (on garde l'ancien record)
+			end)
+		end)
+		if ok and type(valeur) == "number" then
+			record = math.max(record, valeur)
+		elseif ok then
+			local ok2, actuel = pcall(function()
+				return tableauRecords:GetAsync(tostring(id))
+			end)
+			if ok2 and type(actuel) == "number" then
+				record = math.max(record, actuel)
+			end
+		end
+	end
+	return record
+end
+
+type Ligne = { rang: number, nom: string, score: number, moi: boolean? }
+
+-- Le top 3 + ta place avec les 2 joueurs juste devant et les 2 juste derrière
+local function classementAutour(joueur: Player, record: number): ({ Ligne }, { Ligne }, number)
+	local top, autour = {}, {}
+	local rang = 1
+	if tableauRecords then
+		local ok = pcall(function()
+			-- Top 3
+			local pages = tableauRecords:GetSortedAsync(false, 3)
+			for i, entree in ipairs(pages:GetCurrentPage()) do
+				table.insert(top, { rang = i, nom = nomDe(tonumber(entree.key) or 0), score = entree.value })
+			end
+			-- Ta place : on compte les joueurs qui ont un meilleur score que toi
+			local plusHauts = {}
+			local nombreDevant = 0
+			local pagesHaut = tableauRecords:GetSortedAsync(true, 100, record + 1)
+			for _ = 1, 50 do -- (jusqu'à 5 000 joueurs devant toi)
+				local page = pagesHaut:GetCurrentPage()
+				for _, entree in ipairs(page) do
+					nombreDevant += 1
+					if #plusHauts < 2 then
+						table.insert(plusHauts, entree) -- les plus proches juste au-dessus
+					end
+				end
+				if pagesHaut.IsFinished then
+					break
+				end
+				pagesHaut:AdvanceToNextPageAsync()
+			end
+			rang = nombreDevant + 1
+			for i = #plusHauts, 1, -1 do
+				local entree = plusHauts[i]
+				table.insert(autour, { rang = rang - i, nom = nomDe(tonumber(entree.key) or 0), score = entree.value })
+			end
+			table.insert(autour, { rang = rang, nom = joueur.DisplayName, score = record, moi = true })
+			if record > 0 then
+				local pagesBas = tableauRecords:GetSortedAsync(false, 2, nil, record - 1)
+				for i, entree in ipairs(pagesBas:GetCurrentPage()) do
+					table.insert(autour, { rang = rang + i, nom = nomDe(tonumber(entree.key) or 0), score = entree.value })
+				end
+			end
+		end)
+		if ok then
+			return top, autour, rang
+		end
+		top, autour, rang = {}, {}, 1
+	end
+	-- Classement local de secours
+	local liste = {}
+	for id, score in pairs(recordsLocaux) do
+		table.insert(liste, { id = id, score = score })
+	end
+	table.sort(liste, function(a, b)
+		return a.score > b.score
+	end)
+	for i, ligne in ipairs(liste) do
+		if ligne.id == joueur.UserId then
+			rang = i
+		end
+	end
+	for i, ligne in ipairs(liste) do
+		local l = { rang = i, nom = nomDe(ligne.id), score = ligne.score, moi = ligne.id == joueur.UserId }
+		if i <= 3 then
+			table.insert(top, l)
+		end
+		if math.abs(i - rang) <= 2 then
+			table.insert(autour, l)
+		end
+	end
+	return top, autour, rang
+end
+
+-- À l'arrivée : on récupère le record du joueur
+Players.PlayerAdded:Connect(function(joueur: Player)
+	if not tableauRecords then
+		return
+	end
+	local ok, valeur = pcall(function()
+		return tableauRecords:GetAsync(tostring(joueur.UserId))
+	end)
+	if ok and type(valeur) == "number" then
+		recordsLocaux[joueur.UserId] = valeur
+		joueur:SetAttribute("RecordBattle", valeur)
+	end
+end)
+
 local function lancerBattle(joueur: Player)
 	if joueur:GetAttribute("Role") ~= nil or joueur:GetAttribute("EnSalle") then
 		return
@@ -665,14 +811,23 @@ local function lancerBattle(joueur: Player)
 	end
 	local ancienRecord = joueur:GetAttribute("RecordBattle") or 0
 	local nouveauRecord = sc.total > ancienRecord
-	if nouveauRecord then
-		joueur:SetAttribute("RecordBattle", sc.total)
-	end
 	AjouterXP:Fire(joueur, (P.XPParticipation or 50) + math.floor(sc.total / 20))
-	Partie:FireClient(joueur, { type = "finBattle", total = sc.total, meilleur = sc.meilleur, record = math.max(ancienRecord, sc.total), nouveauRecord = nouveauRecord })
-	-- On continue à rouler, en entraînement
+	-- Fin du défi : retour au garage, puis le menu s'ouvre (côté joueur)
 	joueur:SetAttribute("Role", nil)
 	joueur.Team = EQUIPE_VISITEURS
+	RetirerKart:Invoke(joueur)
+	local cf = apparitionGarage()
+	task.delay(0.2, function()
+		if cf and joueur.Character then
+			joueur.Character:PivotTo(cf)
+		end
+	end)
+	Partie:FireClient(joueur, { type = "finBattle", total = sc.total, meilleur = sc.meilleur, record = math.max(ancienRecord, sc.total), nouveauRecord = nouveauRecord })
+	-- Le classement mondial (enregistrement + ta place)
+	local record = enregistrerRecord(joueur, sc.total)
+	joueur:SetAttribute("RecordBattle", record)
+	local top, autour, rang = classementAutour(joueur, record)
+	Partie:FireClient(joueur, { type = "classementMondial", top = top, autour = autour, rang = rang, record = record })
 end
 
 DriftEnregistre.Event:Connect(function(joueur: Player, points: number)

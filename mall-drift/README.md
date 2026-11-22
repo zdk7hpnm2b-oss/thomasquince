@@ -14,10 +14,11 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
-- **☰ Un menu, deux modes de jeu** (il s'ouvre après l'intro, puis avec **☰ MENU** en bas à droite) :
+- **☰ Un menu pour choisir son mode** : en arrivant, tu visites le garage, puis tu ouvres **☰ MENU** (en bas à droite) :
   **🏁 ENTRAÎNEMENT** (drift libre, la police du mall en bots te poursuit), **🌐 JOUER EN LIGNE**
   (Police contre Fugitifs), **🔥 DRIFT BATTLE** (défi solo instantané : petit titre de 2 s, 3-2-1, puis
-  1 minute pour faire le plus de points de drift ; score, record et XP à la fin) et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
+  1 minute pour faire le plus de points de drift ; score, record et XP à la fin, puis le
+  **🏆 classement mondial** de tous les joueurs : le top 3 et directement ta place, par ex. « Tu es 200e ! ») et **🎨 GARAGE VIP**. Ceux qui s'entraînent continuent de rouler pendant
   les manches en ligne des autres
 - **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : quand assez de joueurs
   sont dans la file : une **page d'attente**

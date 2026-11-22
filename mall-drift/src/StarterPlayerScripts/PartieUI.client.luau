@@ -412,16 +412,95 @@ carteGarage.Activated:Connect(function()
 	Partie:FireServer({ type = "garage" })
 end)
 
--- Le menu s'ouvre tout seul à la fin de l'intro (la première fois)
-task.spawn(function()
-	while not joueur:GetAttribute("IntroFinie") do
-		task.wait(0.3)
-	end
-	task.wait(0.5)
-	if joueur:GetAttribute("Role") == nil then
-		ouvrirMenu(true)
-	end
+-- (En arrivant, on visite le garage : le menu s'ouvre avec le bouton « ☰ MENU »)
+
+---------------------------------------------------------------------
+-- LE CLASSEMENT MONDIAL DU DRIFT BATTLE : top 3 + ta place directement
+---------------------------------------------------------------------
+local panneauMondial = Instance.new("Frame")
+panneauMondial.AnchorPoint = Vector2.new(0.5, 0.5)
+panneauMondial.Size = UDim2.new(0, 480, 0, 400)
+panneauMondial.Position = UDim2.fromScale(0.5, 0.5)
+panneauMondial.BackgroundColor3 = FOND
+panneauMondial.BackgroundTransparency = 0.05
+panneauMondial.Visible = false
+panneauMondial.ZIndex = 40
+panneauMondial.Parent = gui
+Instance.new("UICorner", panneauMondial).CornerRadius = UDim.new(0, 18)
+local bordMondial = Instance.new("UIStroke")
+bordMondial.Thickness = 4
+bordMondial.Color = Color3.fromRGB(255, 205, 70)
+bordMondial.Parent = panneauMondial
+local titreMondial = texte(panneauMondial, UDim2.new(1, -30, 0, 30), UDim2.new(0, 15, 0, 12), Color3.fromRGB(255, 205, 70))
+titreMondial.Text = "🏆 CLASSEMENT MONDIAL · DRIFT BATTLE"
+titreMondial.ZIndex = 41
+local maPlace = texte(panneauMondial, UDim2.new(1, -30, 0, 48), UDim2.new(0, 15, 0, 46), Color3.new(1, 1, 1))
+maPlace.ZIndex = 41
+local lignesMondial = Instance.new("Frame")
+lignesMondial.Size = UDim2.new(1, -30, 0, 250)
+lignesMondial.Position = UDim2.new(0, 15, 0, 100)
+lignesMondial.BackgroundTransparency = 1
+lignesMondial.ZIndex = 41
+lignesMondial.Parent = panneauMondial
+local listeMondial = Instance.new("UIListLayout")
+listeMondial.Padding = UDim.new(0, 3)
+listeMondial.SortOrder = Enum.SortOrder.LayoutOrder
+listeMondial.Parent = lignesMondial
+local boutonOK = Instance.new("TextButton")
+boutonOK.AnchorPoint = Vector2.new(0.5, 1)
+boutonOK.Size = UDim2.new(0, 160, 0, 40)
+boutonOK.Position = UDim2.new(0.5, 0, 1, -12)
+boutonOK.BackgroundColor3 = Color3.fromRGB(110, 60, 220)
+boutonOK.TextColor3 = Color3.new(1, 1, 1)
+boutonOK.Font = Enum.Font.GothamBlack
+boutonOK.TextScaled = true
+boutonOK.Text = "OK"
+boutonOK.ZIndex = 42
+boutonOK.Parent = panneauMondial
+Instance.new("UICorner", boutonOK).CornerRadius = UDim.new(0, 10)
+boutonOK.Activated:Connect(function()
+	panneauMondial.Visible = false
 end)
+
+local function ligneMondial(ordre: number, txt: string, couleur: Color3)
+	local l = texte(lignesMondial, UDim2.new(1, 0, 0, 26), UDim2.new(), couleur, Enum.Font.GothamBold)
+	l.LayoutOrder = ordre
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.Text = txt
+	l.ZIndex = 42
+end
+
+local function montrerClassementMondial(info)
+	for _, enfant in ipairs(lignesMondial:GetChildren()) do
+		if enfant:IsA("TextLabel") then
+			enfant:Destroy()
+		end
+	end
+	maPlace.Text = ("Tu es %de ! · ton record : %d pts"):format(info.rang or 1, info.record or 0)
+	local medailles = { "🥇", "🥈", "🥉" }
+	local ordre = 0
+	local dejaMontre = {}
+	for _, l in ipairs(info.top or {}) do
+		ordre += 1
+		dejaMontre[l.rang] = true
+		local estMoi = l.rang == info.rang
+		ligneMondial(ordre, ("%s %d. %s — %d pts"):format(medailles[l.rang] or "", l.rang, l.nom, l.score),
+			if estMoi then Color3.fromRGB(255, 230, 120) else Color3.new(1, 1, 1))
+	end
+	local premierAutour = info.autour and info.autour[1]
+	if premierAutour and premierAutour.rang > 4 then
+		ordre += 1
+		ligneMondial(ordre, "          · · ·", Color3.fromRGB(150, 150, 160))
+	end
+	for _, l in ipairs(info.autour or {}) do
+		if not dejaMontre[l.rang] then
+			ordre += 1
+			ligneMondial(ordre, ("%s%d. %s — %d pts"):format(if l.moi then "👉 " else "     ", l.rang, l.nom, l.score),
+				if l.moi then Color3.fromRGB(255, 230, 120) else Color3.fromRGB(210, 210, 220))
+		end
+	end
+	panneauMondial.Visible = true
+end
 
 ---------------------------------------------------------------------
 -- Messages du serveur
@@ -483,8 +562,15 @@ Partie.OnClientEvent:Connect(function(info)
 	elseif info.type == "finBattle" then
 		montrerCarte(if info.nouveauRecord then "🏆 NOUVEAU RECORD !" else ("Ton record : %d pts"):format(info.record or 0),
 			("🔥 %d POINTS"):format(info.total or 0),
-			("Meilleur drift : %d · Tu continues en entraînement !"):format(info.meilleur or 0),
-			if info.nouveauRecord then Color3.fromRGB(255, 205, 70) else Color3.fromRGB(255, 90, 170), 4.5)
+			("Meilleur drift : %d"):format(info.meilleur or 0),
+			if info.nouveauRecord then Color3.fromRGB(255, 205, 70) else Color3.fromRGB(255, 90, 170), 3)
+		task.delay(3, function()
+			ouvrirMenu(true) -- retour direct au menu
+		end)
+	elseif info.type == "classementMondial" then
+		task.delay(3, function()
+			montrerClassementMondial(info)
+		end)
 	elseif info.type == "info" then
 		ajouterAuFil(info.texte or "", Color3.fromRGB(255, 215, 80))
 	elseif info.type == "arrestation" then
