@@ -1,0 +1,621 @@
+--[[
+	KartController  (LocalScript)
+	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : KartController
+
+	Gère tout ce que le joueur ressent quand il conduit :
+	  • la conduite et le DRIFT (glisse, 360°)
+	  • le SCORE de drift : plus il est long et beau, plus il rapporte (avec étoiles ★)
+	  • le SOL MOUILLÉ : ça glisse énormément + éclaboussures sur l'écran
+	  • la caméra 1re personne (V), jour/nuit (N), remettre le kart droit (R)
+
+	Commandes :
+	  Avancer / reculer / tourner : flèches, ZQSD (ou WASD), manette, joystick mobile
+	  Drift : Maj (Shift) — gâchette R2/L2 — bouton DRIFT sur mobile
+	  Descendre du kart : Espace (saut)
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+
+local joueur = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local controles = require(joueur:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
+
+---------------------------------------------------------------------
+-- INTERFACE (créée par le code, rien à dessiner)
+---------------------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "MallDriftHUD"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = joueur:WaitForChild("PlayerGui")
+
+local function label(nom: string, parent: Instance, taille: UDim2, position: UDim2, texteTaille: number?): TextLabel
+	local l = Instance.new("TextLabel")
+	l.Name = nom
+	l.Size = taille
+	l.Position = position
+	l.BackgroundTransparency = 1
+	l.TextColor3 = Color3.new(1, 1, 1)
+	l.Font = Enum.Font.GothamBlack
+	l.TextScaled = texteTaille == nil
+	if texteTaille then
+		l.TextSize = texteTaille
+	end
+	l.Text = ""
+	local contour = Instance.new("UIStroke")
+	contour.Thickness = 2
+	contour.Color = Color3.fromRGB(20, 20, 30)
+	contour.Parent = l
+	l.Parent = parent
+	return l
+end
+
+-- Écran des éclaboussures (en dessous du reste)
+local ecranEau = Instance.new("Frame")
+ecranEau.Name = "Eclaboussures"
+ecranEau.Size = UDim2.fromScale(1, 1)
+ecranEau.BackgroundTransparency = 1
+ecranEau.ZIndex = 1
+ecranEau.Parent = gui
+
+local hud = Instance.new("Frame")
+hud.Name = "HUD"
+hud.Size = UDim2.fromScale(1, 1)
+hud.BackgroundTransparency = 1
+hud.ZIndex = 5
+hud.Visible = false
+hud.Parent = gui
+
+local niveauInfo = Config.Niveaux[Config.NiveauActuel]
+local titreNiveau = label("Niveau", hud, UDim2.new(0, 420, 0, 26), UDim2.new(0, 16, 0, 56))
+titreNiveau.TextXAlignment = Enum.TextXAlignment.Left
+titreNiveau.Text = ("NIVEAU %d · %s"):format(Config.NiveauActuel, string.upper(niveauInfo.Nom))
+
+local scoreLabel = label("Score", hud, UDim2.new(0, 320, 0, 40), UDim2.new(1, -336, 0, 56))
+scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
+local meilleurLabel = label("Meilleur", hud, UDim2.new(0, 320, 0, 22), UDim2.new(1, -336, 0, 98))
+meilleurLabel.TextXAlignment = Enum.TextXAlignment.Right
+meilleurLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
+
+local vitesseLabel = label("Vitesse", hud, UDim2.new(0, 220, 0, 48), UDim2.new(0, 16, 1, -120))
+vitesseLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local aide = label("Aide", hud, UDim2.new(1, -32, 0, 18), UDim2.new(0, 16, 1, -30))
+aide.TextXAlignment = Enum.TextXAlignment.Left
+aide.TextTransparency = 0.25
+aide.Text = "Maj : DRIFT  ·  V : caméra  ·  N : jour/nuit  ·  R : redresser  ·  Espace : descendre"
+
+-- Le compteur de drift (au centre, en bas)
+local blocDrift = Instance.new("Frame")
+blocDrift.Name = "Drift"
+blocDrift.AnchorPoint = Vector2.new(0.5, 1)
+blocDrift.Size = UDim2.new(0, 360, 0, 130)
+blocDrift.Position = UDim2.new(0.5, 0, 1, -70)
+blocDrift.BackgroundTransparency = 1
+blocDrift.Visible = false
+blocDrift.Parent = hud
+local etoilesLabel = label("Etoiles", blocDrift, UDim2.new(1, 0, 0, 40), UDim2.new(0, 0, 0, 0))
+etoilesLabel.TextColor3 = Color3.fromRGB(255, 210, 40)
+local pointsLabel = label("Points", blocDrift, UDim2.new(1, 0, 0, 56), UDim2.new(0, 0, 0, 40))
+local comboLabel = label("Combo", blocDrift, UDim2.new(1, 0, 0, 28), UDim2.new(0, 0, 0, 98))
+comboLabel.TextColor3 = Color3.fromRGB(120, 220, 255)
+
+-- Messages qui apparaissent au milieu (« SUPER DRIFT ★★ », « 360° ! »…)
+local function message(texte: string, couleur: Color3?, duree: number?)
+	local m = label("Message", hud, UDim2.new(0, 600, 0, 60), UDim2.new(0.5, -300, 0.28, 0))
+	m.Text = texte
+	m.TextColor3 = couleur or Color3.new(1, 1, 1)
+	m.ZIndex = 10
+	local echelle = Instance.new("UIScale")
+	echelle.Scale = 0.4
+	echelle.Parent = m
+	TweenService:Create(echelle, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(duree or 1.4, function()
+		local info = TweenInfo.new(0.4)
+		TweenService:Create(m, info, { TextTransparency = 1, Position = m.Position - UDim2.fromOffset(0, 30) }):Play()
+		local contour = m:FindFirstChildOfClass("UIStroke")
+		if contour then
+			TweenService:Create(contour, info, { Transparency = 1 }):Play()
+		end
+		task.wait(0.45)
+		m:Destroy()
+	end)
+end
+
+---------------------------------------------------------------------
+-- ÉCLABOUSSURES SUR L'ÉCRAN
+---------------------------------------------------------------------
+local function goutte()
+	local taille = math.random(50, 170)
+	local g = Instance.new("Frame")
+	g.Size = UDim2.fromOffset(taille, taille)
+	g.Position = UDim2.new(math.random(), -taille / 2, math.random() * 0.85, -taille / 2)
+	g.BackgroundColor3 = Color3.fromRGB(190, 225, 255)
+	g.BackgroundTransparency = 0.55
+	g.ZIndex = 2
+	local coin = Instance.new("UICorner")
+	coin.CornerRadius = UDim.new(0.5, 0)
+	coin.Parent = g
+	local bord = Instance.new("UIStroke")
+	bord.Color = Color3.new(1, 1, 1)
+	bord.Thickness = 2
+	bord.Transparency = 0.35
+	bord.Parent = g
+	-- petit reflet de lumière dans la goutte
+	local reflet = Instance.new("Frame")
+	reflet.Size = UDim2.fromScale(0.25, 0.25)
+	reflet.Position = UDim2.fromScale(0.2, 0.18)
+	reflet.BackgroundColor3 = Color3.new(1, 1, 1)
+	reflet.BackgroundTransparency = 0.3
+	reflet.ZIndex = 3
+	local coin2 = Instance.new("UICorner")
+	coin2.CornerRadius = UDim.new(0.5, 0)
+	coin2.Parent = reflet
+	reflet.Parent = g
+	g.Parent = ecranEau
+
+	-- la goutte coule vers le bas puis disparaît
+	local duree = math.random(12, 22) / 10
+	local info = TweenInfo.new(duree, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(g, info, { BackgroundTransparency = 1, Position = g.Position + UDim2.fromScale(0, 0.08) }):Play()
+	TweenService:Create(bord, info, { Transparency = 1 }):Play()
+	TweenService:Create(reflet, info, { BackgroundTransparency = 1 }):Play()
+	task.delay(duree + 0.1, function()
+		g:Destroy()
+	end)
+end
+
+local function grosseEclaboussure()
+	-- flash bleuté + plein de gouttes
+	local flash = Instance.new("Frame")
+	flash.Size = UDim2.fromScale(1, 1)
+	flash.BackgroundColor3 = Color3.fromRGB(170, 215, 255)
+	flash.BackgroundTransparency = 0.6
+	flash.ZIndex = 1
+	flash.Parent = ecranEau
+	TweenService:Create(flash, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+	task.delay(0.4, function()
+		flash:Destroy()
+	end)
+	for _ = 1, math.random(7, 11) do
+		goutte()
+	end
+end
+
+---------------------------------------------------------------------
+-- ÉTAT DU JEU
+---------------------------------------------------------------------
+local kart = nil -- { modele, chassis, stats, trails, fumees, eaux, sons }
+local driftAppuye = false
+local vitesseRotation = 0
+local tempsBoost = 0
+local derniereVitesse = 0
+local etaitMouille = false
+local prochaineGoutte = 0
+local nuit = Lighting:GetAttribute("Nuit")
+if nuit == nil then
+	nuit = Config.NuitParDefaut
+end
+
+local scoreTotal, meilleurDrift = 0, 0
+local drift = { actif = false, points = 0, temps = 0, rotation = 0, horsDrift = 0, combo = 1, nb360 = 0 }
+
+local parametresRayon = RaycastParams.new()
+parametresRayon.FilterType = Enum.RaycastFilterType.Exclude
+
+local function nombreEtoiles(points: number): number
+	local n = 0
+	for i, seuil in ipairs(Config.Score.Etoiles) do
+		if points >= seuil then
+			n = i
+		end
+	end
+	return n
+end
+
+local function texteEtoiles(n: number): string
+	return string.rep("★", n) .. string.rep("☆", #Config.Score.Etoiles - n)
+end
+
+local function majScore()
+	scoreLabel.Text = ("SCORE  %d"):format(scoreTotal)
+	meilleurLabel.Text = ("MEILLEUR DRIFT  %d"):format(meilleurDrift)
+end
+majScore()
+
+local function vers(valeur: number, cible: number, pas: number): number
+	if valeur < cible then
+		return math.min(valeur + pas, cible)
+	end
+	return math.max(valeur - pas, cible)
+end
+
+---------------------------------------------------------------------
+-- DRIFT : début / fin / score
+---------------------------------------------------------------------
+local function terminerDrift(reussi: boolean)
+	local points = math.floor(drift.points)
+	if reussi and points >= Config.Score.Minimum then
+		local etoiles = nombreEtoiles(points)
+		scoreTotal += points
+		if points > meilleurDrift then
+			meilleurDrift = points
+		end
+		local titres = { [0] = "PETIT DRIFT", "JOLI DRIFT", "SUPER DRIFT", "DRIFT DE LÉGENDE" }
+		local couleurs = { [0] = Color3.new(1, 1, 1), Color3.fromRGB(150, 230, 255), Color3.fromRGB(255, 215, 60), Color3.fromRGB(255, 120, 220) }
+		local titre = titres[math.min(etoiles, 3)]
+		message(("%s %s  +%d"):format(titre, etoiles > 0 and texteEtoiles(etoiles) or "", points), couleurs[math.min(etoiles, 3)], 1.8)
+		if etoiles >= 2 then
+			tempsBoost = Config.Score.DureeBoost
+			message("BOOST !", Color3.fromRGB(120, 255, 140), 0.9)
+		end
+		majScore()
+	elseif not reussi and points > 0 then
+		message(("OUPS ! DRIFT PERDU  -%d"):format(points), Color3.fromRGB(255, 90, 90), 1.4)
+	end
+	drift.actif = false
+	drift.points, drift.temps, drift.rotation, drift.horsDrift, drift.combo, drift.nb360 = 0, 0, 0, 0, 1, 0
+	blocDrift.Visible = false
+end
+
+---------------------------------------------------------------------
+-- ENTRER / SORTIR DU KART
+---------------------------------------------------------------------
+local function effets(nomEffet: string): { Instance }
+	local liste = {}
+	for _, d in ipairs(kart.chassis:GetDescendants()) do
+		if d.Name == nomEffet then
+			table.insert(liste, d)
+		end
+	end
+	return liste
+end
+
+local function creerSon(id: string, boucle: boolean): Sound?
+	if id == "" then
+		return nil
+	end
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Looped = boucle
+	s.Volume = 0.5
+	s.Parent = kart.chassis
+	return s
+end
+
+local function actionDrift(_, etat: Enum.UserInputState)
+	driftAppuye = etat == Enum.UserInputState.Begin
+	return Enum.ContextActionResult.Sink
+end
+
+-- Remet la caméra en vue de derrière (3e personne)
+local function cameraDerriere()
+	joueur.CameraMode = Enum.CameraMode.Classic
+	joueur.CameraMinZoomDistance = 12 -- force la caméra à reculer…
+	task.delay(0.1, function()
+		joueur.CameraMinZoomDistance = 0.5 -- …puis on peut de nouveau zoomer librement
+	end)
+end
+
+local function actionCamera(_, etat: Enum.UserInputState)
+	if etat == Enum.UserInputState.Begin then
+		if joueur.CameraMode == Enum.CameraMode.LockFirstPerson then
+			cameraDerriere()
+		else
+			joueur.CameraMode = Enum.CameraMode.LockFirstPerson
+		end
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+local function actionNuit(_, etat: Enum.UserInputState)
+	if etat == Enum.UserInputState.Begin then
+		nuit = not nuit
+		Config.AppliquerAmbiance(nuit)
+		message(nuit and "MODE NUIT 🌙" or "MODE JOUR ☀️", Color3.new(1, 1, 1), 1)
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+local function actionRedresser(_, etat: Enum.UserInputState)
+	if etat == Enum.UserInputState.Begin and kart then
+		local ch = kart.chassis
+		local regard = Vector3.new(ch.CFrame.LookVector.X, 0, ch.CFrame.LookVector.Z)
+		if regard.Magnitude < 0.1 then
+			regard = Vector3.new(0, 0, -1)
+		end
+		local pos = ch.Position + Vector3.new(0, 3, 0)
+		ch.AssemblyLinearVelocity = Vector3.zero
+		ch.AssemblyAngularVelocity = Vector3.zero
+		ch.CFrame = CFrame.lookAt(pos, pos + regard.Unit)
+	end
+	return Enum.ContextActionResult.Sink
+end
+
+local function sortirDuKart()
+	if not kart then
+		return
+	end
+	if drift.actif then
+		terminerDrift(true)
+	end
+	for _, nom in ipairs({ "TracePneu", "Fumee", "Eclaboussures" }) do
+		for _, e in ipairs(effets(nom)) do
+			(e :: any).Enabled = false
+		end
+	end
+	for _, s in pairs(kart.sons) do
+		s:Destroy()
+	end
+	ContextActionService:UnbindAction("MallDrift_Drift")
+	ContextActionService:UnbindAction("MallDrift_Camera")
+	ContextActionService:UnbindAction("MallDrift_Nuit")
+	ContextActionService:UnbindAction("MallDrift_Redresser")
+	if joueur.CameraMode == Enum.CameraMode.LockFirstPerson then
+		cameraDerriere()
+	end
+	camera.FieldOfView = 70
+	driftAppuye = false
+	hud.Visible = false
+	kart = nil
+end
+
+local function entrerDansKart(siege: Seat)
+	local modele = siege.Parent
+	local typeKart = modele and modele:GetAttribute("KartType")
+	if not typeKart then
+		return
+	end
+	local chassis = modele:WaitForChild("Chassis", 3)
+	if not chassis then
+		return
+	end
+	kart = {
+		modele = modele,
+		chassis = chassis,
+		stats = Config.Karts[typeKart],
+		sons = {},
+	}
+	kart.trails = effets("TracePneu")
+	kart.fumees = effets("Fumee")
+	kart.eaux = effets("Eclaboussures")
+	kart.sons.moteur = creerSon(Config.Sons.Moteur, true)
+	kart.sons.drift = creerSon(Config.Sons.Drift, true)
+	kart.sons.eau = creerSon(Config.Sons.Eclaboussure, false)
+	if kart.sons.moteur then
+		kart.sons.moteur:Play()
+	end
+
+	parametresRayon.FilterDescendantsInstances = { modele, joueur.Character }
+	vitesseRotation = 0
+	derniereVitesse = 0
+	tempsBoost = 0
+
+	ContextActionService:BindActionAtPriority("MallDrift_Drift", actionDrift, true, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift, Enum.KeyCode.RightShift, Enum.KeyCode.ButtonR2, Enum.KeyCode.ButtonL2)
+	ContextActionService:SetTitle("MallDrift_Drift", "DRIFT")
+	ContextActionService:SetPosition("MallDrift_Drift", UDim2.new(1, -170, 1, -150))
+	ContextActionService:BindAction("MallDrift_Camera", actionCamera, true, Enum.KeyCode.V, Enum.KeyCode.ButtonY)
+	ContextActionService:SetTitle("MallDrift_Camera", "CAM")
+	ContextActionService:SetPosition("MallDrift_Camera", UDim2.new(1, -230, 1, -230))
+	ContextActionService:BindAction("MallDrift_Nuit", actionNuit, false, Enum.KeyCode.N)
+	ContextActionService:BindAction("MallDrift_Redresser", actionRedresser, true, Enum.KeyCode.R, Enum.KeyCode.ButtonX)
+	ContextActionService:SetTitle("MallDrift_Redresser", "R")
+	ContextActionService:SetPosition("MallDrift_Redresser", UDim2.new(1, -290, 1, -150))
+
+	hud.Visible = true
+	message(("%s · C'EST PARTI !"):format(string.upper(kart.stats.Nom)), Color3.new(1, 1, 1), 1.5)
+end
+
+local function brancherPersonnage(perso: Model)
+	local humanoide = perso:WaitForChild("Humanoid") :: Humanoid
+	humanoide.Seated:Connect(function(assis: boolean, siege: BasePart?)
+		if assis and siege and siege:IsA("Seat") then
+			entrerDansKart(siege)
+		else
+			sortirDuKart()
+		end
+	end)
+	humanoide.Died:Connect(sortirDuKart)
+end
+
+if joueur.Character then
+	brancherPersonnage(joueur.Character)
+end
+joueur.CharacterAdded:Connect(brancherPersonnage)
+
+---------------------------------------------------------------------
+-- LA CONDUITE (exécutée à chaque image)
+---------------------------------------------------------------------
+local function surfaceSous(chassis: BasePart): string?
+	local resultat = workspace:Raycast(chassis.Position, Vector3.new(0, -3, 0), parametresRayon)
+	if not resultat then
+		return nil -- en l'air
+	end
+	if resultat.Instance:GetAttribute("Mouille") then
+		return "mouille"
+	end
+	return "normal"
+end
+
+RunService.Heartbeat:Connect(function(dt: number)
+	if not kart then
+		return
+	end
+	local ch = kart.chassis
+	if not ch.Parent then
+		sortirDuKart()
+		return
+	end
+	local s = kart.stats
+	local cf = ch.CFrame
+
+	-- Direction du kart (à plat)
+	local avant = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+	if avant.Magnitude < 0.1 then
+		return
+	end
+	avant = avant.Unit
+	local droite = Vector3.new(-avant.Z, 0, avant.X)
+
+	-- Vitesse actuelle découpée en "vers l'avant" et "sur le côté"
+	local vel = ch.AssemblyLinearVelocity
+	local vAvant = vel:Dot(avant)
+	local vCote = vel:Dot(droite)
+	local vitesse = Vector3.new(vel.X, 0, vel.Z).Magnitude
+	local rotationReelle = ch.AssemblyAngularVelocity.Y
+
+	-- Commandes du joueur (clavier, manette ou joystick mobile)
+	local mv = controles:GetMoveVector()
+	local gaz = math.clamp(-mv.Z, -1, 1)
+	local volant = math.clamp(mv.X, -1, 1)
+
+	local surface = surfaceSous(ch)
+	local auSol = surface ~= nil
+	local mouille = surface == "mouille"
+
+	tempsBoost = math.max(tempsBoost - dt, 0)
+
+	-- 1) Accélérer / freiner
+	local vMax = s.VitesseMax + (tempsBoost > 0 and s.Boost or 0)
+	local cible = if gaz >= 0 then gaz * vMax else gaz * s.VitesseMax * 0.5
+	local taux
+	if math.abs(gaz) < 0.05 then
+		taux = s.Freinage * 0.25 -- roue libre
+	elseif math.sign(gaz) ~= math.sign(vAvant) and math.abs(vAvant) > 1 then
+		taux = s.Freinage
+	else
+		taux = s.Acceleration * (tempsBoost > 0 and 2 or 1)
+	end
+	if mouille then
+		taux *= Config.Mouille.Acceleration
+	end
+	if auSol then
+		vAvant = vers(vAvant, cible, taux * dt)
+	end
+
+	-- 2) Adhérence : on "efface" plus ou moins vite la glisse sur le côté
+	local adherence = if driftAppuye then s.AdherenceDrift else s.Adherence
+	if mouille then
+		adherence *= Config.Mouille.Adherence
+	end
+	if auSol then
+		vCote *= math.exp(-adherence * dt)
+	end
+
+	-- 3) Tourner (en drift, on tourne beaucoup plus : 360 possibles !)
+	local facteur = math.clamp(math.abs(vAvant) / 12, 0, 1)
+	if driftAppuye then
+		facteur = math.max(facteur, 0.7) -- on peut tourner sur place en drift
+	end
+	local puissance = s.Rotation * (if driftAppuye then s.RotationDrift else 1)
+	local sens = if vAvant < -1 then -1 else 1
+	local rotationCible = -volant * puissance * facteur * sens
+	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 8, 0, 1)
+
+	ch.AssemblyLinearVelocity = avant * vAvant + droite * vCote + Vector3.new(0, vel.Y, 0)
+	ch.AssemblyAngularVelocity = Vector3.new(0, vitesseRotation, 0)
+
+	-----------------------------------------------------------------
+	-- SCORE DE DRIFT
+	-----------------------------------------------------------------
+	local angleGlisse = math.deg(math.atan2(math.abs(vCote), math.max(math.abs(vAvant), 0.01)))
+	local enDrift = auSol and vitesse > Config.Score.VitesseMin and angleGlisse > Config.Score.AngleMin
+
+	-- Choc contre un mur pendant un drift = drift perdu
+	if drift.actif and derniereVitesse - vitesse > Config.Score.SeuilChoc then
+		terminerDrift(false)
+		enDrift = false
+	end
+	derniereVitesse = vitesse
+
+	if enDrift then
+		if not drift.actif then
+			drift.actif = true
+			blocDrift.Visible = true
+		end
+		drift.horsDrift = 0
+		drift.temps += dt
+		drift.combo = math.min(1 + drift.temps * Config.Score.ComboParSeconde, Config.Score.ComboMax)
+		-- plus l'angle est beau (jusqu'à ~60°), plus ça rapporte
+		local beaute = math.clamp(angleGlisse / 45, 0.3, 1.5)
+		local gain = vitesse * beaute * drift.combo * Config.Score.PointsParStud * dt
+		if mouille then
+			gain *= Config.Mouille.BonusPoints
+		end
+		drift.points += gain
+	elseif drift.actif then
+		drift.horsDrift += dt
+		if drift.horsDrift > Config.Score.Tolerance then
+			terminerDrift(true)
+		end
+	end
+
+	if drift.actif then
+		-- Compter les tours complets (360°)
+		drift.rotation += rotationReelle * dt
+		if math.abs(drift.rotation) >= 2 * math.pi then
+			drift.rotation -= math.sign(drift.rotation) * 2 * math.pi
+			drift.nb360 += 1
+			local bonus = math.floor(Config.Score.Bonus360 * drift.combo)
+			drift.points += bonus
+			message(("360° !  +%d"):format(bonus), Color3.fromRGB(255, 150, 60), 1)
+		end
+		local pts = math.floor(drift.points)
+		pointsLabel.Text = ("+%d"):format(pts)
+		comboLabel.Text = ("x%.1f%s"):format(drift.combo, mouille and "  💧 BONUS EAU" or "")
+		etoilesLabel.Text = texteEtoiles(nombreEtoiles(pts))
+	end
+
+	-----------------------------------------------------------------
+	-- EFFETS : traces, fumée, eau, éclaboussures sur l'écran, caméra
+	-----------------------------------------------------------------
+	local traces = drift.actif and auSol and not mouille
+	for _, t in ipairs(kart.trails) do
+		t.Enabled = traces
+	end
+	for _, f in ipairs(kart.fumees) do
+		f.Enabled = traces and vitesse > 15
+	end
+	local gerbes = mouille and vitesse > 8
+	for _, e in ipairs(kart.eaux) do
+		e.Enabled = gerbes
+	end
+
+	local maintenant = os.clock()
+	if mouille and vitesse > 10 then
+		if not etaitMouille then
+			grosseEclaboussure()
+			if kart.sons.eau then
+				kart.sons.eau:Play()
+			end
+		elseif maintenant > prochaineGoutte then
+			goutte()
+			prochaineGoutte = maintenant + 0.25
+		end
+	end
+	etaitMouille = mouille
+
+	if kart.sons.moteur then
+		kart.sons.moteur.PlaybackSpeed = 0.8 + vitesse / s.VitesseMax * 0.8
+	end
+	if kart.sons.drift then
+		if drift.actif and not kart.sons.drift.IsPlaying then
+			kart.sons.drift:Play()
+		elseif not drift.actif and kart.sons.drift.IsPlaying then
+			kart.sons.drift:Stop()
+		end
+	end
+
+	-- Sensation de vitesse : le champ de vision s'élargit quand on va vite
+	local fovCible = 70 + math.clamp(vitesse, 0, 80) * 0.3 + (tempsBoost > 0 and 8 or 0)
+	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
+
+	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
+end)
