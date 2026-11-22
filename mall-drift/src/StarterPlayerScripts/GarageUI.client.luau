@@ -36,6 +36,26 @@ end
 -- LE KART SUR LE PLATEAU TOURNANT (visible seulement par toi)
 ---------------------------------------------------------------------
 local apercu: Model? = nil
+-- Transitions de caméra (aller vers le plateau / revenir derrière le joueur)
+local debutTransition = 0
+local camDepart = CFrame.new()
+local transitionRetour = false
+local DUREE_TRANSITION = 0.9
+
+local function adoucir(a: number): number
+	a = math.clamp(a, 0, 1)
+	return a * a * (3 - 2 * a)
+end
+
+local function cameraDerriereJoueur(): CFrame?
+	local perso = joueur.Character
+	local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not racine then
+		return nil
+	end
+	local regard = racine.CFrame.LookVector
+	return CFrame.lookAt(racine.Position - regard * 12 + Vector3.new(0, 5, 0), racine.Position + Vector3.new(0, 2, 0))
+end
 local typeApercu: string? = nil
 local angleApercu = 0
 
@@ -76,10 +96,26 @@ RunService.RenderStepped:Connect(function(dt: number)
 		angleApercu += dt * (if menuOuvert then 0.5 else 0.3)
 		apercu:PivotTo(CFrame.new(plateau.Position + Vector3.new(0, 1.1, 0)) * CFrame.Angles(0, angleApercu, 0))
 	end
+	-- Caméra de showroom : le kart apparaît à droite du menu
+	local cfShowroom = CFrame.lookAt(plateau.Position + Vector3.new(-17, 7, 4), plateau.Position + Vector3.new(0, 1.5, -4))
 	if menuOuvert then
-		-- Caméra de showroom : le kart apparaît à droite du menu
-		local cible = plateau.Position + Vector3.new(0, 1.5, -4)
-		camera.CFrame = CFrame.lookAt(plateau.Position + Vector3.new(-17, 7, 4), cible)
+		-- La caméra glisse en douceur jusqu'au plateau
+		camera.CFrame = camDepart:Lerp(cfShowroom, adoucir((os.clock() - debutTransition) / DUREE_TRANSITION))
+	elseif transitionRetour then
+		-- Si le joueur vient de monter dans son kart, c'est la caméra du kart qui commande
+		local humanoide = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		if humanoide and humanoide.SeatPart then
+			transitionRetour = false
+			return
+		end
+		-- ...puis revient en douceur derrière le joueur
+		local a = adoucir((os.clock() - debutTransition) / 0.7)
+		local cfFin = cameraDerriereJoueur() or cfShowroom
+		camera.CFrame = cfShowroom:Lerp(cfFin, a)
+		if a >= 1 then
+			transitionRetour = false
+			camera.CameraType = Enum.CameraType.Custom
+		end
 	end
 end)
 
@@ -480,28 +516,41 @@ local function ouvrir()
 		profil = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
 	end
 	persoEdite = table.clone(profil and profil.Perso or Config.PersoParDefaut)
+	camDepart = camera.CFrame
+	debutTransition = os.clock()
+	transitionRetour = false
 	menuOuvert = true
 	controles:Disable()
 	camera.CameraType = Enum.CameraType.Scriptable
 	gui.Enabled = true
 	statut.Text = ""
+	-- Le panneau arrive en glissant depuis la gauche
+	panneau.Position = UDim2.new(0, -440, 0, 20)
+	TweenService:Create(panneau, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0, 20, 0, 20) }):Play()
 	rafraichir()
 end
 
-local function fermer()
+local function fermer(sansTransition: boolean?)
 	if not menuOuvert then
 		return
 	end
 	menuOuvert = false
 	gui.Enabled = false
 	controles:Enable()
-	camera.CameraType = Enum.CameraType.Custom
+	if sansTransition then
+		camera.CameraType = Enum.CameraType.Custom
+	else
+		transitionRetour = true
+		debutTransition = os.clock()
+	end
 	if profil then
 		majApercu(profil.Perso) -- on remet le kart enregistré sur le plateau
 	end
 end
 
-boutonFermer.Activated:Connect(fermer)
+boutonFermer.Activated:Connect(function()
+	fermer(false)
+end)
 
 boutonEnregistrer.Activated:Connect(function()
 	remotes.Personnaliser:FireServer(persoEdite)
@@ -510,7 +559,7 @@ end)
 
 boutonSortir.Activated:Connect(function()
 	remotes.Personnaliser:FireServer(persoEdite)
-	fermer()
+	fermer(true) -- la cinématique de départ prend le relais
 	task.wait(0.35) -- laisse le serveur enregistrer avant de sortir le kart
 	remotes.SortirKart:FireServer()
 end)
@@ -543,4 +592,78 @@ task.spawn(function()
 end)
 
 -- Si le joueur meurt / réapparaît avec le menu ouvert, on le ferme proprement
-joueur.CharacterAdded:Connect(fermer)
+joueur.CharacterAdded:Connect(function()
+	fermer(true)
+end)
+
+---------------------------------------------------------------------
+-- BANNIÈRE « GARAGE VIP » quand on entre dans le garage
+-- (mêmes limites que le bâtiment construit par MallDriftServer)
+---------------------------------------------------------------------
+local GARAGE_X, GARAGE_Z1, GARAGE_Z2 = 90, 250, 330
+local banniere = Instance.new("ScreenGui")
+banniere.Name = "BanniereGarage"
+banniere.ResetOnSpawn = false
+banniere.IgnoreGuiInset = true
+banniere.DisplayOrder = 5
+banniere.Parent = joueur:WaitForChild("PlayerGui")
+
+local function montrerBanniere()
+	local cadre = Instance.new("Frame")
+	cadre.AnchorPoint = Vector2.new(0.5, 0.5)
+	cadre.Size = UDim2.new(0, 520, 0, 110)
+	cadre.Position = UDim2.fromScale(0.5, 0.3)
+	cadre.BackgroundColor3 = FOND
+	cadre.BackgroundTransparency = 0.15
+	cadre.Parent = banniere
+	coins(cadre, 14)
+	local trait = contour(cadre, Color3.fromRGB(190, 120, 255), 3)
+	local t1 = Instance.new("TextLabel")
+	t1.Size = UDim2.new(1, -20, 0, 56)
+	t1.Position = UDim2.new(0, 10, 0, 8)
+	t1.BackgroundTransparency = 1
+	t1.Font = Enum.Font.GothamBlack
+	t1.TextScaled = true
+	t1.TextColor3 = OR
+	t1.Text = "★ GARAGE VIP ★"
+	t1.Parent = cadre
+	local t2 = Instance.new("TextLabel")
+	t2.Size = UDim2.new(1, -20, 0, 28)
+	t2.Position = UDim2.new(0, 10, 0, 70)
+	t2.BackgroundTransparency = 1
+	t2.Font = Enum.Font.GothamBold
+	t2.TextScaled = true
+	t2.TextColor3 = Color3.fromRGB(220, 220, 230)
+	t2.Text = "Borne violette : E = personnaliser  ·  F = prendre ton kart"
+	t2.Parent = cadre
+	local echelle = Instance.new("UIScale")
+	echelle.Scale = 0.2
+	echelle.Parent = cadre
+	TweenService:Create(echelle, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(2.6, function()
+		local info = TweenInfo.new(0.5)
+		TweenService:Create(cadre, info, { BackgroundTransparency = 1, Position = UDim2.fromScale(0.5, 0.24) }):Play()
+		TweenService:Create(t1, info, { TextTransparency = 1 }):Play()
+		TweenService:Create(t2, info, { TextTransparency = 1 }):Play()
+		TweenService:Create(trait, info, { Transparency = 1 }):Play()
+		task.wait(0.55)
+		cadre:Destroy()
+	end)
+end
+
+task.spawn(function()
+	local dedans = false
+	while true do
+		task.wait(0.3)
+		local perso = joueur.Character
+		local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if racine and joueur:GetAttribute("IntroFinie") then
+			local p = racine.Position
+			local maintenantDedans = math.abs(p.X) < GARAGE_X and p.Z > GARAGE_Z1 and p.Z < GARAGE_Z2
+			if maintenantDedans and not dedans then
+				montrerBanniere()
+			end
+			dedans = maintenantDedans
+		end
+	end
+end)

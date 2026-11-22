@@ -361,6 +361,30 @@ end
 -- vidéos TikTok) et la vue « derrière le kart »
 ---------------------------------------------------------------------
 local modeCamera = Config.Camera.VueParDefaut or "gopro" -- "gopro" ou "derriere"
+
+-- Cinématique « sortie du garage » : le kart roule tout seul jusqu'au mall
+type Autopilote = { debut: number, points: { Vector3 }, index: number }
+local autopilote: Autopilote? = nil
+local cinematiquesJouees: { [Instance]: boolean } = {}
+
+local bandesCinema = {}
+for _, haut in ipairs({ true, false }) do
+	local b = Instance.new("Frame")
+	b.Size = UDim2.new(1, 0, 0.11, 0)
+	b.Position = if haut then UDim2.fromScale(0, -0.12) else UDim2.fromScale(0, 1.01)
+	b.BackgroundColor3 = Color3.new(0, 0, 0)
+	b.BorderSizePixel = 0
+	b.ZIndex = 9
+	b.Parent = gui
+	table.insert(bandesCinema, { cadre = b, haut = haut })
+end
+local function afficherBandes(visible: boolean)
+	for _, b in ipairs(bandesCinema) do
+		local cible = if visible then (if b.haut then UDim2.fromScale(0, 0) else UDim2.fromScale(0, 0.89))
+			else (if b.haut then UDim2.fromScale(0, -0.12) else UDim2.fromScale(0, 1.01))
+		TweenService:Create(b.cadre, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Position = cible }):Play()
+	end
+end
 local directionCamera = Vector3.new(0, 0, -1)
 local rayonCamera = RaycastParams.new()
 rayonCamera.FilterType = Enum.RaycastFilterType.Exclude
@@ -394,6 +418,21 @@ local function mettreAJourCamera(dt: number)
 		return
 	end
 	avant = avant.Unit
+
+	if autopilote then
+		cacherPilote(false)
+		local t = os.clock() - autopilote.debut
+		if t < 2.3 then
+			-- Plan de côté : on voit le kart sortir du garage
+			local pos = ch.Position + Vector3.new(15, 4, -4)
+			camera.CFrame = CFrame.lookAt(pos, ch.Position + Vector3.new(0, 1.5, 0))
+		else
+			-- Plan arrière, bas et proche : on fonce vers l'entrée du mall
+			local pos = ch.Position - avant * 11 + Vector3.new(0, 3.5, 0)
+			camera.CFrame = CFrame.lookAt(pos, ch.Position + avant * 12 + Vector3.new(0, 2, 0))
+		end
+		return
+	end
 
 	if modeCamera == "gopro" then
 		cacherPilote(true)
@@ -563,6 +602,10 @@ local function sortirDuKart()
 	ContextActionService:UnbindAction("MallDrift_Camera")
 	ContextActionService:UnbindAction("MallDrift_Nuit")
 	ContextActionService:UnbindAction("MallDrift_Redresser")
+	if autopilote then
+		autopilote = nil
+		afficherBandes(false)
+	end
 	arreterCamera()
 	camera.FieldOfView = 70
 	driftAppuye = false
@@ -616,6 +659,18 @@ local function entrerDansKart(siege: Seat)
 	hud.Visible = true
 	activerToucheConduire(false)
 	demarrerCamera()
+	if modele:GetAttribute("SortieGarage") and not cinematiquesJouees[modele] then
+		cinematiquesJouees[modele] = true
+		local pos = chassis.Position
+		autopilote = {
+			debut = os.clock(),
+			index = 1,
+			points = { Vector3.new(pos.X, pos.Y, 236), Vector3.new(0, pos.Y, 172), Vector3.new(0, pos.Y, 138) },
+		}
+		hud.Visible = false
+		afficherBandes(true)
+		message("★ DIRECTION LE GOLDEN MALL ★", Color3.fromRGB(255, 215, 80), 2.5)
+	end
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
 
@@ -681,6 +736,24 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local mv = controles:GetMoveVector()
 	local gaz = math.clamp(-mv.Z, -1, 1)
 	local volant = math.clamp(mv.X, -1, 1)
+	if autopilote then
+		local cible = autopilote.points[autopilote.index]
+		local versCible = Vector3.new(cible.X - ch.Position.X, 0, cible.Z - ch.Position.Z)
+		if versCible.Magnitude < 10 then
+			autopilote.index += 1
+		end
+		if autopilote.index > #autopilote.points or os.clock() - autopilote.debut > 8 then
+			autopilote = nil
+			hud.Visible = true
+			afficherBandes(false)
+			message("À TOI DE JOUER ! 🏁", Color3.fromRGB(120, 255, 140), 1.6)
+		else
+			local dir = versCible.Unit
+			gaz = 0.85
+			volant = math.clamp(-avant:Cross(dir).Y * 3, -1, 1)
+			driftAppuye = false
+		end
+	end
 
 	local surface = surfaceSous(ch)
 	local auSol = surface ~= nil

@@ -160,19 +160,19 @@ end
 -- Dehors (parking, garage), tu es en sécurité.
 ---------------------------------------------------------------------
 Config.Securite = {
-	AgentsAPied = 8, -- nombre de gardes à pied
-	AgentsSegway = 3, -- nombre de gardes en gyropode (plus rapides)
-	VitesseMarche = 9, -- en patrouille
-	VitesseCourse = 27, -- en poursuite (un kart lancé va plus vite : tu peux t'échapper !)
-	VitesseSegway = 40, -- gyropode en poursuite
-	DistanceVue = 75, -- jusqu'où un garde voit
-	AngleVue = 65, -- largeur du regard (degrés de chaque côté)
-	DistanceOuie = 16, -- trop près = il t'entend même de dos
-	DistanceArrestation = 6, -- si un garde arrive aussi près de ton kart : attrapé !
-	TempsPourSemer = 6, -- secondes sans être vu pour semer un garde
-	DureeGlissade = 2.5, -- un garde qui court sur le sol mouillé glisse et tombe
-	BonusSemer = 150, -- XP gagnée quand tu sèmes la sécurité
-	BonusGlissade = 100, -- XP gagnée quand un garde qui te poursuit glisse
+	Policiers = 3, -- nombre de policiers (sur gyropode)
+	VitessePatrouille = 14, -- en patrouille
+	VitessePoursuite = 44, -- en poursuite (le kart Basique monte à 50 : ça se joue à peu !)
+	DistanceVue = 110, -- jusqu'où un policier voit
+	AngleVue = 75, -- largeur du regard (degrés de chaque côté)
+	DistanceOuie = 20, -- trop près = il t'entend même de dos
+	Radio = 3, -- secondes pendant lesquelles il sait encore où tu es après t'avoir perdu de vue
+	DistanceRenfort = 160, -- les collègues à cette distance viennent en renfort
+	DistanceArrestation = 6, -- si un policier arrive aussi près de ton kart : attrapé !
+	TempsPourSemer = 7, -- secondes sans être vu pour le semer
+	DureeGlissade = 2.5, -- un policier sur le sol mouillé glisse et tombe
+	BonusSemer = 150, -- XP gagnée quand tu sèmes la police
+	BonusGlissade = 100, -- XP gagnée quand un policier qui te poursuit glisse
 }
 
 ---------------------------------------------------------------------

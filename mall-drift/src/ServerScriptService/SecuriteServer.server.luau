@@ -2,10 +2,11 @@
 	SecuriteServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : SecuriteServer
 
-	LA SÉCURITÉ DU GOLDEN MALL
-	  • des gardes à pied et en gyropode patrouillent dans les allées
-	  • chaque garde a un champ de vision : s'il voit ton kart, il te poursuit (❗)
-	    et appelle les gardes proches en renfort
+	LA POLICE DU GOLDEN MALL
+	  • 3 policiers en gyropode patrouillent dans les allées
+	  • chaque policier a un champ de vision : s'il voit ton kart, il te poursuit (❗),
+	    allume son gyrophare et appelle ses collègues en renfort. Il vise l'endroit où
+	    tu vas, et garde ta trace par radio quelques secondes s'il te perd de vue
 	  • s'il arrive tout près de ton kart : ATTRAPÉ ! Il te raccompagne au garage
 	  • si personne ne te voit pendant quelques secondes : tu les as SEMÉS (+XP)
 	  • un garde qui court sur le sol mouillé glisse et tombe (+XP pour toi) 😂
@@ -43,8 +44,8 @@ local ANIMATIONS = {
 	Repos = "rbxassetid://507766388",
 }
 
--- Les rondes des gardes (points x, z dans les allées du mall)
-local RONDES_A_PIED = {
+-- Les rondes des policiers (points x, z dans les allées du mall)
+local RONDES_A_PIED = { -- (non utilisées pour l'instant : garde-les pour ajouter des gardes à pied)
 	{ Vector2.new(-190, -137), Vector2.new(-25, -137) }, -- allée nord, ouest
 	{ Vector2.new(25, -137), Vector2.new(190, -137) }, -- allée nord, est
 	{ Vector2.new(-190, 0), Vector2.new(-45, 0) }, -- allée centrale, ouest
@@ -58,7 +59,7 @@ local RONDES_A_PIED = {
 }
 local RONDES_SEGWAY = {
 	{ Vector2.new(-195, 137), Vector2.new(195, 137) }, -- allée sud (devant l'entrée)
-	{ Vector2.new(-195, -137), Vector2.new(195, -137) }, -- allée nord
+	{ Vector2.new(-190, -137), Vector2.new(173, -137), Vector2.new(173, 0), Vector2.new(36, 0), Vector2.new(36, -128) }, -- allée nord + allée centrale (boucle)
 	{ Vector2.new(-34.5, -110), Vector2.new(-34.5, 110), Vector2.new(34.5, 110), Vector2.new(34.5, -110) }, -- place centrale (entre palmiers et boutiques)
 }
 
@@ -166,7 +167,7 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 	if not ok or not modele then
 		modele = gardeSimple(peau)
 	end
-	modele.Name = (segway and "GardeGyropode_" or "Garde_") .. numero
+	modele.Name = (segway and "Policier_" or "Garde_") .. numero
 	local hum = modele:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local racine = modele:FindFirstChild("HumanoidRootPart") :: BasePart
 	local tete = (modele:FindFirstChild("Head") or racine) :: BasePart
@@ -194,7 +195,8 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 	mot.TextScaled = true
 	mot.Font = Enum.Font.GothamBlack
 	mot.TextColor3 = JAUNE
-	mot.Text = "SÉCURITÉ"
+	mot.Text = "POLICE"
+	mot.TextColor3 = Color3.new(1, 1, 1)
 	mot.Parent = sg
 
 	-- Gyropode
@@ -208,7 +210,7 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 		end
 		accessoire(modele, racine, "Colonne", Vector3.new(0.2, 3.3, 0.2), CFrame.new(0, pieds + 1.7, -0.75), Color3.fromRGB(60, 60, 65), Enum.Material.Metal)
 		accessoire(modele, racine, "Guidon", Vector3.new(1.6, 0.2, 0.2), CFrame.new(0, pieds + 3.3, -0.75), Color3.fromRGB(60, 60, 65), Enum.Material.Metal)
-		accessoire(modele, racine, "Gyrophare", Vector3.new(0.4, 0.3, 0.4), CFrame.new(0, pieds + 3.55, -0.75), Color3.fromRGB(255, 140, 0), Enum.Material.Neon)
+		accessoire(modele, racine, "Gyrophare", Vector3.new(0.6, 0.35, 0.4), CFrame.new(0, pieds + 3.55, -0.75), Color3.fromRGB(40, 90, 255), Enum.Material.Neon)
 	end
 
 	-- La bulle au-dessus de la tête (❗ = il te voit, ❓ = il te cherche)
@@ -401,7 +403,7 @@ local function allerVers(g: Garde, destination: Vector3)
 		or maintenant > g.prochainCalcul
 		or (g.destinationChemin and (g.destinationChemin - destination).Magnitude > 12)
 	if doitRecalculer then
-		g.prochainCalcul = maintenant + 1
+		g.prochainCalcul = maintenant + 0.6
 		g.destinationChemin = destination
 		local chemin = PathfindingService:CreatePath({ AgentRadius = 2.5, AgentHeight = 5, AgentCanJump = false, WaypointSpacing = 6 })
 		local ok = pcall(function()
@@ -422,7 +424,7 @@ local function allerVers(g: Garde, destination: Vector3)
 	end
 	local points = g.chemin
 	if points and points[g.indexChemin] then
-		if aplat(points[g.indexChemin] - g.racine.Position).Magnitude < 3.5 and g.indexChemin < #points then
+		if aplat(points[g.indexChemin] - g.racine.Position).Magnitude < 6 and g.indexChemin < #points then
 			g.indexChemin += 1
 		end
 		g.hum:MoveTo(points[g.indexChemin])
@@ -452,7 +454,7 @@ local function commencerPoursuite(g: Garde, joueur: Player, position: Vector3, r
 	g.derniereVue = os.clock()
 	g.dernierePos = position
 	g.chemin = nil
-	g.hum.WalkSpeed = if g.segway then R.VitesseSegway else R.VitesseCourse
+	g.hum.WalkSpeed = R.VitessePoursuite
 	g.bulle.Text = "❗"
 	g.bulle.TextColor3 = Color3.fromRGB(255, 60, 60)
 	local liste = poursuivants[joueur]
@@ -468,7 +470,7 @@ local function commencerPoursuite(g: Garde, joueur: Player, position: Vector3, r
 	-- Le garde appelle les collègues proches en renfort
 	if not renfort then
 		for _, autre in ipairs(gardes) do
-			if autre ~= g and autre.etat == "patrouille" and (autre.racine.Position - position).Magnitude < 90 then
+			if autre ~= g and (autre.etat == "patrouille" or autre.etat == "recherche") and (autre.racine.Position - position).Magnitude < R.DistanceRenfort then
 				commencerPoursuite(autre, joueur, position, true)
 			end
 		end
@@ -480,7 +482,7 @@ local function finirPoursuite(g: Garde, nouvelEtat: string)
 	g.etat = nouvelEtat
 	g.cible = nil
 	g.chemin = nil
-	g.hum.WalkSpeed = if g.segway then R.VitesseMarche * 1.6 else R.VitesseMarche
+	g.hum.WalkSpeed = R.VitessePatrouille
 	if nouvelEtat == "recherche" then
 		g.bulle.Text = "❓"
 		g.bulle.TextColor3 = Color3.fromRGB(255, 220, 80)
@@ -516,7 +518,7 @@ local function arreter(g: Garde, joueur: Player)
 		autre.cible = nil
 		autre.chemin = nil
 		autre.bulle.Text = ""
-		autre.hum.WalkSpeed = if autre.segway then R.VitesseMarche * 1.6 else R.VitesseMarche
+		autre.hum.WalkSpeed = R.VitessePatrouille
 	end
 	poursuivants[joueur] = nil
 	g.etat = "arrestation"
@@ -589,7 +591,8 @@ end
 -- Le cerveau d'un garde (tourne en boucle)
 ---------------------------------------------------------------------
 local function cerveau(g: Garde)
-	g.hum.WalkSpeed = if g.segway then R.VitesseMarche * 1.6 else R.VitesseMarche
+	g.hum.WalkSpeed = R.VitessePatrouille
+	local gyrophare = g.modele:FindFirstChild("Gyrophare") :: BasePart?
 	while g.modele.Parent and g.hum.Health > 0 do
 		task.wait(0.15)
 		local maintenant = os.clock()
@@ -629,7 +632,12 @@ local function cerveau(g: Garde)
 			else
 				if voit(g, k.chassis) then
 					g.derniereVue = maintenant
-					g.dernierePos = k.chassis.Position
+				end
+				-- Tant qu'il te voit (ou que la radio le guide), il sait où tu es
+				-- et vise un peu devant toi pour te couper la route
+				if maintenant - g.derniereVue < R.Radio then
+					local vitesseKart = aplat(k.chassis.AssemblyLinearVelocity)
+					g.dernierePos = k.chassis.Position + vitesseKart * 0.35
 				end
 				local ecart = k.chassis.Position - g.racine.Position
 				if aplat(ecart).Magnitude < R.DistanceArrestation and math.abs(ecart.Y) < 6 then
@@ -637,10 +645,9 @@ local function cerveau(g: Garde)
 				elseif maintenant - g.derniereVue > R.TempsPourSemer then
 					finirPoursuite(g, "recherche")
 				else
-					local vuRecemment = maintenant - g.derniereVue < 0.4
-					allerVers(g, if vuRecemment then k.chassis.Position else (g.dernierePos or k.chassis.Position))
-					-- Il court sur le sol mouillé ? Il glisse !
-					if maintenant > g.prochaineGlissade and not g.segway and aplat(g.racine.AssemblyLinearVelocity).Magnitude > 12 and surSolMouille(g) then
+					allerVers(g, g.dernierePos or k.chassis.Position)
+					-- Il fonce sur le sol mouillé ? Il glisse !
+					if maintenant > g.prochaineGlissade and aplat(g.racine.AssemblyLinearVelocity).Magnitude > 12 and surSolMouille(g) then
 						glisser(g)
 					end
 				end
@@ -654,6 +661,14 @@ local function cerveau(g: Garde)
 			allerVers(g, point)
 		end
 
+		-- Gyrophare : bleu / rouge en poursuite, éteint sinon
+		if gyrophare then
+			if g.etat == "poursuite" then
+				gyrophare.Color = if math.floor(maintenant * 5) % 2 == 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 40)
+			else
+				gyrophare.Color = Color3.fromRGB(30, 40, 70)
+			end
+		end
 		animer(g)
 	end
 end
@@ -661,12 +676,7 @@ end
 ---------------------------------------------------------------------
 -- Démarrage
 ---------------------------------------------------------------------
-for i = 1, R.AgentsAPied do
-	local ronde = RONDES_A_PIED[(i - 1) % #RONDES_A_PIED + 1]
-	local g = creerGarde(ronde, false, i)
-	task.spawn(cerveau, g)
-end
-for i = 1, R.AgentsSegway do
+for i = 1, R.Policiers do
 	local ronde = RONDES_SEGWAY[(i - 1) % #RONDES_SEGWAY + 1]
 	local g = creerGarde(ronde, true, i)
 	task.spawn(cerveau, g)
@@ -691,4 +701,4 @@ Players.PlayerRemoving:Connect(function(joueur: Player)
 	enArrestation[joueur] = nil
 end)
 
-print(("[Golden Mall] Sécurité en place : %d gardes à pied, %d en gyropode."):format(R.AgentsAPied, R.AgentsSegway))
+print(("[Golden Mall] Police en place : %d policiers."):format(R.Policiers))

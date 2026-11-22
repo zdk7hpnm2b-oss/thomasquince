@@ -1281,6 +1281,31 @@ local function sortirKart(joueur: Player)
 	if regard.Magnitude < 0.1 then
 		regard = Vector3.new(0, 0, -1)
 	end
+	-- Dans le garage : le kart sort garé devant le plateau, puis une petite
+	-- cinématique l'emmène jusqu'au mall (gérée par le script du joueur)
+	local p = racine.Position
+	if p.X > G_X1 and p.X < G_X2 and p.Z > G_Z1 and p.Z < G_Z2 then
+		local depart = nil
+		for _, x in ipairs({ 8, 20, -4, 32 }) do
+			local candidat = Vector3.new(x, SOL + 0.6, G_Z1 + 26)
+			local libre = true
+			for _, k in pairs(kartsJoueurs) do
+				if k.Parent and k.PrimaryPart and (k.PrimaryPart.Position - candidat).Magnitude < 7 then
+					libre = false
+				end
+			end
+			if libre then
+				depart = candidat
+				break
+			end
+		end
+		depart = depart or Vector3.new(44, SOL + 0.6, G_Z1 + 26)
+		local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1)))
+		kart:SetAttribute("SortieGarage", true)
+		asseoir(joueur, kart)
+		return
+	end
+
 	local parametres = RaycastParams.new()
 	parametres.FilterType = Enum.RaycastFilterType.Exclude
 	parametres.FilterDescendantsInstances = { perso, dossierKarts }

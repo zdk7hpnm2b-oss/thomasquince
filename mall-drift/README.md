@@ -14,11 +14,15 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
-- **🚨 La sécurité du mall** : 8 gardes à pied et 3 en gyropode font des rondes. S'ils voient ton
-  kart (❗ au-dessus de leur tête), ils te poursuivent et appellent des **renforts** (jusqu'à 🚨🚨🚨).
-  S'ils arrivent tout près de toi : **ATTRAPÉ !**, retour au garage. Reste hors de vue quelques
-  secondes pour les **semer** (+150 XP). Attire-les sur le **sol mouillé** : ils glissent et tombent
-  (+100 XP) 😂. À pied, tu es un client normal ; dehors (parking, garage), tu es à l'abri
+- **🚨 La police du mall** : 3 policiers en gyropode font des rondes. S'ils voient ton kart (❗ au-dessus
+  de leur tête, gyrophare bleu/rouge), ils te poursuivent presque aussi vite que toi, visent l'endroit
+  où tu vas et appellent leurs collègues en **renfort** (jusqu'à 🚨🚨🚨). S'ils arrivent tout près de
+  toi : **ATTRAPÉ !**, retour au garage. Reste hors de vue quelques secondes pour les **semer**
+  (+150 XP). Attire-les sur le **sol mouillé** : ils glissent et tombent (+100 XP) 😂. À pied, tu es un
+  client normal ; dehors (parking, garage), tu es à l'abri
+- **Du garage au mall** : en entrant dans le garage, une bannière « GARAGE VIP » s'affiche ; en ouvrant
+  le menu, la caméra glisse jusqu'au plateau. Quand tu prends ton kart dans le garage, une cinématique
+  le fait sortir du garage, traverser le parking et entrer dans le mall, puis tu prends le volant
 - **Une intro cinématique** (~6 s) à l'arrivée : la caméra tourne autour de la fontaine puis survole
   le parking jusqu'au garage, avec le titre du jeu (bouton « Passer »)
 - **Monter dans son kart en 1 clic** : gros bouton **🏎️ CONDUIRE** ou touche **F**, n'importe où.

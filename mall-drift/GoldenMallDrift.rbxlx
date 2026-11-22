@@ -500,19 +500,19 @@ end
 -- Dehors (parking, garage), tu es en sécurité.
 ---------------------------------------------------------------------
 Config.Securite = {
-	AgentsAPied = 8, -- nombre de gardes à pied
-	AgentsSegway = 3, -- nombre de gardes en gyropode (plus rapides)
-	VitesseMarche = 9, -- en patrouille
-	VitesseCourse = 27, -- en poursuite (un kart lancé va plus vite : tu peux t'échapper !)
-	VitesseSegway = 40, -- gyropode en poursuite
-	DistanceVue = 75, -- jusqu'où un garde voit
-	AngleVue = 65, -- largeur du regard (degrés de chaque côté)
-	DistanceOuie = 16, -- trop près = il t'entend même de dos
-	DistanceArrestation = 6, -- si un garde arrive aussi près de ton kart : attrapé !
-	TempsPourSemer = 6, -- secondes sans être vu pour semer un garde
-	DureeGlissade = 2.5, -- un garde qui court sur le sol mouillé glisse et tombe
-	BonusSemer = 150, -- XP gagnée quand tu sèmes la sécurité
-	BonusGlissade = 100, -- XP gagnée quand un garde qui te poursuit glisse
+	Policiers = 3, -- nombre de policiers (sur gyropode)
+	VitessePatrouille = 14, -- en patrouille
+	VitessePoursuite = 44, -- en poursuite (le kart Basique monte à 50 : ça se joue à peu !)
+	DistanceVue = 110, -- jusqu'où un policier voit
+	AngleVue = 75, -- largeur du regard (degrés de chaque côté)
+	DistanceOuie = 20, -- trop près = il t'entend même de dos
+	Radio = 3, -- secondes pendant lesquelles il sait encore où tu es après t'avoir perdu de vue
+	DistanceRenfort = 160, -- les collègues à cette distance viennent en renfort
+	DistanceArrestation = 6, -- si un policier arrive aussi près de ton kart : attrapé !
+	TempsPourSemer = 7, -- secondes sans être vu pour le semer
+	DureeGlissade = 2.5, -- un policier sur le sol mouillé glisse et tombe
+	BonusSemer = 150, -- XP gagnée quand tu sèmes la police
+	BonusGlissade = 100, -- XP gagnée quand un policier qui te poursuit glisse
 }
 
 ---------------------------------------------------------------------
@@ -1874,6 +1874,31 @@ local function sortirKart(joueur: Player)
 	if regard.Magnitude < 0.1 then
 		regard = Vector3.new(0, 0, -1)
 	end
+	-- Dans le garage : le kart sort garé devant le plateau, puis une petite
+	-- cinématique l'emmène jusqu'au mall (gérée par le script du joueur)
+	local p = racine.Position
+	if p.X > G_X1 and p.X < G_X2 and p.Z > G_Z1 and p.Z < G_Z2 then
+		local depart = nil
+		for _, x in ipairs({ 8, 20, -4, 32 }) do
+			local candidat = Vector3.new(x, SOL + 0.6, G_Z1 + 26)
+			local libre = true
+			for _, k in pairs(kartsJoueurs) do
+				if k.Parent and k.PrimaryPart and (k.PrimaryPart.Position - candidat).Magnitude < 7 then
+					libre = false
+				end
+			end
+			if libre then
+				depart = candidat
+				break
+			end
+		end
+		depart = depart or Vector3.new(44, SOL + 0.6, G_Z1 + 26)
+		local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1)))
+		kart:SetAttribute("SortieGarage", true)
+		asseoir(joueur, kart)
+		return
+	end
+
 	local parametres = RaycastParams.new()
 	parametres.FilterType = Enum.RaycastFilterType.Exclude
 	parametres.FilterDescendantsInstances = { perso, dossierKarts }
@@ -1990,10 +2015,11 @@ print("[Golden Mall] Le Golden Mall de Dubaï est prêt ! Garage VIP ouvert.")
 	SecuriteServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : SecuriteServer
 
-	LA SÉCURITÉ DU GOLDEN MALL
-	  • des gardes à pied et en gyropode patrouillent dans les allées
-	  • chaque garde a un champ de vision : s'il voit ton kart, il te poursuit (❗)
-	    et appelle les gardes proches en renfort
+	LA POLICE DU GOLDEN MALL
+	  • 3 policiers en gyropode patrouillent dans les allées
+	  • chaque policier a un champ de vision : s'il voit ton kart, il te poursuit (❗),
+	    allume son gyrophare et appelle ses collègues en renfort. Il vise l'endroit où
+	    tu vas, et garde ta trace par radio quelques secondes s'il te perd de vue
 	  • s'il arrive tout près de ton kart : ATTRAPÉ ! Il te raccompagne au garage
 	  • si personne ne te voit pendant quelques secondes : tu les as SEMÉS (+XP)
 	  • un garde qui court sur le sol mouillé glisse et tombe (+XP pour toi) 😂
@@ -2031,8 +2057,8 @@ local ANIMATIONS = {
 	Repos = "rbxassetid://507766388",
 }
 
--- Les rondes des gardes (points x, z dans les allées du mall)
-local RONDES_A_PIED = {
+-- Les rondes des policiers (points x, z dans les allées du mall)
+local RONDES_A_PIED = { -- (non utilisées pour l'instant : garde-les pour ajouter des gardes à pied)
 	{ Vector2.new(-190, -137), Vector2.new(-25, -137) }, -- allée nord, ouest
 	{ Vector2.new(25, -137), Vector2.new(190, -137) }, -- allée nord, est
 	{ Vector2.new(-190, 0), Vector2.new(-45, 0) }, -- allée centrale, ouest
@@ -2046,7 +2072,7 @@ local RONDES_A_PIED = {
 }
 local RONDES_SEGWAY = {
 	{ Vector2.new(-195, 137), Vector2.new(195, 137) }, -- allée sud (devant l'entrée)
-	{ Vector2.new(-195, -137), Vector2.new(195, -137) }, -- allée nord
+	{ Vector2.new(-190, -137), Vector2.new(173, -137), Vector2.new(173, 0), Vector2.new(36, 0), Vector2.new(36, -128) }, -- allée nord + allée centrale (boucle)
 	{ Vector2.new(-34.5, -110), Vector2.new(-34.5, 110), Vector2.new(34.5, 110), Vector2.new(34.5, -110) }, -- place centrale (entre palmiers et boutiques)
 }
 
@@ -2154,7 +2180,7 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 	if not ok or not modele then
 		modele = gardeSimple(peau)
 	end
-	modele.Name = (segway and "GardeGyropode_" or "Garde_") .. numero
+	modele.Name = (segway and "Policier_" or "Garde_") .. numero
 	local hum = modele:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local racine = modele:FindFirstChild("HumanoidRootPart") :: BasePart
 	local tete = (modele:FindFirstChild("Head") or racine) :: BasePart
@@ -2182,7 +2208,8 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 	mot.TextScaled = true
 	mot.Font = Enum.Font.GothamBlack
 	mot.TextColor3 = JAUNE
-	mot.Text = "SÉCURITÉ"
+	mot.Text = "POLICE"
+	mot.TextColor3 = Color3.new(1, 1, 1)
 	mot.Parent = sg
 
 	-- Gyropode
@@ -2196,7 +2223,7 @@ local function creerGarde(ronde: { Vector2 }, segway: boolean, numero: number): 
 		end
 		accessoire(modele, racine, "Colonne", Vector3.new(0.2, 3.3, 0.2), CFrame.new(0, pieds + 1.7, -0.75), Color3.fromRGB(60, 60, 65), Enum.Material.Metal)
 		accessoire(modele, racine, "Guidon", Vector3.new(1.6, 0.2, 0.2), CFrame.new(0, pieds + 3.3, -0.75), Color3.fromRGB(60, 60, 65), Enum.Material.Metal)
-		accessoire(modele, racine, "Gyrophare", Vector3.new(0.4, 0.3, 0.4), CFrame.new(0, pieds + 3.55, -0.75), Color3.fromRGB(255, 140, 0), Enum.Material.Neon)
+		accessoire(modele, racine, "Gyrophare", Vector3.new(0.6, 0.35, 0.4), CFrame.new(0, pieds + 3.55, -0.75), Color3.fromRGB(40, 90, 255), Enum.Material.Neon)
 	end
 
 	-- La bulle au-dessus de la tête (❗ = il te voit, ❓ = il te cherche)
@@ -2389,7 +2416,7 @@ local function allerVers(g: Garde, destination: Vector3)
 		or maintenant > g.prochainCalcul
 		or (g.destinationChemin and (g.destinationChemin - destination).Magnitude > 12)
 	if doitRecalculer then
-		g.prochainCalcul = maintenant + 1
+		g.prochainCalcul = maintenant + 0.6
 		g.destinationChemin = destination
 		local chemin = PathfindingService:CreatePath({ AgentRadius = 2.5, AgentHeight = 5, AgentCanJump = false, WaypointSpacing = 6 })
 		local ok = pcall(function()
@@ -2410,7 +2437,7 @@ local function allerVers(g: Garde, destination: Vector3)
 	end
 	local points = g.chemin
 	if points and points[g.indexChemin] then
-		if aplat(points[g.indexChemin] - g.racine.Position).Magnitude < 3.5 and g.indexChemin < #points then
+		if aplat(points[g.indexChemin] - g.racine.Position).Magnitude < 6 and g.indexChemin < #points then
 			g.indexChemin += 1
 		end
 		g.hum:MoveTo(points[g.indexChemin])
@@ -2440,7 +2467,7 @@ local function commencerPoursuite(g: Garde, joueur: Player, position: Vector3, r
 	g.derniereVue = os.clock()
 	g.dernierePos = position
 	g.chemin = nil
-	g.hum.WalkSpeed = if g.segway then R.VitesseSegway else R.VitesseCourse
+	g.hum.WalkSpeed = R.VitessePoursuite
 	g.bulle.Text = "❗"
 	g.bulle.TextColor3 = Color3.fromRGB(255, 60, 60)
 	local liste = poursuivants[joueur]
@@ -2456,7 +2483,7 @@ local function commencerPoursuite(g: Garde, joueur: Player, position: Vector3, r
 	-- Le garde appelle les collègues proches en renfort
 	if not renfort then
 		for _, autre in ipairs(gardes) do
-			if autre ~= g and autre.etat == "patrouille" and (autre.racine.Position - position).Magnitude < 90 then
+			if autre ~= g and (autre.etat == "patrouille" or autre.etat == "recherche") and (autre.racine.Position - position).Magnitude < R.DistanceRenfort then
 				commencerPoursuite(autre, joueur, position, true)
 			end
 		end
@@ -2468,7 +2495,7 @@ local function finirPoursuite(g: Garde, nouvelEtat: string)
 	g.etat = nouvelEtat
 	g.cible = nil
 	g.chemin = nil
-	g.hum.WalkSpeed = if g.segway then R.VitesseMarche * 1.6 else R.VitesseMarche
+	g.hum.WalkSpeed = R.VitessePatrouille
 	if nouvelEtat == "recherche" then
 		g.bulle.Text = "❓"
 		g.bulle.TextColor3 = Color3.fromRGB(255, 220, 80)
@@ -2504,7 +2531,7 @@ local function arreter(g: Garde, joueur: Player)
 		autre.cible = nil
 		autre.chemin = nil
 		autre.bulle.Text = ""
-		autre.hum.WalkSpeed = if autre.segway then R.VitesseMarche * 1.6 else R.VitesseMarche
+		autre.hum.WalkSpeed = R.VitessePatrouille
 	end
 	poursuivants[joueur] = nil
 	g.etat = "arrestation"
@@ -2577,7 +2604,8 @@ end
 -- Le cerveau d'un garde (tourne en boucle)
 ---------------------------------------------------------------------
 local function cerveau(g: Garde)
-	g.hum.WalkSpeed = if g.segway then R.VitesseMarche * 1.6 else R.VitesseMarche
+	g.hum.WalkSpeed = R.VitessePatrouille
+	local gyrophare = g.modele:FindFirstChild("Gyrophare") :: BasePart?
 	while g.modele.Parent and g.hum.Health > 0 do
 		task.wait(0.15)
 		local maintenant = os.clock()
@@ -2617,7 +2645,12 @@ local function cerveau(g: Garde)
 			else
 				if voit(g, k.chassis) then
 					g.derniereVue = maintenant
-					g.dernierePos = k.chassis.Position
+				end
+				-- Tant qu'il te voit (ou que la radio le guide), il sait où tu es
+				-- et vise un peu devant toi pour te couper la route
+				if maintenant - g.derniereVue < R.Radio then
+					local vitesseKart = aplat(k.chassis.AssemblyLinearVelocity)
+					g.dernierePos = k.chassis.Position + vitesseKart * 0.35
 				end
 				local ecart = k.chassis.Position - g.racine.Position
 				if aplat(ecart).Magnitude < R.DistanceArrestation and math.abs(ecart.Y) < 6 then
@@ -2625,10 +2658,9 @@ local function cerveau(g: Garde)
 				elseif maintenant - g.derniereVue > R.TempsPourSemer then
 					finirPoursuite(g, "recherche")
 				else
-					local vuRecemment = maintenant - g.derniereVue < 0.4
-					allerVers(g, if vuRecemment then k.chassis.Position else (g.dernierePos or k.chassis.Position))
-					-- Il court sur le sol mouillé ? Il glisse !
-					if maintenant > g.prochaineGlissade and not g.segway and aplat(g.racine.AssemblyLinearVelocity).Magnitude > 12 and surSolMouille(g) then
+					allerVers(g, g.dernierePos or k.chassis.Position)
+					-- Il fonce sur le sol mouillé ? Il glisse !
+					if maintenant > g.prochaineGlissade and aplat(g.racine.AssemblyLinearVelocity).Magnitude > 12 and surSolMouille(g) then
 						glisser(g)
 					end
 				end
@@ -2642,6 +2674,14 @@ local function cerveau(g: Garde)
 			allerVers(g, point)
 		end
 
+		-- Gyrophare : bleu / rouge en poursuite, éteint sinon
+		if gyrophare then
+			if g.etat == "poursuite" then
+				gyrophare.Color = if math.floor(maintenant * 5) % 2 == 0 then Color3.fromRGB(40, 90, 255) else Color3.fromRGB(255, 40, 40)
+			else
+				gyrophare.Color = Color3.fromRGB(30, 40, 70)
+			end
+		end
 		animer(g)
 	end
 end
@@ -2649,12 +2689,7 @@ end
 ---------------------------------------------------------------------
 -- Démarrage
 ---------------------------------------------------------------------
-for i = 1, R.AgentsAPied do
-	local ronde = RONDES_A_PIED[(i - 1) % #RONDES_A_PIED + 1]
-	local g = creerGarde(ronde, false, i)
-	task.spawn(cerveau, g)
-end
-for i = 1, R.AgentsSegway do
+for i = 1, R.Policiers do
 	local ronde = RONDES_SEGWAY[(i - 1) % #RONDES_SEGWAY + 1]
 	local g = creerGarde(ronde, true, i)
 	task.spawn(cerveau, g)
@@ -2679,7 +2714,7 @@ Players.PlayerRemoving:Connect(function(joueur: Player)
 	enArrestation[joueur] = nil
 end)
 
-print(("[Golden Mall] Sécurité en place : %d gardes à pied, %d en gyropode."):format(R.AgentsAPied, R.AgentsSegway))
+print(("[Golden Mall] Police en place : %d policiers."):format(R.Policiers))
 ]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX12"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX11"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX5"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
 	GarageUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : GarageUI
@@ -2718,6 +2753,26 @@ end
 -- LE KART SUR LE PLATEAU TOURNANT (visible seulement par toi)
 ---------------------------------------------------------------------
 local apercu: Model? = nil
+-- Transitions de caméra (aller vers le plateau / revenir derrière le joueur)
+local debutTransition = 0
+local camDepart = CFrame.new()
+local transitionRetour = false
+local DUREE_TRANSITION = 0.9
+
+local function adoucir(a: number): number
+	a = math.clamp(a, 0, 1)
+	return a * a * (3 - 2 * a)
+end
+
+local function cameraDerriereJoueur(): CFrame?
+	local perso = joueur.Character
+	local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not racine then
+		return nil
+	end
+	local regard = racine.CFrame.LookVector
+	return CFrame.lookAt(racine.Position - regard * 12 + Vector3.new(0, 5, 0), racine.Position + Vector3.new(0, 2, 0))
+end
 local typeApercu: string? = nil
 local angleApercu = 0
 
@@ -2758,10 +2813,26 @@ RunService.RenderStepped:Connect(function(dt: number)
 		angleApercu += dt * (if menuOuvert then 0.5 else 0.3)
 		apercu:PivotTo(CFrame.new(plateau.Position + Vector3.new(0, 1.1, 0)) * CFrame.Angles(0, angleApercu, 0))
 	end
+	-- Caméra de showroom : le kart apparaît à droite du menu
+	local cfShowroom = CFrame.lookAt(plateau.Position + Vector3.new(-17, 7, 4), plateau.Position + Vector3.new(0, 1.5, -4))
 	if menuOuvert then
-		-- Caméra de showroom : le kart apparaît à droite du menu
-		local cible = plateau.Position + Vector3.new(0, 1.5, -4)
-		camera.CFrame = CFrame.lookAt(plateau.Position + Vector3.new(-17, 7, 4), cible)
+		-- La caméra glisse en douceur jusqu'au plateau
+		camera.CFrame = camDepart:Lerp(cfShowroom, adoucir((os.clock() - debutTransition) / DUREE_TRANSITION))
+	elseif transitionRetour then
+		-- Si le joueur vient de monter dans son kart, c'est la caméra du kart qui commande
+		local humanoide = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		if humanoide and humanoide.SeatPart then
+			transitionRetour = false
+			return
+		end
+		-- ...puis revient en douceur derrière le joueur
+		local a = adoucir((os.clock() - debutTransition) / 0.7)
+		local cfFin = cameraDerriereJoueur() or cfShowroom
+		camera.CFrame = cfShowroom:Lerp(cfFin, a)
+		if a >= 1 then
+			transitionRetour = false
+			camera.CameraType = Enum.CameraType.Custom
+		end
 	end
 end)
 
@@ -3162,28 +3233,41 @@ local function ouvrir()
 		profil = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
 	end
 	persoEdite = table.clone(profil and profil.Perso or Config.PersoParDefaut)
+	camDepart = camera.CFrame
+	debutTransition = os.clock()
+	transitionRetour = false
 	menuOuvert = true
 	controles:Disable()
 	camera.CameraType = Enum.CameraType.Scriptable
 	gui.Enabled = true
 	statut.Text = ""
+	-- Le panneau arrive en glissant depuis la gauche
+	panneau.Position = UDim2.new(0, -440, 0, 20)
+	TweenService:Create(panneau, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0, 20, 0, 20) }):Play()
 	rafraichir()
 end
 
-local function fermer()
+local function fermer(sansTransition: boolean?)
 	if not menuOuvert then
 		return
 	end
 	menuOuvert = false
 	gui.Enabled = false
 	controles:Enable()
-	camera.CameraType = Enum.CameraType.Custom
+	if sansTransition then
+		camera.CameraType = Enum.CameraType.Custom
+	else
+		transitionRetour = true
+		debutTransition = os.clock()
+	end
 	if profil then
 		majApercu(profil.Perso) -- on remet le kart enregistré sur le plateau
 	end
 end
 
-boutonFermer.Activated:Connect(fermer)
+boutonFermer.Activated:Connect(function()
+	fermer(false)
+end)
 
 boutonEnregistrer.Activated:Connect(function()
 	remotes.Personnaliser:FireServer(persoEdite)
@@ -3192,7 +3276,7 @@ end)
 
 boutonSortir.Activated:Connect(function()
 	remotes.Personnaliser:FireServer(persoEdite)
-	fermer()
+	fermer(true) -- la cinématique de départ prend le relais
 	task.wait(0.35) -- laisse le serveur enregistrer avant de sortir le kart
 	remotes.SortirKart:FireServer()
 end)
@@ -3225,7 +3309,81 @@ task.spawn(function()
 end)
 
 -- Si le joueur meurt / réapparaît avec le menu ouvert, on le ferme proprement
-joueur.CharacterAdded:Connect(fermer)
+joueur.CharacterAdded:Connect(function()
+	fermer(true)
+end)
+
+---------------------------------------------------------------------
+-- BANNIÈRE « GARAGE VIP » quand on entre dans le garage
+-- (mêmes limites que le bâtiment construit par MallDriftServer)
+---------------------------------------------------------------------
+local GARAGE_X, GARAGE_Z1, GARAGE_Z2 = 90, 250, 330
+local banniere = Instance.new("ScreenGui")
+banniere.Name = "BanniereGarage"
+banniere.ResetOnSpawn = false
+banniere.IgnoreGuiInset = true
+banniere.DisplayOrder = 5
+banniere.Parent = joueur:WaitForChild("PlayerGui")
+
+local function montrerBanniere()
+	local cadre = Instance.new("Frame")
+	cadre.AnchorPoint = Vector2.new(0.5, 0.5)
+	cadre.Size = UDim2.new(0, 520, 0, 110)
+	cadre.Position = UDim2.fromScale(0.5, 0.3)
+	cadre.BackgroundColor3 = FOND
+	cadre.BackgroundTransparency = 0.15
+	cadre.Parent = banniere
+	coins(cadre, 14)
+	local trait = contour(cadre, Color3.fromRGB(190, 120, 255), 3)
+	local t1 = Instance.new("TextLabel")
+	t1.Size = UDim2.new(1, -20, 0, 56)
+	t1.Position = UDim2.new(0, 10, 0, 8)
+	t1.BackgroundTransparency = 1
+	t1.Font = Enum.Font.GothamBlack
+	t1.TextScaled = true
+	t1.TextColor3 = OR
+	t1.Text = "★ GARAGE VIP ★"
+	t1.Parent = cadre
+	local t2 = Instance.new("TextLabel")
+	t2.Size = UDim2.new(1, -20, 0, 28)
+	t2.Position = UDim2.new(0, 10, 0, 70)
+	t2.BackgroundTransparency = 1
+	t2.Font = Enum.Font.GothamBold
+	t2.TextScaled = true
+	t2.TextColor3 = Color3.fromRGB(220, 220, 230)
+	t2.Text = "Borne violette : E = personnaliser  ·  F = prendre ton kart"
+	t2.Parent = cadre
+	local echelle = Instance.new("UIScale")
+	echelle.Scale = 0.2
+	echelle.Parent = cadre
+	TweenService:Create(echelle, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(2.6, function()
+		local info = TweenInfo.new(0.5)
+		TweenService:Create(cadre, info, { BackgroundTransparency = 1, Position = UDim2.fromScale(0.5, 0.24) }):Play()
+		TweenService:Create(t1, info, { TextTransparency = 1 }):Play()
+		TweenService:Create(t2, info, { TextTransparency = 1 }):Play()
+		TweenService:Create(trait, info, { Transparency = 1 }):Play()
+		task.wait(0.55)
+		cadre:Destroy()
+	end)
+end
+
+task.spawn(function()
+	local dedans = false
+	while true do
+		task.wait(0.3)
+		local perso = joueur.Character
+		local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if racine and joueur:GetAttribute("IntroFinie") then
+			local p = racine.Position
+			local maintenantDedans = math.abs(p.X) < GARAGE_X and p.Z > GARAGE_Z1 and p.Z < GARAGE_Z2
+			if maintenantDedans and not dedans then
+				montrerBanniere()
+			end
+			dedans = maintenantDedans
+		end
+	end
+end)
 ]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX6"><Properties><string name="Name">Intro</string><ProtectedString name="Source"><![CDATA[--[[
 	Intro  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Intro
@@ -3813,6 +3971,30 @@ end
 -- vidéos TikTok) et la vue « derrière le kart »
 ---------------------------------------------------------------------
 local modeCamera = Config.Camera.VueParDefaut or "gopro" -- "gopro" ou "derriere"
+
+-- Cinématique « sortie du garage » : le kart roule tout seul jusqu'au mall
+type Autopilote = { debut: number, points: { Vector3 }, index: number }
+local autopilote: Autopilote? = nil
+local cinematiquesJouees: { [Instance]: boolean } = {}
+
+local bandesCinema = {}
+for _, haut in ipairs({ true, false }) do
+	local b = Instance.new("Frame")
+	b.Size = UDim2.new(1, 0, 0.11, 0)
+	b.Position = if haut then UDim2.fromScale(0, -0.12) else UDim2.fromScale(0, 1.01)
+	b.BackgroundColor3 = Color3.new(0, 0, 0)
+	b.BorderSizePixel = 0
+	b.ZIndex = 9
+	b.Parent = gui
+	table.insert(bandesCinema, { cadre = b, haut = haut })
+end
+local function afficherBandes(visible: boolean)
+	for _, b in ipairs(bandesCinema) do
+		local cible = if visible then (if b.haut then UDim2.fromScale(0, 0) else UDim2.fromScale(0, 0.89))
+			else (if b.haut then UDim2.fromScale(0, -0.12) else UDim2.fromScale(0, 1.01))
+		TweenService:Create(b.cadre, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Position = cible }):Play()
+	end
+end
 local directionCamera = Vector3.new(0, 0, -1)
 local rayonCamera = RaycastParams.new()
 rayonCamera.FilterType = Enum.RaycastFilterType.Exclude
@@ -3846,6 +4028,21 @@ local function mettreAJourCamera(dt: number)
 		return
 	end
 	avant = avant.Unit
+
+	if autopilote then
+		cacherPilote(false)
+		local t = os.clock() - autopilote.debut
+		if t < 2.3 then
+			-- Plan de côté : on voit le kart sortir du garage
+			local pos = ch.Position + Vector3.new(15, 4, -4)
+			camera.CFrame = CFrame.lookAt(pos, ch.Position + Vector3.new(0, 1.5, 0))
+		else
+			-- Plan arrière, bas et proche : on fonce vers l'entrée du mall
+			local pos = ch.Position - avant * 11 + Vector3.new(0, 3.5, 0)
+			camera.CFrame = CFrame.lookAt(pos, ch.Position + avant * 12 + Vector3.new(0, 2, 0))
+		end
+		return
+	end
 
 	if modeCamera == "gopro" then
 		cacherPilote(true)
@@ -4015,6 +4212,10 @@ local function sortirDuKart()
 	ContextActionService:UnbindAction("MallDrift_Camera")
 	ContextActionService:UnbindAction("MallDrift_Nuit")
 	ContextActionService:UnbindAction("MallDrift_Redresser")
+	if autopilote then
+		autopilote = nil
+		afficherBandes(false)
+	end
 	arreterCamera()
 	camera.FieldOfView = 70
 	driftAppuye = false
@@ -4068,6 +4269,18 @@ local function entrerDansKart(siege: Seat)
 	hud.Visible = true
 	activerToucheConduire(false)
 	demarrerCamera()
+	if modele:GetAttribute("SortieGarage") and not cinematiquesJouees[modele] then
+		cinematiquesJouees[modele] = true
+		local pos = chassis.Position
+		autopilote = {
+			debut = os.clock(),
+			index = 1,
+			points = { Vector3.new(pos.X, pos.Y, 236), Vector3.new(0, pos.Y, 172), Vector3.new(0, pos.Y, 138) },
+		}
+		hud.Visible = false
+		afficherBandes(true)
+		message("★ DIRECTION LE GOLDEN MALL ★", Color3.fromRGB(255, 215, 80), 2.5)
+	end
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
 
@@ -4133,6 +4346,24 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local mv = controles:GetMoveVector()
 	local gaz = math.clamp(-mv.Z, -1, 1)
 	local volant = math.clamp(mv.X, -1, 1)
+	if autopilote then
+		local cible = autopilote.points[autopilote.index]
+		local versCible = Vector3.new(cible.X - ch.Position.X, 0, cible.Z - ch.Position.Z)
+		if versCible.Magnitude < 10 then
+			autopilote.index += 1
+		end
+		if autopilote.index > #autopilote.points or os.clock() - autopilote.debut > 8 then
+			autopilote = nil
+			hud.Visible = true
+			afficherBandes(false)
+			message("À TOI DE JOUER ! 🏁", Color3.fromRGB(120, 255, 140), 1.6)
+		else
+			local dir = versCible.Unit
+			gaz = 0.85
+			volant = math.clamp(-avant:Cross(dir).Y * 3, -1, 1)
+			driftAppuye = false
+		end
+	end
 
 	local surface = surfaceSous(ch)
 	local auSol = surface ~= nil
