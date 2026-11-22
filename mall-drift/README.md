@@ -14,6 +14,12 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **Une intro cinématique** (~6 s) à l'arrivée : la caméra tourne autour de la fontaine puis survole
+  le parking jusqu'au garage, avec le titre du jeu (bouton « Passer »)
+- **Monter dans son kart en 1 clic** : gros bouton **🏎️ CONDUIRE** ou touche **F**, n'importe où.
+  Le kart apparaît sous toi et tu es assis automatiquement
+- **Le Garage VIP est un grand bâtiment à part**, dehors, au bout du parking devant l'entrée du
+  mall : plateau tournant, borne de personnalisation, vitrine des karts à débloquer
 - **Une caméra automatique** qui suit le kart (plus besoin du clic droit). **V** passe de la GoPro à la vue arrière
 - **Le drift** : grosses glissades et 360°, avec un score qui récompense les drifts longs et beaux.
   Les étoiles ★★★ se remplissent, un multiplicateur grimpe jusqu'à x5, chaque 360° donne un
@@ -37,14 +43,14 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 5 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 6 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
 
 ## 🧩 Méthode manuelle (si le fichier ne s'ouvre pas)
 
-Il y a **5 fichiers** à copier. Chacun va dans un endroit précis de Studio.
+Il y a **6 fichiers** à copier. Chacun va dans un endroit précis de Studio.
 
 ### Étape 0 — Ouvrir un nouveau jeu
 1. Ouvre **Roblox Studio**, clique sur **Nouveau** puis sur le modèle **Baseplate**.
@@ -68,14 +74,15 @@ Survole **ServerScriptService**, clique sur **+** et choisis **Script** :
 |---|---|
 | `MallDriftServer` | [`src/ServerScriptService/MallDriftServer.server.luau`](src/ServerScriptService/MallDriftServer.server.luau) |
 
-### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 2 LocalScripts
+### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 3 LocalScripts
 Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et choisis
-**LocalScript** (bien **Local**Script !). Fais-le 2 fois :
+**LocalScript** (bien **Local**Script !). Fais-le 3 fois :
 
 | Nom | Contenu à coller |
 |---|---|
 | `KartController` | [`src/StarterPlayerScripts/KartController.client.luau`](src/StarterPlayerScripts/KartController.client.luau) |
 | `GarageUI` | [`src/StarterPlayerScripts/GarageUI.client.luau`](src/StarterPlayerScripts/GarageUI.client.luau) |
+| `Intro` | [`src/StarterPlayerScripts/Intro.client.luau`](src/StarterPlayerScripts/Intro.client.luau) |
 
 ### Étape 4 — Activer la sauvegarde (recommandé)
 1. Enregistre le jeu sur Roblox : **Fichier > Publier sur Roblox**.
@@ -85,11 +92,10 @@ Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et c
 Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à chaque partie.
 
 ### Étape 5 — Jouer !
-1. Clique sur **Play** (▶️). Tu apparais dans le **Garage VIP**.
-2. Va à l'**atelier** (la borne avec l'écran violet) :
-   - **E** = personnaliser ton kart
-   - **F** = sortir ton kart et partir drifter 🏁
-3. Drifte, monte de niveau, puis reviens au garage pour débloquer de nouveaux styles !
+1. Clique sur **Play** (▶️). L'intro se lance, puis tu apparais dans le **Garage VIP** (dehors, devant le mall).
+2. Appuie sur **F** ou sur le gros bouton **🏎️ CONDUIRE** : ton kart apparaît et tu es dedans.
+3. Pour personnaliser ton kart : la **borne de l'atelier** (écran violet) dans le garage, touche **E**.
+4. Sors du garage, traverse le parking et entre dans le mall par la grande entrée. Bon drift ! 🏁
 
 > 💡 Dans la fenêtre **Sortie (Output)**, tu dois voir
 > `[Golden Mall] Le Golden Mall de Dubaï est prêt !`. S'il y a un message en **rouge**,
@@ -106,6 +112,7 @@ Sans cette étape, le jeu marche quand même, mais ton niveau repart à zéro à
 | Caméra GoPro / vue arrière | V | Y | Bouton CAM |
 | Jour / nuit | N | — | — |
 | Remettre le kart droit | R | X | Bouton R |
+| **Sortir / reprendre son kart** | **F** | Y | Bouton 🏎️ CONDUIRE |
 | Descendre du kart | Espace | A | Saut |
 | Remonter dans son kart | E (près du kart) | — | Bouton à l'écran |
 
@@ -142,5 +149,6 @@ mall-drift/
     │   └── MallDriftServer.server.luau      (Script) le mall, le garage, la sauvegarde
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
-        └── GarageUI.client.luau             (LocalScript) menu du Garage VIP
+        ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP
+        └── Intro.client.luau                (LocalScript) intro cinématique
 ```

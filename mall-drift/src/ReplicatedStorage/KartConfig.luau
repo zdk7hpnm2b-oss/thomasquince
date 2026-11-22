@@ -194,7 +194,7 @@ Config.Sons = {
 ---------------------------------------------------------------------
 -- JOUR / NUIT
 ---------------------------------------------------------------------
-Config.NuitParDefaut = true
+Config.NuitParDefaut = false -- le jeu démarre de jour (touche N pour passer en nuit)
 
 ---------------------------------------------------------------------
 -- CAMÉRA (elle suit le kart toute seule)
@@ -209,16 +209,22 @@ Config.Camera = {
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)
+	-- L'intérieur du mall reste bien éclairé dans les deux cas (comme un vrai
+	-- centre commercial) : c'est surtout le ciel et le parking qui changent.
+	Lighting.EnvironmentDiffuseScale = 0.6
+	Lighting.EnvironmentSpecularScale = 1 -- reflets sur le carrelage
 	if nuit then
-		Lighting.ClockTime = 0
-		Lighting.Brightness = 1
-		Lighting.Ambient = Color3.fromRGB(75, 70, 95)
-		Lighting.OutdoorAmbient = Color3.fromRGB(50, 45, 70)
+		Lighting.ClockTime = 21.5
+		Lighting.Brightness = 1.5
+		Lighting.Ambient = Color3.fromRGB(150, 148, 160)
+		Lighting.OutdoorAmbient = Color3.fromRGB(95, 95, 120)
+		Lighting.ExposureCompensation = 0.25
 	else
-		Lighting.ClockTime = 13
-		Lighting.Brightness = 2.5
-		Lighting.Ambient = Color3.fromRGB(145, 140, 130)
-		Lighting.OutdoorAmbient = Color3.fromRGB(155, 150, 140)
+		Lighting.ClockTime = 14
+		Lighting.Brightness = 3
+		Lighting.Ambient = Color3.fromRGB(190, 188, 182)
+		Lighting.OutdoorAmbient = Color3.fromRGB(175, 175, 175)
+		Lighting.ExposureCompensation = 0.3
 	end
 	Lighting:SetAttribute("Nuit", nuit)
 end

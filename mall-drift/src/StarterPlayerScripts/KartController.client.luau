@@ -278,9 +278,14 @@ end
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
 task.spawn(function()
 	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
-	message(("Bienvenue au %s ✦ %s"):format(Config.NomDuJeu, Config.Lieu), Color3.fromRGB(255, 215, 80), 3)
-	task.wait(3.4)
-	message("Va à l'atelier du GARAGE VIP : E = personnaliser · F = sortir ton kart", Color3.new(1, 1, 1), 4)
+	-- On attend la fin de l'intro cinématique avant d'afficher les conseils
+	local debut = os.clock()
+	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 12 do
+		task.wait(0.2)
+	end
+	message("Appuie sur F (ou le bouton 🏎️) pour conduire !", Color3.fromRGB(255, 215, 80), 3.5)
+	task.wait(3.8)
+	message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
 end)
 
 local function vers(valeur: number, cible: number, pas: number): number
@@ -485,6 +490,60 @@ local function actionRedresser(_, etat: Enum.UserInputState)
 	return Enum.ContextActionResult.Sink
 end
 
+---------------------------------------------------------------------
+-- BOUTON « CONDUIRE » : toujours visible quand on est à pied.
+-- Le kart apparaît sous toi et tu es assis dedans automatiquement.
+---------------------------------------------------------------------
+local boutonConduire = Instance.new("TextButton")
+boutonConduire.Name = "Conduire"
+boutonConduire.AnchorPoint = Vector2.new(0.5, 1)
+boutonConduire.Size = UDim2.new(0, 260, 0, 64)
+boutonConduire.Position = UDim2.new(0.5, 0, 1, -40)
+boutonConduire.BackgroundColor3 = Color3.fromRGB(255, 190, 40)
+boutonConduire.TextColor3 = Color3.fromRGB(25, 25, 30)
+boutonConduire.Font = Enum.Font.GothamBlack
+boutonConduire.TextScaled = true
+boutonConduire.Text = "🏎️ CONDUIRE  (F)"
+boutonConduire.ZIndex = 8
+boutonConduire.Parent = gui
+Instance.new("UICorner", boutonConduire).CornerRadius = UDim.new(0, 14)
+local contourBouton = Instance.new("UIStroke")
+contourBouton.Thickness = 3
+contourBouton.Color = Color3.new(1, 1, 1)
+contourBouton.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+contourBouton.Parent = boutonConduire
+local margeBouton = Instance.new("UIPadding")
+margeBouton.PaddingTop = UDim.new(0, 10)
+margeBouton.PaddingBottom = UDim.new(0, 10)
+margeBouton.Parent = boutonConduire
+
+local function demanderKart()
+	if kart then
+		return
+	end
+	boutonConduire.Text = "⏳ ..."
+	remotes.SortirKart:FireServer()
+	task.delay(1.5, function()
+		boutonConduire.Text = "🏎️ CONDUIRE  (F)"
+	end)
+end
+boutonConduire.Activated:Connect(demanderKart)
+
+local function activerToucheConduire(actif: boolean)
+	boutonConduire.Visible = actif
+	if actif then
+		ContextActionService:BindAction("MallDrift_Conduire", function(_, etat)
+			if etat == Enum.UserInputState.Begin then
+				demanderKart()
+			end
+			return Enum.ContextActionResult.Pass
+		end, false, Enum.KeyCode.F, Enum.KeyCode.ButtonY)
+	else
+		ContextActionService:UnbindAction("MallDrift_Conduire")
+	end
+end
+activerToucheConduire(true)
+
 local function sortirDuKart()
 	if not kart then
 		return
@@ -509,6 +568,7 @@ local function sortirDuKart()
 	driftAppuye = false
 	hud.Visible = false
 	kart = nil
+	activerToucheConduire(true)
 end
 
 local function entrerDansKart(siege: Seat)
@@ -554,6 +614,7 @@ local function entrerDansKart(siege: Seat)
 	ContextActionService:SetPosition("MallDrift_Redresser", UDim2.new(1, -290, 1, -150))
 
 	hud.Visible = true
+	activerToucheConduire(false)
 	demarrerCamera()
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end

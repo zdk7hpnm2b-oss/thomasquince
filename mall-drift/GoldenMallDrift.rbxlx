@@ -194,7 +194,7 @@ Config.Sons = {
 ---------------------------------------------------------------------
 -- JOUR / NUIT
 ---------------------------------------------------------------------
-Config.NuitParDefaut = true
+Config.NuitParDefaut = false -- le jeu démarre de jour (touche N pour passer en nuit)
 
 ---------------------------------------------------------------------
 -- CAMÉRA (elle suit le kart toute seule)
@@ -209,16 +209,22 @@ Config.Camera = {
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)
+	-- L'intérieur du mall reste bien éclairé dans les deux cas (comme un vrai
+	-- centre commercial) : c'est surtout le ciel et le parking qui changent.
+	Lighting.EnvironmentDiffuseScale = 0.6
+	Lighting.EnvironmentSpecularScale = 1 -- reflets sur le carrelage
 	if nuit then
-		Lighting.ClockTime = 0
-		Lighting.Brightness = 1
-		Lighting.Ambient = Color3.fromRGB(75, 70, 95)
-		Lighting.OutdoorAmbient = Color3.fromRGB(50, 45, 70)
+		Lighting.ClockTime = 21.5
+		Lighting.Brightness = 1.5
+		Lighting.Ambient = Color3.fromRGB(150, 148, 160)
+		Lighting.OutdoorAmbient = Color3.fromRGB(95, 95, 120)
+		Lighting.ExposureCompensation = 0.25
 	else
-		Lighting.ClockTime = 13
-		Lighting.Brightness = 2.5
-		Lighting.Ambient = Color3.fromRGB(145, 140, 130)
-		Lighting.OutdoorAmbient = Color3.fromRGB(155, 150, 140)
+		Lighting.ClockTime = 14
+		Lighting.Brightness = 3
+		Lighting.Ambient = Color3.fromRGB(190, 188, 182)
+		Lighting.OutdoorAmbient = Color3.fromRGB(175, 175, 175)
+		Lighting.ExposureCompensation = 0.3
 	end
 	Lighting:SetAttribute("Nuit", nuit)
 end
@@ -604,9 +610,10 @@ end
 if not Lighting:FindFirstChild("CouleursMallDrift") then
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "CouleursMallDrift"
-	cc.Saturation = 0.1
-	cc.Contrast = 0.06
-	cc.TintColor = Color3.fromRGB(255, 249, 238)
+	cc.Saturation = 0.12
+	cc.Contrast = 0.04
+	cc.Brightness = 0.06 -- un peu plus lumineux
+	cc.TintColor = Color3.fromRGB(255, 252, 245)
 	cc.Parent = Lighting
 end
 
@@ -700,10 +707,14 @@ local GRIS_METAL = Color3.fromRGB(150, 155, 165)
 	  z=-124   │ ▓ │ ▓▓ │ ▓▓ │  PLACE   │ ▓▓ │ ▓▓ │ ▓ │   ▓ = boutiques (on entre dedans)
 	           │ ▓ │ ▓▓ │ ▓▓ │ CENTRALE │ ▓▓ │ ▓▓ │ ▓ │
 	   z=-13   │   ALLÉE CENTRALE  (fontaine)              │
-	   z=+13   │ ▓ │food│ ▓▓ │  PLACE   │ ▓▓ │GAR │ ▓ │   food = food court, GAR = garage VIP
-	           │ ▓ │crt │ ▓▓ │ CENTRALE │ ▓▓ │VIP │ ▓ │
+	   z=+13   │ ▓ │food│ ▓▓ │  PLACE   │ ▓▓ │ ▓▓ │ ▓ │   food = food court
+	           │ ▓ │crt │ ▓▓ │ CENTRALE │ ▓▓ │ ▓▓ │ ▓ │
 	  z=+124   │   ALLÉE SUD (toute la largeur)            │
-	   z=+160  └──────────── entrée + façades ────────────┘
+	   z=+160  └───────── ENTRÉE (grande ouverte) ────────┘
+	                        PARKING (dehors)
+	   z=+250            ┌─────────────────────┐
+	                     │     GARAGE VIP      │  ← bâtiment à part, on y apparaît
+	   z=+330            └─────────────────────┘
 ]]
 
 -- Les îlots de boutiques (x = centre ; 48 de large : 2 rangées dos à dos)
@@ -737,8 +748,12 @@ local largeurPortes = 40
 local largeurCote = (LARGEUR + 4 - largeurPortes) / 2
 bloc("MurSudOuest", Vector3.new(largeurCote, HAUTEUR, 2), CFrame.new(-(largeurPortes / 2 + largeurCote / 2), yMur, DZ + 1), MUR_MALL, Enum.Material.Marble)
 bloc("MurSudEst", Vector3.new(largeurCote, HAUTEUR, 2), CFrame.new(largeurPortes / 2 + largeurCote / 2, yMur, DZ + 1), MUR_MALL, Enum.Material.Marble)
-local portes = bloc("PortesEntree", Vector3.new(largeurPortes, 16, 1), CFrame.new(0, SOL + 8, DZ + 1), Color3.fromRGB(170, 205, 230), Enum.Material.Glass)
-portes.Transparency = 0.55
+-- Les portes vitrées sont ouvertes (coulissées sur les côtés) : on entre et sort en kart
+for _, cote in ipairs({ -1, 1 }) do
+	local porte = deco(bloc("PorteOuverte", Vector3.new(6, 16, 0.4), CFrame.new(cote * (largeurPortes / 2 + 3), SOL + 8, DZ + 2.4), Color3.fromRGB(170, 205, 230), Enum.Material.Glass))
+	porte.Transparency = 0.55
+end
+pancarte("EnseigneExterieure", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ + 2.3), Vector3.new(0, 0, 1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
 bloc("DessusPortes", Vector3.new(largeurPortes, HAUTEUR - 16, 2), CFrame.new(0, SOL + 16 + (HAUTEUR - 16) / 2, DZ + 1), MUR_MALL, Enum.Material.Marble)
 pancarte("Enseigne", Vector3.new(60, 6, 0.5), Vector3.new(0, SOL + 22, DZ - 0.3), Vector3.new(0, 0, -1), "✦ GOLDEN MALL ✦", NOIR_LUXE, OR)
 
@@ -1181,8 +1196,7 @@ end
 for _, cx in ipairs(ILOTS_X) do
 	for i, moitie in ipairs(MOITIES) do
 		local estFoodCourt = cx == -136 and i == 2
-		local estGarage = cx == 136 and i == 2
-		if not estFoodCourt and not estGarage then
+		if not estFoodCourt then
 			rangee(cx - PROF_B, -1, moitie.z1, moitie.z2, PROF_B)
 			rangee(cx + PROF_B, 1, moitie.z1, moitie.z2, PROF_B)
 		end
@@ -1436,82 +1450,149 @@ for _, b in ipairs(boutiquesConstruites) do
 end
 
 ---------------------------------------------------------------------
--- LE GARAGE VIP (îlot sud-est) : on personnalise son kart ici
+-- DEHORS : le parking devant l'entrée du mall
+---------------------------------------------------------------------
+local dehors = Instance.new("Folder")
+dehors.Name = "Exterieur"
+dehors.Parent = carte
+local EXT_Z1, EXT_Z2 = DZ + 2, DZ + 182 -- de la façade du mall jusqu'au fond du terrain
+local EXT_CZ = (EXT_Z1 + EXT_Z2) / 2
+bloc("SolParking", Vector3.new(LARGEUR, 1, EXT_Z2 - EXT_Z1), CFrame.new(0, SOL - 0.5, EXT_CZ), Color3.fromRGB(150, 150, 156), Enum.Material.Concrete, dehors)
+-- Places de parking (lignes blanches) des deux côtés de l'allée centrale
+for _, zLigne in ipairs({ DZ + 30, DZ + 62 }) do
+	for x = -190, 190, 12 do
+		if math.abs(x) > 34 then
+			deco(bloc("LigneParking", Vector3.new(0.35, 0.05, 14), CFrame.new(x, SOL + 0.03, zLigne), Color3.fromRGB(250, 250, 250), Enum.Material.SmoothPlastic, dehors))
+		end
+	end
+end
+-- Flèches au sol vers le garage
+for _, z in ipairs({ DZ + 25, DZ + 55 }) do
+	local f = deco(bloc("Fleche", Vector3.new(6, 0.05, 6), CFrame.new(0, SOL + 0.03, z), Color3.fromRGB(250, 250, 250), Enum.Material.SmoothPlastic, dehors))
+	texte(f, Enum.NormalId.Top, "▼ GARAGE ▼", Color3.fromRGB(60, 60, 70))
+end
+-- Murets autour du terrain + palmiers
+bloc("MuretOuest", Vector3.new(2, 6, EXT_Z2 - EXT_Z1), CFrame.new(-DX - 1, SOL + 3, EXT_CZ), BLANC, Enum.Material.Concrete, dehors)
+bloc("MuretEst", Vector3.new(2, 6, EXT_Z2 - EXT_Z1), CFrame.new(DX + 1, SOL + 3, EXT_CZ), BLANC, Enum.Material.Concrete, dehors)
+bloc("MuretSud", Vector3.new(LARGEUR + 4, 6, 2), CFrame.new(0, SOL + 3, EXT_Z2 + 1), BLANC, Enum.Material.Concrete, dehors)
+-- Lampadaires
+for _, x in ipairs({ -150, -75, 75, 150 }) do
+	for _, z in ipairs({ DZ + 20, DZ + 75 }) do
+		deco(cylindreDebout("Poteau", 16, 0.8, Vector3.new(x, SOL + 8, z), Color3.fromRGB(60, 60, 65), Enum.Material.Metal, dehors))
+		local tete = deco(bloc("Lanterne", Vector3.new(3, 0.6, 1.6), CFrame.new(x, SOL + 16, z), Color3.fromRGB(255, 245, 220), Enum.Material.Neon, dehors))
+		local pl = Instance.new("PointLight")
+		pl.Range = 45
+		pl.Brightness = 2
+		pl.Color = Color3.fromRGB(255, 240, 210)
+		pl.Parent = tete
+	end
+end
+
+---------------------------------------------------------------------
+-- LE GARAGE VIP : un grand bâtiment à part, au bout du parking.
+-- On y apparaît, on y personnalise son kart, puis on part vers le mall.
 ---------------------------------------------------------------------
 local garage = Instance.new("Model")
 garage.Name = "GarageVIP"
 garage.Parent = carte
-local G_X1, G_X2, G_Z1, G_Z2 = 112, 160, 13, 124
+local G_X1, G_X2 = -90, 90
+local G_Z1, G_Z2 = DZ + 90, DZ + 170 -- devant (côté mall) / fond
 local G_CX, G_CZ = (G_X1 + G_X2) / 2, (G_Z1 + G_Z2) / 2
-local PORTE_Z1, PORTE_Z2 = 45, 85 -- la grande porte du garage (côté ouest)
-local sombre = deco(bloc("SolGarage", Vector3.new(G_X2 - G_X1, 0.05, G_Z2 - G_Z1), CFrame.new(G_CX, SOL + 0.04, G_CZ), Color3.fromRGB(28, 28, 34), Enum.Material.SmoothPlastic, garage))
-sombre.Reflectance = 0.3
+local G_HAUT = 18
+local LARG_ENTREE = 50
+local VIOLET = Color3.fromRGB(170, 80, 255)
+local MUR_GARAGE = Color3.fromRGB(242, 242, 246)
 
-local function vitreGarage(taille: Vector3, position: Vector3)
-	local v = bloc("VitreGarage", taille, CFrame.new(position), Color3.fromRGB(40, 40, 55), Enum.Material.Glass, garage)
-	v.Transparency = 0.5
+local solGarage = bloc("SolGarage", Vector3.new(G_X2 - G_X1, 0.1, G_Z2 - G_Z1), CFrame.new(G_CX, SOL + 0.05, G_CZ), Color3.fromRGB(205, 205, 212), Enum.Material.SmoothPlastic, garage)
+solGarage.Reflectance = 0.3
+bloc("MurFondGarage", Vector3.new(G_X2 - G_X1, G_HAUT, 1), CFrame.new(G_CX, SOL + G_HAUT / 2, G_Z2 - 0.5), MUR_GARAGE, Enum.Material.SmoothPlastic, garage)
+bloc("MurOuestGarage", Vector3.new(1, G_HAUT, G_Z2 - G_Z1), CFrame.new(G_X1 + 0.5, SOL + G_HAUT / 2, G_CZ), MUR_GARAGE, Enum.Material.SmoothPlastic, garage)
+bloc("MurEstGarage", Vector3.new(1, G_HAUT, G_Z2 - G_Z1), CFrame.new(G_X2 - 0.5, SOL + G_HAUT / 2, G_CZ), MUR_GARAGE, Enum.Material.SmoothPlastic, garage)
+-- Façade vitrée avec une grande entrée au milieu
+local largFacade = ((G_X2 - G_X1) - LARG_ENTREE) / 2
+for _, cote in ipairs({ -1, 1 }) do
+	local vitre = bloc("VitreGarage", Vector3.new(largFacade, G_HAUT - 4, 0.5), CFrame.new(cote * (LARG_ENTREE / 2 + largFacade / 2), SOL + (G_HAUT - 4) / 2, G_Z1), Color3.fromRGB(200, 220, 240), Enum.Material.Glass, garage)
+	vitre.Transparency = 0.5
 end
-vitreGarage(Vector3.new(G_X2 - G_X1, HAUT_B, 0.6), Vector3.new(G_CX, SOL + HAUT_B / 2, G_Z1))
-vitreGarage(Vector3.new(G_X2 - G_X1, HAUT_B, 0.6), Vector3.new(G_CX, SOL + HAUT_B / 2, G_Z2))
-vitreGarage(Vector3.new(0.6, HAUT_B, G_Z2 - G_Z1), Vector3.new(G_X2, SOL + HAUT_B / 2, G_CZ))
-vitreGarage(Vector3.new(0.6, HAUT_B, PORTE_Z1 - G_Z1), Vector3.new(G_X1, SOL + HAUT_B / 2, (G_Z1 + PORTE_Z1) / 2))
-vitreGarage(Vector3.new(0.6, HAUT_B, G_Z2 - PORTE_Z2), Vector3.new(G_X1, SOL + HAUT_B / 2, (PORTE_Z2 + G_Z2) / 2))
-bloc("ToitGarage", Vector3.new(G_X2 - G_X1, 2, G_Z2 - G_Z1), CFrame.new(G_CX, SOL + HAUT_B + 1, G_CZ), NOIR_LUXE, Enum.Material.SmoothPlastic, garage)
-deco(bloc("NeonSol", Vector3.new(0.4, 0.08, G_Z2 - G_Z1), CFrame.new(G_X2 - 1.5, SOL + 0.06, G_CZ), Color3.fromRGB(170, 80, 255), Enum.Material.Neon, garage))
-deco(bloc("NeonPlafond", Vector3.new(G_X2 - G_X1 - 4, 0.3, 0.6), CFrame.new(G_CX, SOL + HAUT_B - 0.2, G_CZ), Color3.fromRGB(170, 80, 255), Enum.Material.Neon, garage))
-pancarte("EnseigneGarage", Vector3.new(30, 4, 0.5), Vector3.new(G_X1 - 0.5, SOL + HAUT_B + 4, (PORTE_Z1 + PORTE_Z2) / 2), Vector3.new(-1, 0, 0), "★ GARAGE VIP ★", NOIR_LUXE, Color3.fromRGB(200, 140, 255))
-local lumiereGarage = Instance.new("PointLight")
-lumiereGarage.Range = 40
-lumiereGarage.Brightness = 1.5
-lumiereGarage.Color = Color3.fromRGB(220, 200, 255)
-lumiereGarage.Parent = sombre
-
--- Plateau tournant (le kart du joueur s'affiche dessus)
-local POSITION_PLATEAU = Vector3.new(143, SOL, 62)
-local plateau = cylindreDebout("PlateauTournant", 1, 20, POSITION_PLATEAU + Vector3.new(0, 0.5, 0), Color3.fromRGB(40, 40, 48), Enum.Material.Metal, garage)
-deco(cylindreDebout("AnneauNeon", 0.9, 21, POSITION_PLATEAU + Vector3.new(0, 0.45, 0), Color3.fromRGB(200, 140, 255), Enum.Material.Neon, garage))
-local spot = Instance.new("PointLight")
-spot.Range = 22
-spot.Brightness = 2.5
-spot.Parent = plateau
-for i = 0, 4 do
-	for h = 0, 3 do
-		deco(cylindreDebout("Pneu", 1.2, 3, Vector3.new(G_X2 - 4, SOL + 0.6 + h * 1.2, 92 + i * 4), Color3.fromRGB(20, 20, 20), Enum.Material.Rubber, garage))
+bloc("LinteauGarage", Vector3.new(G_X2 - G_X1, 4, 1), CFrame.new(G_CX, SOL + G_HAUT - 2, G_Z1), Color3.fromRGB(30, 30, 36), Enum.Material.SmoothPlastic, garage)
+bloc("ToitGarage", Vector3.new(G_X2 - G_X1 + 2, 1, G_Z2 - G_Z1 + 2), CFrame.new(G_CX, SOL + G_HAUT + 0.5, G_CZ), Color3.fromRGB(250, 250, 250), Enum.Material.SmoothPlastic, garage).CastShadow = false
+pancarte("EnseigneGarage", Vector3.new(44, 3.5, 0.5), Vector3.new(G_CX, SOL + G_HAUT - 2, G_Z1 - 0.8), Vector3.new(0, 0, -1), "★ GARAGE VIP ★", Color3.fromRGB(30, 30, 36), Color3.fromRGB(210, 160, 255), garage)
+-- Bandes néon violettes et éclairage bien lumineux
+for _, x in ipairs({ G_X1 + 1.2, G_X2 - 1.2 }) do
+	deco(bloc("NeonMur", Vector3.new(0.3, 0.4, G_Z2 - G_Z1 - 4), CFrame.new(x, SOL + 10, G_CZ), VIOLET, Enum.Material.Neon, garage))
+end
+deco(bloc("NeonMur", Vector3.new(G_X2 - G_X1 - 4, 0.4, 0.3), CFrame.new(G_CX, SOL + 10, G_Z2 - 1.2), VIOLET, Enum.Material.Neon, garage))
+for x = -60, 60, 40 do
+	for _, z in ipairs({ G_Z1 + 20, G_Z1 + 55 }) do
+		local panneauLumiere = deco(bloc("Eclairage", Vector3.new(14, 0.3, 3), CFrame.new(x, SOL + G_HAUT - 0.3, z), Color3.fromRGB(255, 255, 255), Enum.Material.Neon, garage))
+		local pl = Instance.new("PointLight")
+		pl.Range = 40
+		pl.Brightness = 1.6
+		pl.Parent = panneauLumiere
 	end
 end
 
--- L'atelier : borne pour personnaliser / sortir son kart
-local borne = bloc("Atelier", Vector3.new(2, 4, 2), CFrame.new(124, SOL + 2, 100), NOIR_LUXE, Enum.Material.Metal, garage)
-deco(bloc("Ecran", Vector3.new(1.8, 1.2, 0.2), CFrame.new(124, SOL + 4.4, 100) * CFrame.Angles(0, math.rad(-90), 0) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(170, 80, 255), Enum.Material.Neon, garage))
+-- Plateau tournant au centre (ton kart s'affiche dessus)
+local POSITION_PLATEAU = Vector3.new(0, SOL, G_CZ + 8)
+local plateau = cylindreDebout("PlateauTournant", 1, 26, POSITION_PLATEAU + Vector3.new(0, 0.5, 0), Color3.fromRGB(45, 45, 55), Enum.Material.Metal, garage)
+deco(cylindreDebout("AnneauNeon", 0.9, 27, POSITION_PLATEAU + Vector3.new(0, 0.45, 0), VIOLET, Enum.Material.Neon, garage))
+local spot = Instance.new("PointLight")
+spot.Range = 26
+spot.Brightness = 2.5
+spot.Parent = plateau
+
+-- Vitrine des karts à débloquer (ça donne envie de monter de niveau !)
+local function kartExpose(typeKart: string, couleur: string, neon: string, position: Vector3)
+	cylindreDebout("Podium", 1.4, 13, position + Vector3.new(0, 0.7, 0), Color3.fromRGB(30, 30, 36), Enum.Material.Metal, garage)
+	deco(cylindreDebout("AnneauPodium", 1.3, 13.6, position + Vector3.new(0, 0.65, 0), OR, Enum.Material.Neon, garage))
+	local perso = table.clone(Config.PersoParDefaut)
+	perso.Kart = typeKart
+	perso.Carrosserie = couleur
+	perso.Neon = neon
+	perso.Finition = if typeKart == "ProDubai" then "Chrome" else "Métallisé"
+	local expose = KartBuilder.Construire(perso, CFrame.lookAt(position + Vector3.new(0, 2, 0), position + Vector3.new(0, 2, 0) + Vector3.new(0, 0, -1)), true)
+	expose.Name = "Vitrine_" .. typeKart
+	expose.Parent = garage
+	local info = Config.Karts[typeKart]
+	pancarte("PanneauKart", Vector3.new(14, 2.4, 0.3), position + Vector3.new(0, 8, 0), Vector3.new(0, 0, -1), ("%s · NIVEAU %d"):format(info.Nom, info.Niveau), Color3.fromRGB(30, 30, 36), OR, garage)
+end
+kartExpose("Chariot", "Rouge", "Rose", Vector3.new(-62, SOL, G_Z2 - 16))
+kartExpose("Bolide", "Jaune", "Vert", Vector3.new(-32, SOL, G_Z2 - 12))
+kartExpose("ProDubai", "Or", "Or", Vector3.new(32, SOL, G_Z2 - 12))
+
+-- Déco d'atelier : piles de pneus, armoires à outils
+for i = 0, 3 do
+	for h = 0, 3 do
+		deco(cylindreDebout("Pneu", 1.2, 3, Vector3.new(G_X2 - 5, SOL + 0.6 + h * 1.2, G_Z1 + 10 + i * 4), Color3.fromRGB(20, 20, 20), Enum.Material.Rubber, garage))
+	end
+end
+for i = 0, 2 do
+	bloc("ArmoireOutils", Vector3.new(6, 7, 2.5), CFrame.new(70 - i * 7, SOL + 3.5, G_Z2 - 2.5), Color3.fromRGB(210, 40, 45), Enum.Material.Metal, garage)
+end
+
+-- L'atelier : la borne pour personnaliser son kart (touche E)
+local POSITION_BORNE = Vector3.new(-26, SOL, G_CZ - 6)
+local borne = bloc("Atelier", Vector3.new(2.5, 4, 2.5), CFrame.new(POSITION_BORNE + Vector3.new(0, 2, 0)), Color3.fromRGB(30, 30, 36), Enum.Material.Metal, garage)
+deco(bloc("Ecran", Vector3.new(2.2, 1.4, 0.2), CFrame.new(POSITION_BORNE + Vector3.new(0, 4.5, -0.6)) * CFrame.Angles(math.rad(-25), 0, 0), VIOLET, Enum.Material.Neon, garage))
+pancarte("PanneauAtelier", Vector3.new(10, 2, 0.3), POSITION_BORNE + Vector3.new(0, 8, 0), Vector3.new(0, 0, -1), "🎨 PERSONNALISER (E)", Color3.fromRGB(30, 30, 36), Color3.fromRGB(210, 160, 255), garage)
 local invitePerso = Instance.new("ProximityPrompt")
 invitePerso.Name = "PromptGarage"
 invitePerso.ActionText = "Personnaliser mon kart"
 invitePerso.ObjectText = "Atelier"
 invitePerso.KeyboardKeyCode = Enum.KeyCode.E
 invitePerso.HoldDuration = 0
-invitePerso.MaxActivationDistance = 12
+invitePerso.MaxActivationDistance = 14
 invitePerso.RequiresLineOfSight = false
 invitePerso.Parent = borne
-local inviteSortir = Instance.new("ProximityPrompt")
-inviteSortir.Name = "PromptSortir"
-inviteSortir.ActionText = "Sortir mon kart"
-inviteSortir.ObjectText = "Garage"
-inviteSortir.KeyboardKeyCode = Enum.KeyCode.F
-inviteSortir.GamepadKeyCode = Enum.KeyCode.ButtonY
-inviteSortir.UIOffset = Vector2.new(0, 80)
-inviteSortir.HoldDuration = 0
-inviteSortir.MaxActivationDistance = 12
-inviteSortir.RequiresLineOfSight = false
-inviteSortir.Parent = borne
 
 local apparition = Instance.new("SpawnLocation")
 apparition.Name = "ApparitionGarage"
-apparition.Size = Vector3.new(8, 0.4, 6)
-apparition.CFrame = CFrame.new(134, SOL + 0.2, 108)
+apparition.Size = Vector3.new(10, 0.4, 8)
+apparition.CFrame = CFrame.lookAt(Vector3.new(-12, SOL + 0.3, G_CZ - 14), Vector3.new(-12, SOL + 0.3, G_CZ - 30))
 apparition.Anchored = true
 apparition.Neutral = true
 apparition.Duration = 0
-apparition.Color = Color3.fromRGB(170, 80, 255)
+apparition.Color = VIOLET
 apparition.Material = Enum.Material.Neon
 apparition.Parent = garage
 
@@ -1647,40 +1728,29 @@ end
 ---------------------------------------------------------------------
 -- LES KARTS DES JOUEURS
 ---------------------------------------------------------------------
--- Places de sortie devant la porte du garage (face au mall)
-local PLACES_SORTIE = {}
-for z = PORTE_Z1 + 5, PORTE_Z2 - 5, 8 do
-	local pos = Vector3.new(G_X1 - 13, SOL + 0.45, z)
-	table.insert(PLACES_SORTIE, CFrame.lookAt(pos, pos + Vector3.new(0, 0, -1))) -- face à l'allée
-end
-
-local function placeLibre(): CFrame
-	for _, cf in ipairs(PLACES_SORTIE) do
-		local libre = true
-		for _, k in pairs(kartsJoueurs) do
-			if k.PrimaryPart and (k.PrimaryPart.Position - cf.Position).Magnitude < 7 then
-				libre = false
-				break
-			end
-		end
-		if libre then
-			return cf
-		end
-	end
-	return PLACES_SORTIE[1] + Vector3.new(0, 0, -12)
-end
-
+-- Assoit le joueur dans son kart (plusieurs essais si le premier rate)
 local function asseoir(joueur: Player, kart: Model)
-	local siege = kart:FindFirstChild("Siege") :: Seat
-	local perso = joueur.Character
-	local humanoide = perso and perso:FindFirstChildOfClass("Humanoid")
-	if siege and humanoide and humanoide.Health > 0 and not siege.Occupant then
-		if humanoide.SeatPart then
-			humanoide.Sit = false
-			task.wait(0.1)
+	task.spawn(function()
+		local siege = kart:FindFirstChild("Siege") :: Seat?
+		for _ = 1, 6 do
+			local perso = joueur.Character
+			local humanoide = perso and perso:FindFirstChildOfClass("Humanoid")
+			if not siege or not siege.Parent or not humanoide or humanoide.Health <= 0 then
+				return
+			end
+			if siege.Occupant == humanoide then
+				return -- c'est bon, il est assis
+			end
+			if humanoide.SeatPart and humanoide.SeatPart ~= siege then
+				humanoide.Sit = false
+				task.wait(0.1)
+			end
+			if not siege.Occupant then
+				siege:Sit(humanoide)
+			end
+			task.wait(0.25)
 		end
-		siege:Sit(humanoide)
-	end
+	end)
 end
 
 local function creerKart(joueur: Player, cf: CFrame): Model
@@ -1739,21 +1809,39 @@ local function creerKart(joueur: Player, cf: CFrame): Model
 	return kart
 end
 
-SortirKart.OnServerEvent:Connect(function(joueur: Player)
-	if not profils[joueur] or tropRapide(joueur, "sortir", 2) then
+-- Le kart apparaît juste sous le joueur, qui est assis dedans automatiquement
+local function sortirKart(joueur: Player)
+	if not profils[joueur] or tropRapide(joueur, "sortir", 1.5) then
 		return
 	end
-	local kart = creerKart(joueur, placeLibre())
+	local perso = joueur.Character
+	local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local humanoide = perso and perso:FindFirstChildOfClass("Humanoid")
+	if not racine or not humanoide or humanoide.Health <= 0 then
+		return
+	end
+	local ancien = kartsJoueurs[joueur]
+	if ancien and humanoide.SeatPart and humanoide.SeatPart:IsDescendantOf(ancien) then
+		return -- déjà au volant
+	end
+	if humanoide.SeatPart then
+		humanoide.Sit = false
+	end
+	local regard = Vector3.new(racine.CFrame.LookVector.X, 0, racine.CFrame.LookVector.Z)
+	if regard.Magnitude < 0.1 then
+		regard = Vector3.new(0, 0, -1)
+	end
+	local parametres = RaycastParams.new()
+	parametres.FilterType = Enum.RaycastFilterType.Exclude
+	parametres.FilterDescendantsInstances = { perso, dossierKarts }
+	local sol = workspace:Raycast(racine.Position, Vector3.new(0, -15, 0), parametres)
+	local hauteur = if sol then sol.Position.Y else SOL
+	local position = Vector3.new(racine.Position.X, hauteur + 0.5, racine.Position.Z)
+	local kart = creerKart(joueur, CFrame.lookAt(position, position + regard.Unit))
 	asseoir(joueur, kart)
-end)
+end
 
-inviteSortir.Triggered:Connect(function(joueur: Player)
-	if not profils[joueur] or tropRapide(joueur, "sortir", 2) then
-		return
-	end
-	local kart = creerKart(joueur, placeLibre())
-	asseoir(joueur, kart)
-end)
+SortirKart.OnServerEvent:Connect(sortirKart)
 
 Personnaliser.OnServerEvent:Connect(function(joueur: Player, perso: any)
 	local profil = profils[joueur]
@@ -1843,7 +1931,7 @@ task.spawn(function()
 end)
 
 print("[Golden Mall] Le Golden Mall de Dubaï est prêt ! Garage VIP ouvert.")
-]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX9"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX6"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX7"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX10"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX6"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX7"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
 	KartController  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : KartController
 
@@ -2123,9 +2211,14 @@ end
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
 task.spawn(function()
 	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
-	message(("Bienvenue au %s ✦ %s"):format(Config.NomDuJeu, Config.Lieu), Color3.fromRGB(255, 215, 80), 3)
-	task.wait(3.4)
-	message("Va à l'atelier du GARAGE VIP : E = personnaliser · F = sortir ton kart", Color3.new(1, 1, 1), 4)
+	-- On attend la fin de l'intro cinématique avant d'afficher les conseils
+	local debut = os.clock()
+	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 12 do
+		task.wait(0.2)
+	end
+	message("Appuie sur F (ou le bouton 🏎️) pour conduire !", Color3.fromRGB(255, 215, 80), 3.5)
+	task.wait(3.8)
+	message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
 end)
 
 local function vers(valeur: number, cible: number, pas: number): number
@@ -2330,6 +2423,60 @@ local function actionRedresser(_, etat: Enum.UserInputState)
 	return Enum.ContextActionResult.Sink
 end
 
+---------------------------------------------------------------------
+-- BOUTON « CONDUIRE » : toujours visible quand on est à pied.
+-- Le kart apparaît sous toi et tu es assis dedans automatiquement.
+---------------------------------------------------------------------
+local boutonConduire = Instance.new("TextButton")
+boutonConduire.Name = "Conduire"
+boutonConduire.AnchorPoint = Vector2.new(0.5, 1)
+boutonConduire.Size = UDim2.new(0, 260, 0, 64)
+boutonConduire.Position = UDim2.new(0.5, 0, 1, -40)
+boutonConduire.BackgroundColor3 = Color3.fromRGB(255, 190, 40)
+boutonConduire.TextColor3 = Color3.fromRGB(25, 25, 30)
+boutonConduire.Font = Enum.Font.GothamBlack
+boutonConduire.TextScaled = true
+boutonConduire.Text = "🏎️ CONDUIRE  (F)"
+boutonConduire.ZIndex = 8
+boutonConduire.Parent = gui
+Instance.new("UICorner", boutonConduire).CornerRadius = UDim.new(0, 14)
+local contourBouton = Instance.new("UIStroke")
+contourBouton.Thickness = 3
+contourBouton.Color = Color3.new(1, 1, 1)
+contourBouton.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+contourBouton.Parent = boutonConduire
+local margeBouton = Instance.new("UIPadding")
+margeBouton.PaddingTop = UDim.new(0, 10)
+margeBouton.PaddingBottom = UDim.new(0, 10)
+margeBouton.Parent = boutonConduire
+
+local function demanderKart()
+	if kart then
+		return
+	end
+	boutonConduire.Text = "⏳ ..."
+	remotes.SortirKart:FireServer()
+	task.delay(1.5, function()
+		boutonConduire.Text = "🏎️ CONDUIRE  (F)"
+	end)
+end
+boutonConduire.Activated:Connect(demanderKart)
+
+local function activerToucheConduire(actif: boolean)
+	boutonConduire.Visible = actif
+	if actif then
+		ContextActionService:BindAction("MallDrift_Conduire", function(_, etat)
+			if etat == Enum.UserInputState.Begin then
+				demanderKart()
+			end
+			return Enum.ContextActionResult.Pass
+		end, false, Enum.KeyCode.F, Enum.KeyCode.ButtonY)
+	else
+		ContextActionService:UnbindAction("MallDrift_Conduire")
+	end
+end
+activerToucheConduire(true)
+
 local function sortirDuKart()
 	if not kart then
 		return
@@ -2354,6 +2501,7 @@ local function sortirDuKart()
 	driftAppuye = false
 	hud.Visible = false
 	kart = nil
+	activerToucheConduire(true)
 end
 
 local function entrerDansKart(siege: Seat)
@@ -2399,6 +2547,7 @@ local function entrerDansKart(siege: Seat)
 	ContextActionService:SetPosition("MallDrift_Redresser", UDim2.new(1, -290, 1, -150))
 
 	hud.Visible = true
+	activerToucheConduire(false)
 	demarrerCamera()
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
@@ -3210,4 +3359,228 @@ end)
 
 -- Si le joueur meurt / réapparaît avec le menu ouvert, on le ferme proprement
 joueur.CharacterAdded:Connect(fermer)
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">Intro</string><ProtectedString name="Source"><![CDATA[--[[
+	Intro  (LocalScript)
+	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Intro
+
+	La petite séquence d'ouverture (environ 6 secondes) quand on rejoint le jeu :
+	  1. fondu depuis le noir, bandes « cinéma » en haut et en bas
+	  2. la caméra tourne autour de la fontaine du Golden Mall
+	  3. elle survole le parking jusqu'au Garage VIP
+	  4. le titre du jeu apparaît, puis on rend la main au joueur
+	Un bouton « Passer » permet de la sauter.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+
+local joueur = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local controles = require(joueur:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
+
+local SOL = 1
+local DUREE_FONTAINE = 2.8 -- secondes autour de la fontaine
+local DUREE_SURVOL = 3.2 -- secondes pour aller du mall au garage
+
+---------------------------------------------------------------------
+-- L'écran de l'intro
+---------------------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "IntroGoldenMall"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 100
+gui.Parent = joueur:WaitForChild("PlayerGui")
+
+local noir = Instance.new("Frame")
+noir.Size = UDim2.fromScale(1, 1)
+noir.BackgroundColor3 = Color3.new(0, 0, 0)
+noir.ZIndex = 1
+noir.Parent = gui
+
+local function bande(position: UDim2): Frame
+	local b = Instance.new("Frame")
+	b.Size = UDim2.new(1, 0, 0.11, 0)
+	b.Position = position
+	b.BackgroundColor3 = Color3.new(0, 0, 0)
+	b.BorderSizePixel = 0
+	b.ZIndex = 2
+	b.Parent = gui
+	return b
+end
+local bandeHaut = bande(UDim2.fromScale(0, 0))
+local bandeBas = bande(UDim2.fromScale(0, 0.89))
+
+local function texte(taille: UDim2, position: UDim2, couleur: Color3, police: Enum.Font): TextLabel
+	local t = Instance.new("TextLabel")
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Size = taille
+	t.Position = position
+	t.BackgroundTransparency = 1
+	t.TextColor3 = couleur
+	t.Font = police
+	t.TextScaled = true
+	t.TextTransparency = 1
+	t.ZIndex = 3
+	local contour = Instance.new("UIStroke")
+	contour.Thickness = 3
+	contour.Color = Color3.fromRGB(20, 15, 5)
+	contour.Transparency = 1
+	contour.Parent = t
+	t.Parent = gui
+	return t
+end
+
+local titre = texte(UDim2.fromScale(0.8, 0.13), UDim2.fromScale(0.5, 0.44), Color3.fromRGB(255, 205, 70), Enum.Font.GothamBlack)
+titre.Text = string.upper(Config.NomDuJeu)
+local echelleTitre = Instance.new("UIScale")
+echelleTitre.Scale = 0.6
+echelleTitre.Parent = titre
+local degrade = Instance.new("UIGradient")
+degrade.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 170)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 190, 40)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 240, 170)),
+})
+degrade.Rotation = 90
+degrade.Parent = titre
+
+local sousTitre = texte(UDim2.fromScale(0.5, 0.05), UDim2.fromScale(0.5, 0.54), Color3.new(1, 1, 1), Enum.Font.GothamBold)
+sousTitre.Text = "✦  " .. Config.Lieu .. "  ✦"
+local slogan = texte(UDim2.fromScale(0.6, 0.04), UDim2.fromScale(0.5, 0.95), Color3.fromRGB(220, 220, 230), Enum.Font.GothamMedium)
+slogan.Text = "Drifte. Personnalise. Deviens une légende."
+slogan.ZIndex = 4
+
+local boutonPasser = Instance.new("TextButton")
+boutonPasser.AnchorPoint = Vector2.new(1, 0)
+boutonPasser.Size = UDim2.new(0, 130, 0, 40)
+boutonPasser.Position = UDim2.new(1, -20, 0, 14)
+boutonPasser.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+boutonPasser.BackgroundTransparency = 0.2
+boutonPasser.TextColor3 = Color3.new(1, 1, 1)
+boutonPasser.Font = Enum.Font.GothamBold
+boutonPasser.TextScaled = true
+boutonPasser.Text = "Passer ▶"
+boutonPasser.ZIndex = 5
+boutonPasser.Parent = gui
+Instance.new("UICorner", boutonPasser).CornerRadius = UDim.new(0, 10)
+local margePasser = Instance.new("UIPadding")
+margePasser.PaddingTop = UDim.new(0, 8)
+margePasser.PaddingBottom = UDim.new(0, 8)
+margePasser.Parent = boutonPasser
+
+local function apparaitre(t: TextLabel, duree: number)
+	TweenService:Create(t, TweenInfo.new(duree), { TextTransparency = 0 }):Play()
+	local c = t:FindFirstChildOfClass("UIStroke")
+	if c then
+		TweenService:Create(c, TweenInfo.new(duree), { Transparency = 0 }):Play()
+	end
+end
+
+local function disparaitre(t: TextLabel, duree: number)
+	TweenService:Create(t, TweenInfo.new(duree), { TextTransparency = 1 }):Play()
+	local c = t:FindFirstChildOfClass("UIStroke")
+	if c then
+		TweenService:Create(c, TweenInfo.new(duree), { Transparency = 1 }):Play()
+	end
+end
+
+---------------------------------------------------------------------
+-- La séquence
+---------------------------------------------------------------------
+local termine = false
+
+local function finir()
+	if termine then
+		return
+	end
+	termine = true
+	RunService:UnbindFromRenderStep("IntroCamera")
+	-- Les bandes « cinéma » s'écartent, tout s'efface
+	TweenService:Create(bandeHaut, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Position = UDim2.fromScale(0, -0.12) }):Play()
+	TweenService:Create(bandeBas, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Position = UDim2.fromScale(0, 1.01) }):Play()
+	TweenService:Create(noir, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+	for _, t in ipairs({ titre, sousTitre, slogan }) do
+		disparaitre(t, 0.5)
+	end
+	boutonPasser.Visible = false
+	camera.CameraType = Enum.CameraType.Custom
+	controles:Enable()
+	joueur:SetAttribute("IntroFinie", true)
+	task.delay(0.8, function()
+		gui:Destroy()
+	end)
+end
+boutonPasser.Activated:Connect(finir)
+
+task.spawn(function()
+	-- On attend le personnage et la carte
+	local perso = joueur.Character or joueur.CharacterAdded:Wait()
+	local racine = perso:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+	local carte = workspace:WaitForChild("GoldenMall", 15)
+	if termine then
+		return
+	end
+	if not carte or not racine then
+		finir()
+		return
+	end
+	controles:Disable()
+	-- Charge le décor autour de la fontaine (utile si le "streaming" est activé)
+	pcall(function()
+		joueur:RequestStreamAroundAsync(Vector3.new(0, SOL, 0))
+		joueur:RequestStreamAroundAsync(Vector3.new(0, SOL, 250))
+	end)
+
+	camera.CameraType = Enum.CameraType.Scriptable
+	local debut = os.clock()
+	local garage = carte:FindFirstChild("GarageVIP")
+	local porteGarage = if garage then (garage:GetPivot().Position) else racine.Position
+	-- On termine dehors, face à l'entrée du garage (on voit l'enseigne et l'intérieur)
+	local finSurvol = Vector3.new(racine.Position.X * 0.3, SOL + 9, porteGarage.Z - 68)
+
+	RunService:BindToRenderStep("IntroCamera", Enum.RenderPriority.Camera.Value + 2, function()
+		local t = os.clock() - debut
+		if t < DUREE_FONTAINE then
+			-- 1) On tourne autour de la fontaine, sous le plafond
+			local a = t / DUREE_FONTAINE
+			local angle = math.rad(-40 + 110 * a)
+			local rayon = 44 - 8 * a
+			local pos = Vector3.new(math.cos(angle) * rayon, SOL + 9 + 3 * a, math.sin(angle) * rayon)
+			camera.CFrame = CFrame.lookAt(pos, Vector3.new(0, SOL + 6, 0))
+		elseif t < DUREE_FONTAINE + DUREE_SURVOL then
+			-- 2) On sort par l'entrée et on survole le parking jusqu'au garage
+			local a = (t - DUREE_FONTAINE) / DUREE_SURVOL
+			local doux = a * a * (3 - 2 * a)
+			local depart = Vector3.new(0, SOL + 14, 120)
+			local milieu = Vector3.new(0, SOL + 40, 200)
+			local p1 = depart:Lerp(milieu, doux)
+			local p2 = milieu:Lerp(finSurvol, doux)
+			local pos = p1:Lerp(p2, doux)
+			local regard = Vector3.new(0, SOL + 8, 175):Lerp(porteGarage + Vector3.new(0, 4, 0), doux)
+			camera.CFrame = CFrame.lookAt(pos, regard)
+		else
+			finir()
+		end
+	end)
+
+	-- Les textes
+	TweenService:Create(noir, TweenInfo.new(0.9), { BackgroundTransparency = 1 }):Play()
+	task.wait(0.6)
+	apparaitre(titre, 0.6)
+	TweenService:Create(echelleTitre, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.wait(0.4)
+	apparaitre(sousTitre, 0.5)
+	task.wait(0.3)
+	apparaitre(slogan, 0.5)
+	task.wait(DUREE_FONTAINE - 0.2)
+	if not termine then
+		disparaitre(titre, 0.6)
+		disparaitre(sousTitre, 0.6)
+	end
+end)
 ]]></ProtectedString></Properties></Item></Item></Item></roblox>
