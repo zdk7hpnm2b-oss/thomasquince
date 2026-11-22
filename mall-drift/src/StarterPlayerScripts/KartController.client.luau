@@ -362,9 +362,20 @@ end
 ---------------------------------------------------------------------
 local modeCamera = Config.Camera.VueParDefaut or "gopro" -- "gopro" ou "derriere"
 
--- Séquence de départ dans le hall : animation (~3 s) puis feux 3, 2, 1, PARTEZ !
-local DUREE_ANIM_DEPART = 3
-type Depart = { debut: number, etape: number }
+-- Séquence de départ : survol de la map (~3 s), la caméra plonge derrière ton
+-- kart sur la ligne de départ, puis feux 3, 2, 1, PARTEZ !
+local DUREE_SURVOL = 3
+local DUREE_PLONGEE = 0.9
+local DUREE_ANIM_DEPART = DUREE_SURVOL + DUREE_PLONGEE
+-- Les survols possibles (un au hasard à chaque départ) : de -> vers, en regardant "cible"
+local SURVOLS = {
+	{ nom = "LA FONTAINE", de = Vector3.new(-34, 13, -62), vers = Vector3.new(32, 9, -22), cible = Vector3.new(0, 6, 0) },
+	{ nom = "L'AQUARIUM GÉANT", de = Vector3.new(-45, 10, -137), vers = Vector3.new(45, 10, -137), cible = Vector3.new(0, 9, -158) },
+	{ nom = "LES BOUTIQUES", de = Vector3.new(-195, 8, 0), vers = Vector3.new(-90, 6, 0), cible = Vector3.new(-40, 4, 0) },
+	{ nom = "LE FOOD COURT", de = Vector3.new(-118, 11, 30), vers = Vector3.new(-150, 8, 108), cible = Vector3.new(-136, 3, 72) },
+	{ nom = "LES SOLDES", de = Vector3.new(190, 9, -8), vers = Vector3.new(95, 6, 6), cible = Vector3.new(40, 4, 0) },
+}
+type Depart = { debut: number, etape: number, survol: { [string]: any }, finSurvol: CFrame? }
 local depart: Depart? = nil
 local departsJoues: { [Instance]: boolean } = {}
 
@@ -507,16 +518,23 @@ local function mettreAJourCamera(dt: number)
 	avant = avant.Unit
 
 	if depart and os.clock() - depart.debut < DUREE_ANIM_DEPART then
-		-- Animation : la caméra fait le tour du kart sur la ligne de départ
 		cacherPilote(false)
-		local a = (os.clock() - depart.debut) / DUREE_ANIM_DEPART
-		a = a * a * (3 - 2 * a)
-		local angle = math.rad(200 - 200 * a) -- de devant le kart jusqu'à derrière
-		local cote = Vector3.new(-avant.Z, 0, avant.X)
-		local direction = avant * math.cos(angle) + cote * math.sin(angle)
-		local distance = 16 - 4 * a
-		local pos = ch.Position + direction * distance + Vector3.new(0, 6 - 2 * a, 0)
-		camera.CFrame = CFrame.lookAt(pos, ch.Position + Vector3.new(0, 1.5, 0))
+		local t = os.clock() - depart.debut
+		local s = depart.survol
+		if t < DUREE_SURVOL then
+			-- 1) Survol d'un coin de la map
+			local a = t / DUREE_SURVOL
+			a = a * a * (3 - 2 * a)
+			local cf = CFrame.lookAt(s.de:Lerp(s.vers, a), s.cible)
+			depart.finSurvol = cf
+			camera.CFrame = cf
+		else
+			-- 2) La caméra plonge derrière ton kart, sur la ligne de départ
+			local a = math.clamp((t - DUREE_SURVOL) / DUREE_PLONGEE, 0, 1)
+			a = a * a * (3 - 2 * a)
+			local derriere = CFrame.lookAt(ch.Position - avant * 12 + Vector3.new(0, 4.5, 0), ch.Position + avant * 8 + Vector3.new(0, 2, 0))
+			camera.CFrame = (depart.finSurvol or derriere):Lerp(derriere, a)
+		end
 		return
 	end
 
@@ -763,14 +781,18 @@ local function entrerDansKart(siege: Seat)
 	demarrerCamera()
 	if modele:GetAttribute("DepartHall") and not departsJoues[modele] then
 		departsJoues[modele] = true
-		depart = { debut = os.clock(), etape = 0 }
+		local survol = SURVOLS[math.random(1, #SURVOLS)]
+		depart = { debut = os.clock(), etape = 0, survol = survol, finSurvol = nil }
 		hud.Visible = false
 		afficherBandes(true)
 		allumerFeux(0, false)
-		-- On arrive dans le hall en sortant du noir
+		-- Fondu depuis le noir, puis le survol de la map
 		noirDepart.BackgroundTransparency = 0
-		TweenService:Create(noirDepart, TweenInfo.new(0.8), { BackgroundTransparency = 1 }):Play()
-		message("★ GOLDEN MALL · PRÊT ? ★", Color3.fromRGB(255, 215, 80), 2.2)
+		TweenService:Create(noirDepart, TweenInfo.new(0.6), { BackgroundTransparency = 1 }):Play()
+		message("✦ " .. survol.nom .. " ✦", Color3.fromRGB(255, 215, 80), 2.2)
+		task.delay(DUREE_SURVOL, function()
+			message("★ EN PLACE SUR LA LIGNE ! ★", Color3.new(1, 1, 1), 1)
+		end)
 	end
 	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end

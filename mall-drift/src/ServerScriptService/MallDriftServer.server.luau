@@ -731,11 +731,11 @@ kiosque(-75, "COQUES & CO", Color3.fromRGB(90, 160, 255))
 kiosque(75, "BARBE À PAPA", Color3.fromRGB(255, 150, 200))
 
 ---------------------------------------------------------------------
--- LA LIGNE DE DÉPART : sur le parking, juste en face de l'entrée du mall.
--- Les karts se placent derrière la ligne, face au mall ; le portique et
--- ses 3 feux sont entre la ligne et l'entrée. 3, 2, 1... PARTEZ !
+-- LA LIGNE DE DÉPART : à l'intérieur du mall, juste après l'entrée, au début
+-- de la place centrale. Les karts sont derrière la ligne, face à la fontaine ;
+-- le portique et ses 3 feux sont au-dessus. 3, 2, 1... PARTEZ !
 ---------------------------------------------------------------------
-local LIGNE_Z = DZ + 20 -- la ligne (le mall est au nord, vers les z plus petits)
+local LIGNE_Z = 122 -- la ligne (la fontaine est au nord, vers les z plus petits)
 local ligneDepart = Instance.new("Model")
 ligneDepart.Name = "LigneDepart"
 ligneDepart.Parent = carte
@@ -1645,7 +1645,7 @@ local function creerKart(joueur: Player, cf: CFrame): Model
 	return kart
 end
 
--- F / « SORTIR MON KART » : le kart apparaît sur la ligne de départ devant le mall,
+-- F / « SORTIR MON KART » : le kart apparaît sur la ligne de départ dans le mall,
 -- et le joueur est assis dedans automatiquement
 local function sortirKart(joueur: Player)
 	if not profils[joueur] or tropRapide(joueur, "sortir", 1.5) then
@@ -1664,10 +1664,10 @@ local function sortirKart(joueur: Player)
 	if humanoide.SeatPart then
 		humanoide.Sit = false
 	end
-	-- Le kart apparaît sur la ligne de départ, en face de l'entrée du mall.
+	-- Le kart apparaît sur la ligne de départ, à l'intérieur du mall.
 	-- Le script du joueur joue l'animation + le compte à rebours 3, 2, 1, PARTEZ !
 	local depart = nil
-	for _, place in ipairs({ Vector2.new(-6, LIGNE_Z + 8), Vector2.new(6, LIGNE_Z + 8), Vector2.new(-6, LIGNE_Z + 17), Vector2.new(6, LIGNE_Z + 17) }) do
+	for _, place in ipairs({ Vector2.new(-11, LIGNE_Z + 7), Vector2.new(11, LIGNE_Z + 7), Vector2.new(-11, LIGNE_Z + 15), Vector2.new(11, LIGNE_Z + 15) }) do
 		local candidat = Vector3.new(place.X, SOL + 0.6, place.Y)
 		local libre = true
 		for _, k in pairs(kartsJoueurs) do
@@ -1680,11 +1680,11 @@ local function sortirKart(joueur: Player)
 			break
 		end
 	end
-	depart = depart or Vector3.new(0, SOL + 0.6, LIGNE_Z + 26)
+	depart = depart or Vector3.new(-20, SOL + 0.6, LIGNE_Z + 7)
 	local kart = creerKart(joueur, CFrame.lookAt(depart, depart + Vector3.new(0, 0, -1))) -- face au mall
 	kart:SetAttribute("DepartHall", true)
 	-- La police laisse tranquille pendant l'animation et le compte à rebours
-	kart:SetAttribute("ProtegeJusqua", workspace:GetServerTimeNow() + 9)
+	kart:SetAttribute("ProtegeJusqua", workspace:GetServerTimeNow() + 12)
 	asseoir(joueur, kart)
 end
 

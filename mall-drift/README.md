@@ -20,9 +20,10 @@ Ce prototype contient :
   **renfort** (jusqu'à 🚨🚨🚨). S'il arrive tout près de toi : **ATTRAPÉ !**, retour au garage. Reste
   hors de vue quelques secondes pour le **semer** (+150 XP) : il redescend et repart à pied. Attire-le
   sur le **sol mouillé** : il glisse (+100 XP) 😂. À pied, tu es un client normal ; dehors, tu es à l'abri
-- **Le départ devant le mall** : en appuyant sur **F** (ou « SORTIR MON KART »), ton kart arrive sur la
-  **ligne de départ, juste en face de l'entrée du mall** : la caméra fait le tour de ton kart, puis les
-  feux du portique s'allument **3, 2, 1… PARTEZ !** et tu fonces dans le mall
+- **Le départ** : en appuyant sur **F** (ou « SORTIR MON KART »), la caméra **survole un coin de la map**
+  pendant 3 secondes (fontaine, aquarium, boutiques, food court ou soldes, au hasard), puis plonge
+  derrière ton kart sur la **ligne de départ à l'intérieur du mall**. Les feux du portique s'allument :
+  **3, 2, 1… PARTEZ !**
 - **Des obstacles** : slalom de plots, caddies abandonnés, palettes de cartons « PROMO », panneaux
   « SOLDES », zone de travaux en chicane, et deux **autolaveuses** qui circulent en laissant une
   traînée d'eau glissante derrière elles
