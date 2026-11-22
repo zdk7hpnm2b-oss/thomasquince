@@ -1,0 +1,4907 @@
+<roblox version="4">
+  <Item class="Lighting" referent="0">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <Color3 name="Ambient">
+        <R>0.27</R>
+        <G>0.25</G>
+        <B>0.35</B>
+      </Color3>
+      <float name="Brightness">2.6</float>
+      <float name="ClockTime">14.5</float>
+      <float name="EnvironmentDiffuseScale">1</float>
+      <float name="EnvironmentSpecularScale">1</float>
+      <float name="ExposureCompensation">0.15</float>
+      <float name="GeographicLatitude">35</float>
+      <bool name="GlobalShadows">true</bool>
+      <Color3 name="OutdoorAmbient">
+        <R>0.5</R>
+        <G>0.48</G>
+        <B>0.6</B>
+      </Color3>
+      <float name="ShadowSoftness">0.15</float>
+      <token name="Technology">4</token>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="1">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">Config</string>
+          <string name="Source"><![CDATA[-- Salon Star : Coiffure Tycoon — configuration centrale.
+-- Tout l'équilibrage (prix, gains, monétisation) se règle ici.
+
+local Config = {}
+
+Config.GameName = "Salon Star"
+Config.DataStoreName = "SalonStar_v1"
+Config.LeaderboardStoreName = "SalonStar_TopEarned_v1"
+
+-- ⚠️ Remplace par l'ID de ton groupe Roblox (0 = désactivé).
+Config.GroupId = 0
+
+---------------------------------------------------------------------
+-- MONÉTISATION : colle ici les IDs créés sur create.roblox.com
+-- (0 = pas encore créé ; le bouton affiche alors « Bientôt »)
+---------------------------------------------------------------------
+Config.GamePasses = {
+	vip = { Id = 0, Name = "VIP", Icon = "👑", Desc = "+50% d'argent, ciseaux dorés, tag VIP et clients VIP x2 plus fréquents" },
+	doubleCash = { Id = 0, Name = "Argent x2", Icon = "💸", Desc = "Double tout l'argent gagné, pour toujours" },
+	fastClients = { Id = 0, Name = "Clients Express", Icon = "⚡", Desc = "Les clients arrivent 40% plus vite" },
+	neonColors = { Id = 0, Name = "Couleurs Néon", Icon = "🌈", Desc = "Teintures néon et arc-en-ciel : les clients paient x3" },
+	premiumStyles = { Id = 0, Name = "Coiffures de Luxe", Icon = "💎", Desc = "Coupes Royale et Sirène + Couronne : les mieux payées du jeu" },
+	autoStylist = { Id = 0, Name = "Styliste Star", Icon = "🤖", Desc = "+2 stylistes gratuits qui coiffent pour toi, même hors ligne" },
+	bigTips = { Id = 0, Name = "Gros Pourboires", Icon = "🪙", Desc = "Pourboires x2 sur les coiffures parfaites" },
+}
+
+-- Packs d'argent : donnent le MAX entre un montant fixe et X minutes de tes gains.
+-- (Ils restent intéressants à chaque niveau du jeu → achats répétés.)
+Config.Products = {
+	cashSmall = { Id = 0, Name = "Petite Caisse", Icon = "💵", Minutes = 10, Min = 2500, Kind = "cash" },
+	cashMedium = { Id = 0, Name = "Coffre", Icon = "💰", Minutes = 45, Min = 15000, Kind = "cash" },
+	cashLarge = { Id = 0, Name = "Banque", Icon = "🏦", Minutes = 180, Min = 75000, Kind = "cash" },
+	cashHuge = { Id = 0, Name = "Empire", Icon = "🏰", Minutes = 720, Min = 400000, Kind = "cash" },
+	rushHour = { Id = 0, Name = "Heure de Pointe (serveur)", Icon = "🔥", Kind = "rush", Desc = "Tout le serveur : clients x2 et paie x2 pendant 15 min" },
+	celebrity = { Id = 0, Name = "Client Célébrité", Icon = "🌟", Kind = "celebrity", Desc = "Une star arrive dans ton salon et paie x10" },
+	starterPack = { Id = 0, Name = "Pack Débutant", Icon = "🎁", Kind = "starter", Desc = "25 000 $ + Coupe Bouclée + Teintures Fantaisie (une seule fois)" },
+}
+
+Config.RushDuration = 15 * 60
+Config.RushMultiplier = 2
+
+---------------------------------------------------------------------
+-- COIFFURES
+---------------------------------------------------------------------
+export type StyleDef = { Id: string, Name: string, Icon: string, Value: number, Cost: number, Pass: string? }
+
+Config.Styles = {
+	{ Id = "pixie", Name = "Garçonne", Icon = "✂️", Value = 1, Cost = 0 },
+	{ Id = "lisse", Name = "Lisse", Icon = "💇", Value = 1.3, Cost = 0 },
+	{ Id = "queue", Name = "Queue de cheval", Icon = "🎀", Value = 1.8, Cost = 350 },
+	{ Id = "boucle", Name = "Bouclée", Icon = "🌀", Value = 2.5, Cost = 1800 },
+	{ Id = "chignon", Name = "Chignon", Icon = "🍩", Value = 3.4, Cost = 7500 },
+	{ Id = "couettes", Name = "Couettes", Icon = "👧", Value = 4.8, Cost = 25000 },
+	{ Id = "tresses", Name = "Tresses", Icon = "🪢", Value = 7, Cost = 90000 },
+	{ Id = "afro", Name = "Afro", Icon = "☁️", Value = 10, Cost = 320000 },
+	{ Id = "crete", Name = "Crête Punk", Icon = "🦔", Value = 15, Cost = 1200000 },
+	{ Id = "sirene", Name = "Sirène", Icon = "🧜", Value = 24, Cost = 0, Pass = "premiumStyles" },
+	{ Id = "royal", Name = "Royale", Icon = "👸", Value = 32, Cost = 0, Pass = "premiumStyles" },
+} :: { StyleDef }
+
+Config.Lengths = {
+	{ Id = 1, Name = "Court", Mult = 1 },
+	{ Id = 2, Name = "Mi-long", Mult = 1.1 },
+	{ Id = 3, Name = "Long", Mult = 1.25 },
+}
+
+export type ColorDef = {
+	Id: string,
+	Name: string,
+	Color: Color3,
+	Value: number,
+	Tier: string, -- "base" | "fantasy" | "neon"
+	Material: Enum.Material?,
+	Rainbow: boolean?,
+}
+
+Config.Colors = {
+	{ Id = "noir", Name = "Noir", Color = Color3.fromRGB(28, 22, 20), Value = 1, Tier = "base" },
+	{ Id = "brun", Name = "Brun", Color = Color3.fromRGB(92, 56, 34), Value = 1, Tier = "base" },
+	{ Id = "blond", Name = "Blond", Color = Color3.fromRGB(238, 200, 118), Value = 1, Tier = "base" },
+	{ Id = "roux", Name = "Roux", Color = Color3.fromRGB(198, 86, 34), Value = 1, Tier = "base" },
+	{ Id = "rose", Name = "Rose Bonbon", Color = Color3.fromRGB(255, 140, 196), Value = 1.6, Tier = "fantasy" },
+	{ Id = "bleu", Name = "Bleu Ciel", Color = Color3.fromRGB(96, 160, 255), Value = 1.6, Tier = "fantasy" },
+	{ Id = "violet", Name = "Lavande", Color = Color3.fromRGB(160, 110, 240), Value = 1.6, Tier = "fantasy" },
+	{ Id = "menthe", Name = "Menthe", Color = Color3.fromRGB(110, 230, 180), Value = 1.6, Tier = "fantasy" },
+	{ Id = "platine", Name = "Platine", Color = Color3.fromRGB(240, 240, 250), Value = 1.6, Tier = "fantasy" },
+	{ Id = "neonrose", Name = "Néon Rose", Color = Color3.fromRGB(255, 60, 180), Value = 3, Tier = "neon", Material = Enum.Material.Neon },
+	{ Id = "neoncyan", Name = "Néon Cyan", Color = Color3.fromRGB(40, 240, 255), Value = 3, Tier = "neon", Material = Enum.Material.Neon },
+	{ Id = "or", Name = "Or Pur", Color = Color3.fromRGB(255, 200, 60), Value = 3, Tier = "neon", Material = Enum.Material.Foil },
+	{ Id = "arcenciel", Name = "Arc-en-ciel", Color = Color3.fromRGB(255, 80, 80), Value = 3.5, Tier = "neon", Material = Enum.Material.Neon, Rainbow = true },
+} :: { ColorDef }
+
+Config.FantasyColorsCost = 4000
+
+export type AccDef = { Id: string, Name: string, Icon: string, Cost: number, Pass: string? }
+Config.Accessories = {
+	{ Id = "aucun", Name = "Aucun", Icon = "🚫", Cost = 0 },
+	{ Id = "noeud", Name = "Nœud", Icon = "🎀", Cost = 0 },
+	{ Id = "barrette", Name = "Barrette", Icon = "📎", Cost = 900 },
+	{ Id = "fleur", Name = "Fleur", Icon = "🌸", Cost = 6000 },
+	{ Id = "couronne", Name = "Couronne", Icon = "👑", Cost = 0, Pass = "premiumStyles" },
+} :: { AccDef }
+
+---------------------------------------------------------------------
+-- ÉCONOMIE
+---------------------------------------------------------------------
+Config.BasePay = 12
+Config.PerfectTip = 0.5 -- +50 % si coiffure parfaite
+Config.StreakBonus = 0.05 -- +5 % par coiffure parfaite d'affilée
+Config.StreakMax = 10
+Config.VipChance = 0.05
+Config.VipPay = 4
+Config.CelebrityPay = 10
+Config.CustomerPatience = 100 -- secondes
+Config.StylistWorkTime = 14 -- secondes par client pour un styliste
+Config.StylistScore = 0.85
+Config.OfflineMaxSeconds = 3 * 3600
+Config.OfflineRate = 0.5
+
+-- Améliorations : Costs[i] = prix pour passer au niveau i (le niveau 1 est gratuit si Costs[1] == 0)
+Config.Upgrades = {
+	chairs = {
+		Name = "Fauteuils", Icon = "💺", Desc = "Plus de clients en même temps",
+		Costs = { 0, 250, 1500, 7500, 35000, 160000 },
+	},
+	stylists = {
+		Name = "Stylistes", Icon = "🧑‍🎨", Desc = "Ils coiffent tout seuls pour toi",
+		Costs = { 700, 4500, 22000, 100000, 450000, 2000000 },
+	},
+	deco = {
+		Name = "Décoration", Icon = "✨", Desc = "Un salon plus chic = clients qui paient plus",
+		Costs = { 0, 3000, 30000, 250000, 1800000 },
+		Mult = { 1, 1.35, 1.85, 2.6, 3.8 },
+	},
+	pub = {
+		Name = "Publicité", Icon = "📣", Desc = "Les clients arrivent plus vite",
+		Costs = { 450, 3500, 20000, 120000, 700000 },
+		Interval = { 13, 10.5, 8.5, 7, 5.5, 4.2 }, -- index = niveau + 1
+	},
+}
+
+-- Franchise (renaissance) : remet l'argent et les améliorations à zéro, garde les coupes débloquées.
+Config.RebirthBaseCost = 4000000
+Config.RebirthGrowth = 4
+Config.RebirthBonus = 0.5
+
+function Config.RebirthCost(rebirths: number): number
+	return Config.RebirthBaseCost * Config.RebirthGrowth ^ rebirths
+end
+
+---------------------------------------------------------------------
+-- RÉCOMPENSES GRATUITES (rétention)
+---------------------------------------------------------------------
+Config.DailyRewards = { 1, 1.5, 2, 3, 4, 6, 10 } -- multiplicateurs (x minutes de gains, min 500 $)
+Config.DailyBaseMinutes = 5
+Config.DailyMin = 500
+
+Config.PlaytimeGifts = {
+	{ Minutes = 5, Name = "Petit cadeau", Kind = "cash", Amount = 8 },
+	{ Minutes = 15, Name = "Cadeau", Kind = "cash", Amount = 20 },
+	{ Minutes = 30, Name = "Gros cadeau", Kind = "cash", Amount = 45 },
+	{ Minutes = 60, Name = "Méga cadeau", Kind = "cash", Amount = 120 },
+}
+-- Amount = minutes de gains (min Amount * 100 $)
+
+Config.Codes = {
+	SALONSTAR = 1500,
+	COIFFURE = 5000,
+	MERCI = 10000,
+}
+
+Config.FriendBoostPerFriend = 0.1
+Config.FriendBoostMax = 0.4
+Config.GroupBoost = 0.1
+Config.PremiumBoost = 0.1
+Config.VipBoost = 0.5
+
+---------------------------------------------------------------------
+-- Aides
+---------------------------------------------------------------------
+local function index(list, key)
+	local map = {}
+	for i, v in list do
+		map[v[key]] = v
+		v.Order = i
+	end
+	return map
+end
+
+Config.StyleById = index(Config.Styles, "Id")
+Config.ColorById = index(Config.Colors, "Id")
+Config.AccById = index(Config.Accessories, "Id")
+
+export type Look = { style: string, length: number, color: string, acc: string }
+
+return Config
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="4">
+        <Properties>
+          <string name="Name">HairBuilder</string>
+          <string name="Source"><![CDATA[-- Construit une coiffure 3D (en pièces) sur la tête d'un personnage.
+-- Utilisé par le serveur (clients PNJ, joueurs) et par le client (aperçus).
+
+local CollectionService = game:GetService("CollectionService")
+
+local Config = require(script.Parent.Config)
+
+local HairBuilder = {}
+
+local DEFAULT_LOOK = { style = "lisse", length = 2, color = "brun", acc = "aucun" }
+
+local function darken(c: Color3, f: number): Color3
+	return Color3.new(c.R * f, c.G * f, c.B * f)
+end
+
+type Ctx = {
+	model: Model,
+	head: BasePart,
+	s: number, -- échelle de la tête
+	color: Color3,
+	material: Enum.Material,
+	rainbow: boolean,
+}
+
+local function addPart(ctx: Ctx, kind: string, size: Vector3, offset: CFrame, color: Color3?, material: Enum.Material?, noRainbow: boolean?): BasePart
+	local s = ctx.s
+	local p = Instance.new("Part")
+	p.Name = "Hair"
+	p.Size = size * s
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = true
+	p.Anchored = false
+	p.Color = color or ctx.color
+	p.Material = material or ctx.material
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if kind == "ellipsoid" then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+	elseif kind == "ball" then
+		p.Shape = Enum.PartType.Ball
+	elseif kind == "cylinder" then
+		p.Shape = Enum.PartType.Cylinder
+	elseif kind == "wedge" then
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Wedge
+		mesh.Parent = p
+	end
+	local pos = offset.Position * s
+	p.CFrame = ctx.head.CFrame * (CFrame.new(pos) * offset.Rotation)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = ctx.head
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = ctx.model
+	if ctx.rainbow and not noRainbow and color == nil then
+		CollectionService:AddTag(p, "RainbowHair")
+	end
+	return p
+end
+
+local function E(ctx, size, x, y, z, rx, ry, rz)
+	return addPart(ctx, "ellipsoid", size, CFrame.new(x, y, z) * CFrame.Angles(math.rad(rx or 0), math.rad(ry or 0), math.rad(rz or 0)))
+end
+
+local function B(ctx, d, x, y, z)
+	return addPart(ctx, "ball", Vector3.new(d, d, d), CFrame.new(x, y, z))
+end
+
+-- Le dessus du crâne (présent dans presque toutes les coupes)
+local function cap(ctx, tight: boolean?)
+	if tight then
+		E(ctx, Vector3.new(1.27, 0.72, 1.3), 0, 0.3, 0.06)
+	else
+		E(ctx, Vector3.new(1.34, 0.8, 1.38), 0, 0.32, 0.07)
+	end
+end
+
+local function fringe(ctx, length: number)
+	E(ctx, Vector3.new(1.12, 0.32 + 0.06 * length, 0.42), 0, 0.42, -0.5, -18, 0, 0)
+end
+
+local Styles = {}
+
+function Styles.pixie(ctx, length)
+	cap(ctx, true)
+	E(ctx, Vector3.new(1.05, 0.28, 0.45), 0.12, 0.45, -0.48, -15, 0, -8)
+	if length >= 2 then
+		E(ctx, Vector3.new(1.2, 0.5, 0.5), 0, 0.05, 0.5)
+	end
+	if length >= 3 then
+		E(ctx, Vector3.new(0.3, 0.6, 0.6), 0.6, 0.0, 0.0)
+		E(ctx, Vector3.new(0.3, 0.6, 0.6), -0.6, 0.0, 0.0)
+	end
+end
+
+function Styles.lisse(ctx, length)
+	cap(ctx)
+	fringe(ctx, length)
+	local L = ({ 0.9, 1.7, 2.6 })[length]
+	E(ctx, Vector3.new(1.32, L, 0.55), 0, 0.42 - L / 2, 0.42)
+	E(ctx, Vector3.new(0.34, L * 0.92, 0.95), 0.6, 0.4 - L / 2 * 0.92, 0.08)
+	E(ctx, Vector3.new(0.34, L * 0.92, 0.95), -0.6, 0.4 - L / 2 * 0.92, 0.08)
+end
+
+function Styles.queue(ctx, length)
+	cap(ctx, true)
+	fringe(ctx, 1)
+	B(ctx, 0.38, 0, 0.3, 0.68)
+	local n = ({ 2, 4, 6 })[length]
+	for i = 1, n do
+		local t = i / n
+		local w = 0.62 - 0.25 * t
+		E(ctx, Vector3.new(w, 0.62, w * 0.9), 0, 0.22 - i * 0.4, 0.82 + 0.06 * math.sin(i))
+	end
+end
+
+function Styles.boucle(ctx, length)
+	cap(ctx)
+	local rows = length
+	for row = 0, rows do
+		local count = 10
+		local r = 0.64 + row * 0.03
+		for i = 0, count - 1 do
+			local a = (i / count) * math.pi * 2
+			local x, z = math.sin(a) * r, math.cos(a) * r
+			if z > -0.35 or row == 0 then -- ne pas cacher le visage
+				B(ctx, 0.46, x, 0.42 - row * 0.4, z + 0.05)
+			end
+		end
+	end
+	for i = 0, 5 do
+		local a = (i / 6) * math.pi * 2
+		B(ctx, 0.45, math.sin(a) * 0.32, 0.72, math.cos(a) * 0.32 + 0.05)
+	end
+end
+
+function Styles.chignon(ctx, length)
+	cap(ctx, true)
+	fringe(ctx, 1)
+	local d = 0.6 + 0.12 * length
+	B(ctx, d, 0, 0.72 + 0.05 * length, 0.42)
+	addPart(ctx, "cylinder", Vector3.new(0.14, d * 0.85, d * 0.85), CFrame.new(0, 0.6, 0.4) * CFrame.Angles(0, 0, math.rad(90)), darken(ctx.color, 0.7))
+	if length == 3 then
+		E(ctx, Vector3.new(0.22, 0.9, 0.22), 0.55, -0.1, -0.15, 0, 0, 8)
+		E(ctx, Vector3.new(0.22, 0.9, 0.22), -0.55, -0.1, -0.15, 0, 0, -8)
+	end
+end
+
+function Styles.couettes(ctx, length)
+	cap(ctx)
+	fringe(ctx, 1)
+	local n = ({ 2, 3, 5 })[length]
+	for _, side in { 1, -1 } do
+		B(ctx, 0.3, side * 0.68, 0.32, 0.12)
+		for i = 1, n do
+			local d = 0.5 - i * 0.03
+			B(ctx, d, side * (0.78 + i * 0.07), 0.3 - i * 0.36, 0.18)
+		end
+	end
+end
+
+function Styles.tresses(ctx, length)
+	cap(ctx)
+	fringe(ctx, 1)
+	local n = ({ 3, 5, 8 })[length]
+	for _, side in { 1, -1 } do
+		for i = 1, n do
+			local wiggle = (i % 2 == 0) and 0.06 or -0.06
+			B(ctx, 0.34, side * 0.48 + wiggle, 0.15 - i * 0.26, 0.48 + i * 0.02)
+		end
+		B(ctx, 0.2, side * 0.48, 0.15 - (n + 1) * 0.26, 0.5 + n * 0.02)
+	end
+end
+
+function Styles.afro(ctx, length)
+	local d = 1.75 + 0.3 * length
+	E(ctx, Vector3.new(d, d * 0.9, d), 0, 0.45, 0.18)
+	for i = 0, 13 do
+		local a = (i / 14) * math.pi * 2
+		local b = (i % 2 == 0) and 0.2 or 0.55
+		B(ctx, 0.55, math.sin(a) * d * 0.45, 0.45 + b * d * 0.35, math.cos(a) * d * 0.45 + 0.18)
+	end
+end
+
+function Styles.crete(ctx, length)
+	E(ctx, Vector3.new(1.25, 0.66, 1.28), 0, 0.28, 0.06):SetAttribute("Shaved", true)
+	local h = 0.45 + 0.28 * length
+	for i = 0, 5 do
+		local z = -0.5 + i * 0.22
+		addPart(ctx, "wedge", Vector3.new(0.22, h * (1 - math.abs(i - 2.5) * 0.08), 0.42), CFrame.new(0, 0.6 + h / 2, z) * CFrame.Angles(math.rad(-20), 0, 0))
+	end
+end
+
+function Styles.sirene(ctx, length)
+	cap(ctx)
+	fringe(ctx, length)
+	local n = ({ 4, 6, 9 })[length]
+	for col = -1, 1 do
+		for i = 1, n do
+			local wave = math.sin(i * 1.1 + col) * 0.12
+			B(ctx, 0.5, col * 0.42 + wave, 0.35 - i * 0.32, 0.5 + math.abs(col) * -0.08)
+		end
+	end
+	for _, side in { 1, -1 } do
+		for i = 1, math.max(2, n - 3) do
+			B(ctx, 0.38, side * (0.62 + math.sin(i) * 0.06), 0.2 - i * 0.3, -0.05)
+		end
+	end
+end
+
+function Styles.royal(ctx, length)
+	cap(ctx)
+	fringe(ctx, 1)
+	E(ctx, Vector3.new(1.05, 0.7, 1.05), 0, 0.85, 0.15)
+	E(ctx, Vector3.new(0.8, 0.6, 0.8), 0, 1.25, 0.15)
+	E(ctx, Vector3.new(0.5, 0.45, 0.5), 0, 1.55, 0.15)
+	local L = ({ 0.8, 1.5, 2.3 })[length]
+	E(ctx, Vector3.new(1.2, L, 0.5), 0, 0.35 - L / 2, 0.45)
+	local glow = addPart(ctx, "ball", Vector3.new(0.2, 0.2, 0.2), CFrame.new(0, 1.8, 0.15), Color3.fromRGB(255, 240, 180), Enum.Material.Neon)
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkle.Rate = 6
+	sparkle.Lifetime = NumberRange.new(0.6, 1.2)
+	sparkle.Speed = NumberRange.new(0.5, 1.5)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Size = NumberSequence.new(0.25, 0)
+	sparkle.LightEmission = 1
+	sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 230, 150))
+	sparkle.Parent = glow
+end
+
+local Accessories = {}
+
+function Accessories.noeud(ctx)
+	local c = Color3.fromRGB(255, 70, 120)
+	addPart(ctx, "ellipsoid", Vector3.new(0.18, 0.36, 0.48), CFrame.new(0.5, 0.72, -0.05) * CFrame.Angles(0, 0, math.rad(35)) * CFrame.new(0, 0, 0.22), c, Enum.Material.SmoothPlastic)
+	addPart(ctx, "ellipsoid", Vector3.new(0.18, 0.36, 0.48), CFrame.new(0.5, 0.72, -0.05) * CFrame.Angles(0, 0, math.rad(35)) * CFrame.new(0, 0, -0.22), c, Enum.Material.SmoothPlastic)
+	addPart(ctx, "ball", Vector3.new(0.2, 0.2, 0.2), CFrame.new(0.5, 0.72, -0.05), darken(c, 0.8), Enum.Material.SmoothPlastic)
+end
+
+function Accessories.barrette(ctx)
+	addPart(ctx, "block", Vector3.new(0.12, 0.1, 0.55), CFrame.new(0.62, 0.45, -0.25) * CFrame.Angles(math.rad(20), 0, math.rad(-20)), Color3.fromRGB(120, 230, 255), Enum.Material.Neon)
+end
+
+function Accessories.fleur(ctx)
+	local center = CFrame.new(-0.62, 0.5, -0.12) * CFrame.Angles(0, math.rad(90), 0)
+	for i = 0, 4 do
+		local a = math.rad(i * 72)
+		addPart(ctx, "ellipsoid", Vector3.new(0.22, 0.32, 0.1), center * CFrame.Angles(0, 0, a) * CFrame.new(0, 0.16, 0), Color3.fromRGB(255, 190, 220), Enum.Material.SmoothPlastic)
+	end
+	addPart(ctx, "ball", Vector3.new(0.14, 0.14, 0.14), center * CFrame.new(0, 0, -0.04), Color3.fromRGB(255, 220, 80), Enum.Material.Neon)
+end
+
+function Accessories.couronne(ctx)
+	local gold = Color3.fromRGB(255, 200, 60)
+	local y = 0.78
+	for i = 0, 7 do
+		local a = (i / 8) * math.pi * 2
+		local cf = CFrame.new(math.sin(a) * 0.42, y, math.cos(a) * 0.42 + 0.05) * CFrame.Angles(0, a, 0)
+		addPart(ctx, "block", Vector3.new(0.2, 0.18, 0.06), cf, gold, Enum.Material.Foil)
+		addPart(ctx, "wedge", Vector3.new(0.06, 0.2, 0.12), cf * CFrame.new(0, 0.18, 0), gold, Enum.Material.Foil)
+	end
+	addPart(ctx, "ball", Vector3.new(0.16, 0.16, 0.16), CFrame.new(0, y + 0.05, -0.4), Color3.fromRGB(255, 40, 90), Enum.Material.Neon)
+end
+
+function HairBuilder.Normalize(look: any): Config.Look
+	look = typeof(look) == "table" and look or {}
+	return {
+		style = Config.StyleById[look.style] and look.style or DEFAULT_LOOK.style,
+		length = (look.length == 1 or look.length == 2 or look.length == 3) and look.length or DEFAULT_LOOK.length,
+		color = Config.ColorById[look.color] and look.color or DEFAULT_LOOK.color,
+		acc = Config.AccById[look.acc] and look.acc or DEFAULT_LOOK.acc,
+	}
+end
+
+-- Retire les cheveux Roblox (accessoires) et l'ancienne coiffure custom.
+function HairBuilder.Clear(character: Model)
+	local old = character:FindFirstChild("CustomHair")
+	if old then
+		old:Destroy()
+	end
+	for _, acc in character:GetChildren() do
+		if acc:IsA("Accessory") then
+			local ok, t = pcall(function()
+				return acc.AccessoryType
+			end)
+			if (ok and t == Enum.AccessoryType.Hair) or acc.Name:lower():find("hair") then
+				acc:Destroy()
+			end
+		end
+	end
+end
+
+function HairBuilder.Apply(character: Model, look: any): Model?
+	local head = character:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return nil
+	end
+	look = HairBuilder.Normalize(look)
+	HairBuilder.Clear(character)
+
+	local colorDef = Config.ColorById[look.color]
+	local model = Instance.new("Model")
+	model.Name = "CustomHair"
+	local ctx: Ctx = {
+		model = model,
+		head = head,
+		s = head.Size.Y,
+		color = colorDef.Color,
+		material = colorDef.Material or Enum.Material.SmoothPlastic,
+		rainbow = colorDef.Rainbow == true,
+	}
+	local builder = Styles[look.style] or Styles.lisse
+	builder(ctx, look.length)
+	-- Crâne rasé de la crête : couleur plus sombre
+	for _, p in model:GetChildren() do
+		if p:GetAttribute("Shaved") then
+			p.Color = darken(ctx.color, 0.55)
+			p.Material = Enum.Material.SmoothPlastic
+			CollectionService:RemoveTag(p, "RainbowHair")
+		end
+	end
+	local acc = Accessories[look.acc]
+	if acc then
+		acc(ctx)
+	end
+	if colorDef.Tier == "neon" and colorDef.Material == Enum.Material.Neon then
+		local light = Instance.new("PointLight")
+		light.Color = colorDef.Color
+		light.Range = 6
+		light.Brightness = 0.8
+		light.Parent = model:FindFirstChildWhichIsA("BasePart")
+	end
+	model:SetAttribute("Style", look.style)
+	model:SetAttribute("Length", look.length)
+	model:SetAttribute("Color", look.color)
+	model:SetAttribute("Acc", look.acc)
+	model.Parent = character
+	return model
+end
+
+-- Score (0..1) entre une demande et une coiffure réalisée
+function HairBuilder.Score(request: Config.Look, look: Config.Look): number
+	local score = 0
+	if request.style == look.style then
+		score += 0.4
+	end
+	if request.length == look.length then
+		score += 0.2
+	end
+	if request.color == look.color then
+		score += 0.3
+	end
+	if request.acc == look.acc then
+		score += 0.1
+	end
+	return score
+end
+
+function HairBuilder.Describe(look: Config.Look): string
+	local style = Config.StyleById[look.style]
+	local length = Config.Lengths[look.length]
+	local color = Config.ColorById[look.color]
+	local acc = Config.AccById[look.acc]
+	local parts = { style.Icon .. " " .. style.Name, length.Name, "🎨 " .. color.Name }
+	if look.acc ~= "aucun" then
+		table.insert(parts, acc.Icon .. " " .. acc.Name)
+	end
+	return table.concat(parts, " • ")
+end
+
+return HairBuilder
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="5">
+        <Properties>
+          <string name="Name">Util</string>
+          <string name="Source"><![CDATA[local Util = {}
+
+local SUFFIXES = { "", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc" }
+
+function Util.Format(n: number): string
+	n = n or 0
+	if n < 0 then
+		return "-" .. Util.Format(-n)
+	end
+	if n < 1000 then
+		return tostring(math.floor(n))
+	end
+	local i = 1
+	while n >= 1000 and i < #SUFFIXES do
+		n /= 1000
+		i += 1
+	end
+	local s
+	if n >= 100 then
+		s = string.format("%d", math.floor(n))
+	elseif n >= 10 then
+		s = string.format("%.1f", math.floor(n * 10) / 10)
+	else
+		s = string.format("%.2f", math.floor(n * 100) / 100)
+	end
+	if s:find("%.") then
+		s = s:gsub("0+$", ""):gsub("%.$", "")
+	end
+	return s .. SUFFIXES[i]
+end
+
+function Util.Money(n: number): string
+	return Util.Format(n) .. " $"
+end
+
+function Util.Time(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	local h = seconds // 3600
+	local m = (seconds % 3600) // 60
+	local s = seconds % 60
+	if h > 0 then
+		return string.format("%d:%02d:%02d", h, m, s)
+	end
+	return string.format("%d:%02d", m, s)
+end
+
+return Util
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="6">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="7">
+      <Properties>
+        <string name="Name">Server</string>
+      </Properties>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">Data</string>
+          <string name="Source"><![CDATA[-- Sauvegarde des joueurs : verrou de session (anti-duplication entre serveurs),
+-- sauvegarde automatique, sauvegarde à la fermeture du serveur.
+
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
+local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
+
+local Data = {}
+
+local LOCK_TIMEOUT = 15 * 60 -- un verrou plus vieux que ça est considéré abandonné
+local AUTOSAVE = 90
+
+local store: DataStore? = nil
+do
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(Config.DataStoreName)
+	end)
+	if ok then
+		store = result
+	else
+		warn("[Data] DataStore indisponible (active « Enable Studio Access to API Services ») :", result)
+	end
+end
+
+local jobId = game.JobId ~= "" and game.JobId or ("studio-" .. HttpService:GenerateGUID(false))
+
+export type Profile = {
+	Cash: number,
+	TotalEarned: number,
+	Served: number,
+	Perfect: number,
+	Streak: number,
+	Rebirths: number,
+	Upgrades: { chairs: number, stylists: number, deco: number, pub: number },
+	Styles: { [string]: boolean },
+	Accs: { [string]: boolean },
+	FantasyColors: boolean,
+	Look: { style: string, length: number, color: string, acc: string }?,
+	Daily: { Last: number, Streak: number },
+	Codes: { [string]: boolean },
+	Receipts: { string },
+	StarterBought: boolean,
+	LastOnline: number,
+	OfflineRate: number,
+	FirstJoin: number,
+}
+
+local function defaults(): Profile
+	return {
+		Cash = 0,
+		TotalEarned = 0,
+		Served = 0,
+		Perfect = 0,
+		Streak = 0,
+		Rebirths = 0,
+		Upgrades = { chairs = 1, stylists = 0, deco = 1, pub = 0 },
+		Styles = { pixie = true, lisse = true },
+		Accs = { aucun = true, noeud = true },
+		FantasyColors = false,
+		Look = nil,
+		Daily = { Last = 0, Streak = 0 },
+		Codes = {},
+		Receipts = {},
+		StarterBought = false,
+		LastOnline = 0,
+		OfflineRate = 0,
+		FirstJoin = os.time(),
+	}
+end
+
+local function reconcile(target: any, template: any)
+	for k, v in template do
+		if target[k] == nil then
+			target[k] = typeof(v) == "table" and table.clone(v) or v
+		elseif typeof(v) == "table" and typeof(target[k]) == "table" then
+			reconcile(target[k], v)
+		end
+	end
+end
+
+local profiles: { [Player]: Profile } = {}
+local noSave: { [Player]: boolean } = {}
+local loadedSignal = Instance.new("BindableEvent")
+
+function Data.Get(player: Player): Profile?
+	return profiles[player]
+end
+
+function Data.IsLoaded(player: Player): boolean
+	return profiles[player] ~= nil
+end
+
+Data.Loaded = loadedSignal.Event -- (player, profile)
+
+local function key(player: Player)
+	return "p_" .. player.UserId
+end
+
+local function tryLoad(player: Player): (boolean, any)
+	local acquired = false
+	local result
+	local ok, err = pcall(function()
+		(store :: DataStore):UpdateAsync(key(player), function(old)
+			old = old or {}
+			local lock = old.Lock
+			if lock and lock.JobId ~= jobId and os.time() - (lock.Time or 0) < LOCK_TIMEOUT then
+				acquired = false
+				return nil -- quelqu'un d'autre l'utilise : on annule
+			end
+			acquired = true
+			old.Lock = { JobId = jobId, Time = os.time() }
+			result = old.Data
+			return old
+		end)
+	end)
+	if not ok then
+		warn("[Data] Erreur de chargement :", err)
+		return false, nil
+	end
+	return acquired, result
+end
+
+function Data.Load(player: Player): Profile?
+	local profile: Profile
+	if store then
+		local loaded = false
+		local result
+		for attempt = 1, 6 do
+			local acquired, data = tryLoad(player)
+			if acquired then
+				loaded, result = true, data
+				break
+			end
+			if not player.Parent then
+				return nil
+			end
+			task.wait(attempt * 2)
+		end
+		if not loaded then
+			-- Dernier recours : on vole le verrou (serveur précédent probablement mort)
+			local ok = pcall(function()
+				(store :: DataStore):UpdateAsync(key(player), function(old)
+					old = old or {}
+					old.Lock = { JobId = jobId, Time = os.time() }
+					result = old.Data
+					return old
+				end)
+			end)
+			if not ok then
+				player:Kick("Impossible de charger ta sauvegarde, réessaie dans une minute.")
+				return nil
+			end
+		end
+		profile = typeof(result) == "table" and result or defaults()
+	else
+		profile = defaults()
+		noSave[player] = true
+	end
+	reconcile(profile, defaults())
+	if not player.Parent then
+		Data.Release(player)
+		return nil
+	end
+	profiles[player] = profile
+	loadedSignal:Fire(player, profile)
+	return profile
+end
+
+-- Sauvegarde (bloquante). release = libérer le verrou (le joueur part).
+function Data.Save(player: Player, release: boolean?): boolean
+	local profile = profiles[player]
+	if not profile or noSave[player] or not store then
+		return noSave[player] == true
+	end
+	profile.LastOnline = os.time()
+	local stillOwner = true
+	local ok, err = pcall(function()
+		(store :: DataStore):UpdateAsync(key(player), function(old)
+			old = old or {}
+			if old.Lock and old.Lock.JobId ~= jobId then
+				stillOwner = false
+				return nil -- un autre serveur a pris la main : ne pas écraser
+			end
+			old.Data = profile
+			old.Lock = (not release) and { JobId = jobId, Time = os.time() } or nil
+			return old
+		end)
+	end)
+	if not ok then
+		warn("[Data] Erreur de sauvegarde :", err)
+		return false
+	end
+	if not stillOwner then
+		warn("[Data] Verrou perdu pour", player.Name)
+		player:Kick("Ta partie a été ouverte sur un autre serveur.")
+		return false
+	end
+	return true
+end
+
+function Data.Release(player: Player)
+	if profiles[player] then
+		Data.Save(player, true)
+	end
+	profiles[player] = nil
+	noSave[player] = nil
+end
+
+function Data.AddReceipt(profile: Profile, purchaseId: string)
+	table.insert(profile.Receipts, purchaseId)
+	while #profile.Receipts > 60 do
+		table.remove(profile.Receipts, 1)
+	end
+end
+
+task.spawn(function()
+	while true do
+		task.wait(AUTOSAVE)
+		for player in profiles do
+			task.spawn(Data.Save, player)
+		end
+	end
+end)
+
+game:BindToClose(function()
+	if RunService:IsStudio() and not store then
+		return
+	end
+	local pending = 0
+	for player in profiles do
+		pending += 1
+		task.spawn(function()
+			Data.Save(player, true)
+			pending -= 1
+		end)
+	end
+	local start = os.clock()
+	while pending > 0 and os.clock() - start < 25 do
+		task.wait(0.1)
+	end
+end)
+
+return Data
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="9">
+        <Properties>
+          <string name="Name">Main</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Point d'entrée serveur de Salon Star.
+
+local Players = game:GetService("Players")
+
+local Data = require(script.Parent.Data)
+local Monetization = require(script.Parent.Monetization)
+local Net = require(script.Parent.Net)
+local Rewards = require(script.Parent.Rewards)
+local Salons = require(script.Parent.Salons)
+local Stats = require(script.Parent.Stats)
+local World = require(script.Parent.World)
+
+World.Build()
+Salons.Init()
+Rewards.Init()
+
+local function onCharacter(player: Player, character: Model)
+	local hrp = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+	if not hrp then
+		return
+	end
+	task.wait(0.1)
+	local home = Salons.HomeCFrame(player)
+	if home then
+		character:PivotTo(home)
+	end
+	local hum = character:FindFirstChildOfClass("Humanoid")
+	if hum and Stats.HasPass(player, "vip") then
+		hum.WalkSpeed = 22
+	end
+	Salons.ApplyLook(player)
+end
+
+local function onPlayerAdded(player: Player)
+	Stats.Init(player)
+	Stats.CreateLeaderstats(player)
+	local profile = Data.Load(player)
+	if not profile or not player.Parent then
+		return
+	end
+	Monetization.CheckPasses(player)
+	Rewards.CheckGroup(player)
+	Rewards.RefreshFriends()
+	Rewards.Offline(player)
+
+	if not Salons.Assign(player) then
+		Net.Toast(player, "Tous les salons sont pris sur ce serveur, tu peux visiter et te faire coiffer !", "error")
+	end
+	player.CharacterAppearanceLoaded:Connect(function()
+		Salons.ApplyLook(player)
+	end)
+	player.CharacterAdded:Connect(function(c)
+		onCharacter(player, c)
+	end)
+	if player.Character then
+		task.spawn(onCharacter, player, player.Character)
+	end
+	Stats.PushNow(player)
+	Net.Notify:FireClient(player, { Type = "welcome", First = profile.Served == 0 })
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, p in Players:GetPlayers() do
+	task.spawn(onPlayerAdded, p)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	local profile = Data.Get(player)
+	if profile then
+		profile.OfflineRate = Stats.Rate(player)
+	end
+	Salons.OnPlayerRemoving(player)
+	Data.Release(player)
+	Stats.Cleanup(player)
+	task.defer(Rewards.RefreshFriends)
+end)
+
+---------------------------------------------------------------------
+-- Actions du client (toutes vérifiées côté serveur)
+---------------------------------------------------------------------
+local lastCall: { [Player]: number } = {}
+
+Net.Action.OnServerInvoke = function(player: Player, action: any, a: any, b: any)
+	if typeof(action) ~= "string" then
+		return false
+	end
+	local now = os.clock()
+	if now - (lastCall[player] or 0) < 0.08 then
+		return false, "Doucement !"
+	end
+	lastCall[player] = now
+	if not Data.IsLoaded(player) then
+		return false, "Chargement…"
+	end
+
+	if action == "Apply" then
+		return Salons.Apply(player, a, b)
+	elseif action == "Finish" then
+		Salons.EndSession(player, true)
+		return true
+	elseif action == "Cancel" then
+		Salons.EndSession(player, false)
+		return true
+	elseif action == "Buy" then
+		if typeof(a) ~= "string" or typeof(b) ~= "string" then
+			return false
+		end
+		return Salons.Buy(player, a, b)
+	elseif action == "Rebirth" then
+		return Salons.Rebirth(player)
+	elseif action == "Daily" then
+		return Rewards.ClaimDaily(player)
+	elseif action == "Gift" then
+		return Rewards.ClaimGift(player, a)
+	elseif action == "Code" then
+		return Rewards.RedeemCode(player, a)
+	elseif action == "GoHome" then
+		local home = Salons.HomeCFrame(player)
+		if home and player.Character and not Salons.HasSession(player) then
+			player.Character:PivotTo(home)
+		end
+		return true
+	end
+	return false
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	lastCall[player] = nil
+end)
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
+          <string name="Name">Monetization</string>
+          <string name="Source"><![CDATA[-- Passes de jeu et produits Robux.
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Data = require(script.Parent.Data)
+local Net = require(script.Parent.Net)
+local Salons = require(script.Parent.Salons)
+local Stats = require(script.Parent.Stats)
+
+local Monetization = {}
+
+local GOLD = Color3.fromRGB(255, 200, 70)
+
+local passByAssetId: { [number]: string } = {}
+for key, def in Config.GamePasses do
+	if def.Id ~= 0 then
+		passByAssetId[def.Id] = key
+	end
+end
+local productById: { [number]: string } = {}
+for key, def in Config.Products do
+	if def.Id ~= 0 then
+		productById[def.Id] = key
+	end
+end
+
+local function onPassOwned(player: Player, key: string)
+	Stats.SetPass(player, key, true)
+	player:SetAttribute("Pass_" .. key, true)
+	if key == "autoStylist" then
+		Salons.Rebuild(player, false)
+	end
+end
+
+function Monetization.CheckPasses(player: Player)
+	for key, def in Config.GamePasses do
+		if def.Id ~= 0 then
+			local ok, owns = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, def.Id)
+			end)
+			if ok and owns then
+				onPassOwned(player, key)
+			end
+		end
+	end
+end
+
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+	local key = passByAssetId[passId]
+	if purchased and key then
+		onPassOwned(player, key)
+		local def = Config.GamePasses[key]
+		Net.Announce(def.Icon .. " " .. player.DisplayName .. " a acheté " .. def.Name .. " !", GOLD)
+		Net.Notify:FireClient(player, { Type = "celebrate" })
+	end
+end)
+
+---------------------------------------------------------------------
+-- Produits (achats répétables)
+---------------------------------------------------------------------
+local handlers: { [string]: (Player, any) -> () } = {}
+
+handlers.cash = function(player, def)
+	local amount = Stats.MinutesOfIncome(player, def.Minutes, def.Min)
+	Stats.AddCash(player, amount, false)
+	Net.Toast(player, def.Icon .. " +" .. Util.Money(amount) .. " !", "money")
+	Net.Notify:FireClient(player, { Type = "celebrate" })
+end
+
+handlers.rush = function(player, _def)
+	local now = Workspace:GetServerTimeNow()
+	local current = ReplicatedStorage:GetAttribute("RushUntil") or 0
+	ReplicatedStorage:SetAttribute("RushUntil", math.max(now, current) + Config.RushDuration)
+	Net.Announce("🔥 " .. player.DisplayName .. " lance l'HEURE DE POINTE ! Clients x2 et paie x2 pour TOUT le serveur !", Color3.fromRGB(255, 120, 60))
+	for _, p in Players:GetPlayers() do
+		Stats.MarkDirty(p)
+	end
+end
+
+handlers.celebrity = function(player, _def)
+	Salons.AddCelebrity(player)
+	Net.Toast(player, "🌟 Une célébrité arrive dans ton salon !", "success")
+end
+
+handlers.starter = function(player, _def)
+	local profile = Data.Get(player)
+	if not profile then
+		error("profil absent")
+	end
+	Stats.AddCash(player, 25000, false)
+	if not profile.StarterBought then
+		profile.StarterBought = true
+		profile.Styles.boucle = true
+		profile.FantasyColors = true
+	end
+	Stats.MarkDirty(player)
+	Net.Toast(player, "🎁 Pack Débutant reçu ! +25K $, coupe Bouclée et teintures fantaisie", "success")
+	Net.Notify:FireClient(player, { Type = "celebrate" })
+end
+
+MarketplaceService.ProcessReceipt = function(info)
+	local player = Players:GetPlayerByUserId(info.PlayerId)
+	if not player then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	local profile = Data.Get(player)
+	if not profile then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	local purchaseId = tostring(info.PurchaseId)
+	if table.find(profile.Receipts, purchaseId) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted -- déjà donné
+	end
+	local key = productById[info.ProductId]
+	local def = key and Config.Products[key]
+	local handler = def and handlers[def.Kind]
+	if not handler then
+		warn("[Monetization] Produit inconnu :", info.ProductId)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	local ok, err = pcall(handler, player, def)
+	if not ok then
+		warn("[Monetization] Erreur :", err)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	Data.AddReceipt(profile, purchaseId)
+	if not Data.Save(player) then
+		-- Roblox redemandera : le reçu est déjà noté en mémoire, il ne sera pas donné deux fois.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+return Monetization
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="11">
+        <Properties>
+          <string name="Name">Net</string>
+          <string name="Source"><![CDATA[-- Crée les RemoteEvents / RemoteFunctions partagés avec le client.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local folder = Instance.new("Folder")
+folder.Name = "Remotes"
+
+local function event(name: string): RemoteEvent
+	local r = Instance.new("RemoteEvent")
+	r.Name = name
+	r.Parent = folder
+	return r
+end
+
+local Net = {
+	State = event("State"), -- serveur → client : état du joueur
+	Notify = event("Notify"), -- serveur → client : message / annonce / effet
+	Session = event("Session"), -- serveur → client : ouverture/fermeture de l'atelier coiffure
+	Action = Instance.new("RemoteFunction"), -- client → serveur
+}
+Net.Action.Name = "Action"
+Net.Action.Parent = folder
+folder.Parent = ReplicatedStorage
+
+-- kind : "info" | "success" | "error" | "money" | "announce"
+function Net.Toast(player: Player, text: string, kind: string?)
+	Net.Notify:FireClient(player, { Type = "toast", Text = text, Kind = kind or "info" })
+end
+
+function Net.Announce(text: string, color: Color3?)
+	Net.Notify:FireAllClients({ Type = "announce", Text = text, Color = color })
+end
+
+return Net
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="12">
+        <Properties>
+          <string name="Name">Rewards</string>
+          <string name="Source"><![CDATA[-- Récompenses gratuites (rétention) et classement mondial.
+
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Data = require(script.Parent.Data)
+local Net = require(script.Parent.Net)
+local Stats = require(script.Parent.Stats)
+local World = require(script.Parent.World)
+
+local Rewards = {}
+
+local function dayIndex(t: number): number
+	return t // 86400
+end
+
+---------------------------------------------------------------------
+-- Récompense quotidienne (série de 7 jours)
+---------------------------------------------------------------------
+function Rewards.ClaimDaily(player: Player): (boolean, string?)
+	local profile = Data.Get(player)
+	if not profile then
+		return false
+	end
+	local today = dayIndex(os.time())
+	local last = dayIndex(profile.Daily.Last)
+	if profile.Daily.Last > 0 and last >= today then
+		return false, "Reviens demain !"
+	end
+	if profile.Daily.Last > 0 and today - last == 1 then
+		profile.Daily.Streak = profile.Daily.Streak % #Config.DailyRewards + 1
+	else
+		profile.Daily.Streak = 1
+	end
+	profile.Daily.Last = os.time()
+	local mult = Config.DailyRewards[profile.Daily.Streak]
+	local amount = Stats.MinutesOfIncome(player, Config.DailyBaseMinutes * mult, Config.DailyMin * mult)
+	Stats.AddCash(player, amount, false)
+	Net.Toast(player, "📅 Jour " .. profile.Daily.Streak .. " : +" .. Util.Money(amount), "money")
+	Net.Notify:FireClient(player, { Type = "celebrate" })
+	Stats.MarkDirty(player)
+	return true
+end
+
+---------------------------------------------------------------------
+-- Cadeaux de temps de jeu
+---------------------------------------------------------------------
+function Rewards.ClaimGift(player: Player, index: number): (boolean, string?)
+	local s = Stats.Session(player)
+	local gift = typeof(index) == "number" and Config.PlaytimeGifts[index]
+	if not s or not gift then
+		return false
+	end
+	if s.Gifts[index] then
+		return false, "Déjà récupéré"
+	end
+	if os.time() - s.JoinTime < gift.Minutes * 60 then
+		return false, "Pas encore prêt"
+	end
+	s.Gifts[index] = true
+	local amount = Stats.MinutesOfIncome(player, gift.Amount, gift.Amount * 100)
+	Stats.AddCash(player, amount, false)
+	Net.Toast(player, "🎁 " .. gift.Name .. " : +" .. Util.Money(amount), "money")
+	Stats.MarkDirty(player)
+	return true
+end
+
+---------------------------------------------------------------------
+-- Codes
+---------------------------------------------------------------------
+function Rewards.RedeemCode(player: Player, code: any): (boolean, string?)
+	local profile = Data.Get(player)
+	if not profile or typeof(code) ~= "string" then
+		return false
+	end
+	code = code:upper():gsub("%s", "")
+	local amount = Config.Codes[code]
+	if not amount then
+		return false, "Code invalide"
+	end
+	if profile.Codes[code] then
+		return false, "Code déjà utilisé"
+	end
+	profile.Codes[code] = true
+	Stats.AddCash(player, amount, false)
+	Net.Toast(player, "🎟️ Code " .. code .. " : +" .. Util.Money(amount), "money")
+	return true
+end
+
+---------------------------------------------------------------------
+-- Boosts amis / groupe
+---------------------------------------------------------------------
+local friendCache: { [string]: boolean } = {}
+
+local function areFriends(a: Player, b: Player): boolean
+	local k = math.min(a.UserId, b.UserId) .. "-" .. math.max(a.UserId, b.UserId)
+	if friendCache[k] == nil then
+		local ok, res = pcall(function()
+			return a:IsFriendsWith(b.UserId)
+		end)
+		friendCache[k] = ok and res or false
+	end
+	return friendCache[k]
+end
+
+function Rewards.RefreshFriends()
+	local list = Players:GetPlayers()
+	for _, p in list do
+		local count = 0
+		for _, q in list do
+			if p ~= q and areFriends(p, q) then
+				count += 1
+			end
+		end
+		Stats.SetFriends(p, count)
+	end
+end
+
+function Rewards.CheckGroup(player: Player)
+	if Config.GroupId == 0 then
+		return
+	end
+	local ok, inGroup = pcall(function()
+		return player:IsInGroup(Config.GroupId)
+	end)
+	Stats.SetGroup(player, ok and inGroup or false)
+	player:SetAttribute("InGroup", ok and inGroup or false)
+end
+
+---------------------------------------------------------------------
+-- Gains hors ligne (les stylistes travaillent pendant ton absence)
+---------------------------------------------------------------------
+function Rewards.Offline(player: Player)
+	local profile = Data.Get(player)
+	if not profile or profile.LastOnline == 0 or profile.Upgrades.stylists <= 0 then
+		return
+	end
+	local elapsed = math.min(os.time() - profile.LastOnline, Config.OfflineMaxSeconds)
+	if elapsed < 120 then
+		return
+	end
+	local share = math.min(1, profile.Upgrades.stylists / 3)
+	local amount = math.floor(elapsed * (profile.OfflineRate or 0) * Config.OfflineRate * share)
+	if amount > 0 then
+		Stats.AddCash(player, amount)
+		task.delay(4, function()
+			Net.Notify:FireClient(player, { Type = "offline", Amount = amount, Seconds = elapsed })
+		end)
+	end
+end
+
+---------------------------------------------------------------------
+-- Classement mondial (panneau physique)
+---------------------------------------------------------------------
+local board: ScrollingFrame? = nil
+
+local function buildBoard()
+	local part = World.Part({
+		Name = "Leaderboard",
+		Size = Vector3.new(16, 20, 1),
+		CFrame = CFrame.new(0, 11, 42),
+		Color = Color3.fromRGB(26, 20, 38),
+	})
+	World.Part({ Name = "LeaderboardFrame", Size = Vector3.new(17, 21, 0.8), CFrame = CFrame.new(0, 11, 42.3), Color = Color3.fromRGB(255, 200, 70), Material = Enum.Material.Foil })
+	for _, x in { -6, 6 } do
+		World.Part({ Name = "LeaderboardLeg", Size = Vector3.new(1, 2, 1), Position = Vector3.new(x, 1, 42.3), Color = Color3.fromRGB(255, 200, 70), Material = Enum.Material.Foil })
+	end
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0
+	gui.Parent = part
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.fromScale(1, 0.13)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.FredokaOne
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(255, 210, 90)
+	title.Text = "🏆 MEILLEURS COIFFEURS DU MONDE"
+	title.Parent = gui
+	local list = Instance.new("ScrollingFrame")
+	list.Position = UDim2.fromScale(0.04, 0.15)
+	list.Size = UDim2.fromScale(0.92, 0.82)
+	list.BackgroundTransparency = 1
+	list.ScrollBarThickness = 0
+	list.CanvasSize = UDim2.new()
+	list.Parent = gui
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0.01, 0)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = list
+	board = list
+end
+
+local nameCache: { [number]: string } = {}
+local function nameOf(userId: number): string
+	if not nameCache[userId] then
+		local ok, name = pcall(function()
+			return Players:GetNameFromUserIdAsync(userId)
+		end)
+		nameCache[userId] = ok and name or ("#" .. userId)
+	end
+	return nameCache[userId]
+end
+
+local function refreshBoard()
+	local ok, store = pcall(function()
+		return DataStoreService:GetOrderedDataStore(Config.LeaderboardStoreName)
+	end)
+	if not ok then
+		return
+	end
+	for _, player in Players:GetPlayers() do
+		local profile = Data.Get(player)
+		if profile and profile.TotalEarned > 0 then
+			pcall(function()
+				store:SetAsync("u" .. player.UserId, math.floor(math.min(profile.TotalEarned, 2 ^ 52)))
+			end)
+		end
+	end
+	local okPage, pages = pcall(function()
+		return store:GetSortedAsync(false, 10)
+	end)
+	if not okPage or not board then
+		return
+	end
+	for _, c in board:GetChildren() do
+		if c:IsA("TextLabel") then
+			c:Destroy()
+		end
+	end
+	local medals = { "🥇", "🥈", "🥉" }
+	for rank, entry in pages:GetCurrentPage() do
+		local userId = tonumber(string.sub(entry.key, 2)) or 0
+		local row = Instance.new("TextLabel")
+		row.LayoutOrder = rank
+		row.Size = UDim2.fromScale(1, 0.09)
+		row.BackgroundColor3 = rank % 2 == 0 and Color3.fromRGB(40, 32, 56) or Color3.fromRGB(52, 40, 72)
+		row.Font = Enum.Font.GothamBold
+		row.TextScaled = true
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.TextColor3 = rank <= 3 and Color3.fromRGB(255, 215, 110) or Color3.new(1, 1, 1)
+		row.Text = "  " .. (medals[rank] or ("#" .. rank)) .. "  " .. nameOf(userId) .. "  —  " .. Util.Money(entry.value)
+		Instance.new("UICorner", row).CornerRadius = UDim.new(0.3, 0)
+		row.Parent = board
+	end
+end
+
+function Rewards.Init()
+	buildBoard()
+	task.spawn(function()
+		task.wait(10)
+		while true do
+			pcall(refreshBoard)
+			task.wait(120)
+		end
+	end)
+end
+
+return Rewards
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
+        <Properties>
+          <string name="Name">Salons</string>
+          <string name="Source"><![CDATA[-- Salons : construction, clients, stylistes, sessions de coiffure, économie.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local HairBuilder = require(ReplicatedStorage.Shared.HairBuilder)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Data = require(script.Parent.Data)
+local Net = require(script.Parent.Net)
+local Stats = require(script.Parent.Stats)
+local World = require(script.Parent.World)
+
+local P = World.Part
+local W, D = World.SalonWidth, World.SalonDepth
+local H = 14 -- hauteur des murs
+local FLOOR = 1 -- dessus du sol
+local CHAIR_X = { -20, -12, -4, 4, 12, 20 }
+local CHAIR_Z = 15
+local MAX_CHAIRS = #CHAIR_X
+
+local rng = Random.new()
+
+local THEMES = {
+	Color3.fromRGB(255, 120, 180),
+	Color3.fromRGB(80, 200, 255),
+	Color3.fromRGB(170, 110, 255),
+	Color3.fromRGB(90, 225, 170),
+	Color3.fromRGB(255, 160, 90),
+	Color3.fromRGB(255, 205, 70),
+	Color3.fromRGB(255, 90, 100),
+	Color3.fromRGB(110, 140, 255),
+}
+
+local SKIN = {
+	Color3.fromRGB(255, 220, 190),
+	Color3.fromRGB(240, 195, 160),
+	Color3.fromRGB(205, 150, 110),
+	Color3.fromRGB(160, 105, 70),
+	Color3.fromRGB(110, 70, 45),
+	Color3.fromRGB(80, 52, 36),
+}
+local CLOTHES = {
+	Color3.fromRGB(255, 255, 255),
+	Color3.fromRGB(40, 40, 50),
+	Color3.fromRGB(230, 90, 120),
+	Color3.fromRGB(80, 140, 230),
+	Color3.fromRGB(120, 200, 140),
+	Color3.fromRGB(250, 200, 90),
+	Color3.fromRGB(150, 100, 220),
+	Color3.fromRGB(240, 130, 70),
+}
+
+local ANIM = {
+	walk = "rbxassetid://507777826",
+	idle = "rbxassetid://507766666",
+	sit = "rbxassetid://2506281703",
+}
+
+local Salons = {}
+
+type Chair = {
+	Index: number,
+	Model: Model,
+	Seat: Seat,
+	Customer: any?,
+	Sitter: Player?,
+	Reserved: boolean,
+}
+
+type Salon = {
+	Index: number,
+	CFrame: CFrame,
+	Theme: Color3,
+	Root: Folder,
+	Building: Folder,
+	ChairsFolder: Folder,
+	StaffFolder: Folder,
+	CustomersFolder: Folder,
+	Owner: Player?,
+	Chairs: { [number]: Chair },
+	Customers: { any },
+	Staff: { any },
+	LastSpawn: number,
+	PendingCelebrity: number,
+	SignLabel: TextLabel?,
+}
+
+local salons: { Salon } = {}
+local salonOf: { [Player]: Salon } = {}
+local sessions: { [Player]: any } = {}
+local sitterOf: { [Player]: { salon: Salon, chair: Chair } } = {}
+local lastPlayerStyle: { [string]: number } = {}
+
+local root = Instance.new("Folder")
+root.Name = "Salons"
+root.Parent = Workspace
+
+local function L(salon: Salon, x: number, y: number, z: number): CFrame
+	return salon.CFrame * CFrame.new(x, y, z)
+end
+
+local function prompt(parent: Instance, kind: string, action: string, object: string, hold: number?): ProximityPrompt
+	local att = Instance.new("Attachment")
+	att.Name = kind .. "Attachment"
+	att.Parent = parent
+	local p = Instance.new("ProximityPrompt")
+	p.Name = kind
+	p.ActionText = action
+	p.ObjectText = object
+	p.HoldDuration = hold or 0
+	p.MaxActivationDistance = 9
+	p.RequiresLineOfSight = false
+	p.Style = Enum.ProximityPromptStyle.Default
+	p.Enabled = true -- le client masque localement les prompts qui ne le concernent pas
+	p:SetAttribute("Kind", kind)
+	p.Parent = att
+	return p
+end
+
+local function surfaceText(part: BasePart, face: Enum.NormalId, text: string, color: Color3, bg: Color3?): TextLabel
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0
+	gui.Brightness = 1.6
+	gui.Parent = part
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = bg and 0 or 1
+	label.BackgroundColor3 = bg or Color3.new()
+	label.Text = text
+	label.TextColor3 = color
+	label.TextScaled = true
+	label.Font = Enum.Font.FredokaOne
+	label.Parent = gui
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = Color3.fromRGB(40, 10, 40)
+	stroke.Parent = label
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0.04, 0)
+	pad.PaddingRight = UDim.new(0.04, 0)
+	pad.PaddingTop = UDim.new(0.08, 0)
+	pad.PaddingBottom = UDim.new(0.08, 0)
+	pad.Parent = label
+	return label
+end
+
+local function sparkle(parent: Instance, color: Color3, rate: number, size: number?)
+	local e = Instance.new("ParticleEmitter")
+	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	e.Rate = rate
+	e.Lifetime = NumberRange.new(0.8, 1.4)
+	e.Speed = NumberRange.new(1, 3)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Size = NumberSequence.new(size or 0.35, 0)
+	e.LightEmission = 1
+	e.Color = ColorSequence.new(color)
+	e.Parent = parent
+	return e
+end
+
+local function burst(position: Vector3, color: Color3, count: number?)
+	local p = P({ Name = "Burst", Size = Vector3.new(1, 1, 1), Position = position, Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false, Parent = Workspace })
+	local e = sparkle(p, color, 0, 0.6)
+	e.Speed = NumberRange.new(6, 12)
+	e.Drag = 4
+	e:Emit(count or 40)
+	task.delay(2, function()
+		p:Destroy()
+	end)
+end
+Salons.Burst = burst
+
+---------------------------------------------------------------------
+-- Construction du bâtiment (dépend du niveau de déco)
+---------------------------------------------------------------------
+local DECO_STYLE = {
+	{ floor = Enum.Material.WoodPlanks, floorColor = Color3.fromRGB(196, 150, 110), wall = Color3.fromRGB(250, 240, 230), trim = Enum.Material.SmoothPlastic },
+	{ floor = "checker", floorColor = Color3.fromRGB(245, 245, 245), wall = Color3.fromRGB(255, 232, 240), trim = Enum.Material.SmoothPlastic },
+	{ floor = Enum.Material.Marble, floorColor = Color3.fromRGB(245, 242, 248), wall = Color3.fromRGB(255, 252, 250), trim = Enum.Material.Foil },
+	{ floor = Enum.Material.Marble, floorColor = Color3.fromRGB(250, 225, 236), wall = Color3.fromRGB(70, 40, 80), trim = Enum.Material.Foil },
+	{ floor = Enum.Material.Marble, floorColor = Color3.fromRGB(40, 34, 48), wall = Color3.fromRGB(28, 26, 48), trim = Enum.Material.Foil },
+}
+local GOLD = Color3.fromRGB(255, 196, 70)
+
+local function buildBuilding(salon: Salon, level: number)
+	salon.Building:ClearAllChildren()
+	local f = salon.Building
+	local st = DECO_STYLE[math.clamp(level, 1, #DECO_STYLE)]
+	local theme = salon.Theme
+	local trimColor = st.trim == Enum.Material.Foil and GOLD or theme
+
+	-- Fondations + sol
+	P({ Name = "Foundation", Size = Vector3.new(W + 2, 1.2, D + 2), CFrame = L(salon, 0, 0.4, 0), Color = Color3.fromRGB(230, 225, 230), Material = Enum.Material.Concrete, Parent = f })
+	if st.floor == "checker" then
+		local tw, td = W / 8, D / 8
+		for i = 0, 7 do
+			for j = 0, 7 do
+				local dark = (i + j) % 2 == 0
+				P({ Name = "Tile", Size = Vector3.new(tw, 0.2, td), CFrame = L(salon, -W / 2 + tw * (i + 0.5), FLOOR + 0.1, -D / 2 + td * (j + 0.5)), Color = dark and Color3.fromRGB(30, 28, 36) or Color3.fromRGB(250, 248, 252), Reflectance = 0.05, Parent = f })
+			end
+		end
+	else
+		P({ Name = "Floor", Size = Vector3.new(W, 0.2, D), CFrame = L(salon, 0, FLOOR + 0.1, 0), Color = st.floorColor, Material = st.floor, Reflectance = level >= 4 and 0.12 or 0, Parent = f })
+	end
+
+	local wallMat = level >= 4 and Enum.Material.SmoothPlastic or Enum.Material.Plaster
+	local function wall(size: Vector3, cf: CFrame, name: string?)
+		return P({ Name = name or "Wall", Size = size, CFrame = cf, Color = st.wall, Material = wallMat, Parent = f })
+	end
+	local function glass(size: Vector3, cf: CFrame)
+		return P({ Name = "Window", Size = size, CFrame = cf, Color = Color3.fromRGB(200, 230, 255), Material = Enum.Material.Glass, Transparency = 0.55, Reflectance = 0.2, CastShadow = false, Parent = f })
+	end
+	local y0 = FLOOR + 0.2
+
+	-- Mur du fond
+	wall(Vector3.new(W, H, 1), L(salon, 0, y0 + H / 2, D / 2 - 0.5))
+	-- Murs latéraux avec grandes fenêtres
+	for _, side in { -1, 1 } do
+		local x = side * (W / 2 - 0.5)
+		wall(Vector3.new(1, 4, D), L(salon, x, y0 + 2, 0))
+		wall(Vector3.new(1, 3, D), L(salon, x, y0 + H - 1.5, 0))
+		glass(Vector3.new(0.4, H - 7, D - 2), L(salon, x, y0 + 4 + (H - 7) / 2, 0))
+		for _, z in { -D / 2 + 0.5, -D / 6, D / 6, D / 2 - 0.5 } do
+			P({ Name = "Post", Size = Vector3.new(1.2, H, 1.2), CFrame = L(salon, x, y0 + H / 2, z), Color = trimColor, Material = st.trim, Parent = f })
+		end
+	end
+	-- Façade : vitrines + porte au centre (12 studs)
+	for _, side in { -1, 1 } do
+		local x = side * (6 + (W / 2 - 6) / 2)
+		local w = W / 2 - 6
+		wall(Vector3.new(w, 3, 1), L(salon, x, y0 + 1.5, -D / 2 + 0.5))
+		glass(Vector3.new(w, 8, 0.4), L(salon, x, y0 + 7, -D / 2 + 0.5))
+		wall(Vector3.new(w, 3, 1), L(salon, x, y0 + H - 1.5, -D / 2 + 0.5))
+		P({ Name = "DoorFrame", Size = Vector3.new(1, H, 1.4), CFrame = L(salon, side * 6, y0 + H / 2, -D / 2 + 0.5), Color = trimColor, Material = st.trim, Parent = f })
+	end
+	wall(Vector3.new(12, 3, 1), L(salon, 0, y0 + H - 1.5, -D / 2 + 0.5))
+
+	-- Toit avec verrière
+	local ry = y0 + H + 0.5
+	P({ Name = "Roof", Size = Vector3.new(W + 2, 1, 8), CFrame = L(salon, 0, ry, -D / 2 + 3), Color = Color3.fromRGB(70, 62, 80), Parent = f })
+	P({ Name = "Roof", Size = Vector3.new(W + 2, 1, 8), CFrame = L(salon, 0, ry, D / 2 - 3), Color = Color3.fromRGB(70, 62, 80), Parent = f })
+	P({ Name = "Roof", Size = Vector3.new(8, 1, D - 14), CFrame = L(salon, -W / 2 + 3, ry, 0), Color = Color3.fromRGB(70, 62, 80), Parent = f })
+	P({ Name = "Roof", Size = Vector3.new(8, 1, D - 14), CFrame = L(salon, W / 2 - 3, ry, 0), Color = Color3.fromRGB(70, 62, 80), Parent = f })
+	glass(Vector3.new(W - 14, 0.4, D - 14), L(salon, 0, ry, 0))
+
+	-- Auvent rayé
+	for i = 0, 5 do
+		P({ ClassName = "WedgePart", Name = "Awning", Size = Vector3.new(2, 1.6, 4), CFrame = L(salon, -5 + i * 2, y0 + 11.3, -D / 2 - 1.6) * CFrame.Angles(0, math.pi, 0), Color = i % 2 == 0 and theme or Color3.new(1, 1, 1), Parent = f })
+	end
+
+	-- Enseigne
+	local sign = P({ Name = "Sign", Size = Vector3.new(26, 5, 1), CFrame = L(salon, 0, ry + 3, -D / 2 + 0.5), Color = Color3.fromRGB(30, 22, 40), Parent = f })
+	for _, dy in { -2.6, 2.6 } do
+		P({ Name = "SignNeon", Size = Vector3.new(26.4, 0.3, 1.2), CFrame = L(salon, 0, ry + 3 + dy, -D / 2 + 0.5), Color = theme, Material = Enum.Material.Neon, CastShadow = false, Parent = f })
+	end
+	salon.SignLabel = surfaceText(sign, Enum.NormalId.Front, "✂️ SALON LIBRE", theme)
+	if level >= 5 then
+		sparkle(sign, GOLD, 8, 0.5)
+	end
+
+	-- Éclairage intérieur
+	for _, x in { -14, 14 } do
+		for _, z in { -10, 10 } do
+			local panel = P({ Name = "CeilingLight", Size = Vector3.new(8, 0.3, 2.5), CFrame = L(salon, x, y0 + H - 0.3, z), Color = Color3.fromRGB(255, 246, 235), Material = Enum.Material.Neon, CastShadow = false, Parent = f })
+			local sl = Instance.new("SurfaceLight")
+			sl.Face = Enum.NormalId.Bottom
+			sl.Range = 22
+			sl.Brightness = 1.4
+			sl.Angle = 110
+			sl.Color = Color3.fromRGB(255, 240, 225)
+			sl.Parent = panel
+		end
+	end
+
+	-- Miroir « change ton look » (mur gauche)
+	local mirror = P({ Name = "LookMirror", Size = Vector3.new(0.3, 9, 6), CFrame = L(salon, -W / 2 + 1.3, y0 + 5.5, -6), Color = Color3.fromRGB(220, 235, 255), Material = Enum.Material.Glass, Reflectance = 0.6, Transparency = 0.05, Parent = f })
+	P({ Name = "MirrorFrame", Size = Vector3.new(0.4, 9.8, 6.8), CFrame = L(salon, -W / 2 + 1.15, y0 + 5.5, -6), Color = trimColor, Material = level >= 3 and Enum.Material.Foil or Enum.Material.Neon, Parent = f })
+	local mirrorSign = P({ Name = "MirrorSign", Size = Vector3.new(0.2, 1.4, 6), CFrame = L(salon, -W / 2 + 1.3, y0 + 10.9, -6), Transparency = 1, CanCollide = false, Parent = f })
+	surfaceText(mirrorSign, Enum.NormalId.Right, "✨ CHANGE TON LOOK", Color3.new(1, 1, 1))
+	prompt(mirror, "mirror", "Changer mon look", "Miroir magique", 0.2)
+
+	-- Écran des améliorations (mur droit)
+	local board = P({ Name = "UpgradeBoard", Size = Vector3.new(0.5, 6, 9), CFrame = L(salon, W / 2 - 1.3, y0 + 5, -14), Color = Color3.fromRGB(25, 20, 35), Parent = f })
+	surfaceText(board, Enum.NormalId.Left, "⬆️ AMÉLIORATIONS\nAgrandis ton salon !", Color3.fromRGB(255, 230, 120))
+	prompt(board, "upgrades", "Améliorer", "Mon salon", 0)
+
+	-- Comptoir d'accueil
+	P({ Name = "Desk", Size = Vector3.new(8, 3.4, 2.4), CFrame = L(salon, 15, y0 + 1.7, -D / 2 + 7), Color = level >= 3 and Color3.fromRGB(250, 250, 255) or theme, Material = level >= 3 and Enum.Material.Marble or Enum.Material.SmoothPlastic, Parent = f })
+	P({ Name = "DeskTop", Size = Vector3.new(8.4, 0.3, 2.8), CFrame = L(salon, 15, y0 + 3.5, -D / 2 + 7), Color = trimColor, Material = st.trim, Parent = f })
+	P({ Name = "Register", Size = Vector3.new(1.6, 1.2, 1.2), CFrame = L(salon, 17, y0 + 4.2, -D / 2 + 7), Color = Color3.fromRGB(40, 40, 50), Material = Enum.Material.Metal, Parent = f })
+
+	-- Plantes
+	if level >= 2 then
+		for _, pos in { Vector2.new(-W / 2 + 3, -D / 2 + 3), Vector2.new(W / 2 - 3, D / 2 - 6), Vector2.new(-W / 2 + 3, D / 2 - 6), Vector2.new(W / 2 - 3, -D / 2 + 3) } do
+			P({ Name = "Pot", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.4, 2.4, 2.4), CFrame = L(salon, pos.X, y0 + 1.2, pos.Y) * CFrame.Angles(0, 0, math.rad(90)), Color = level >= 3 and GOLD or Color3.fromRGB(200, 110, 80), Material = level >= 3 and Enum.Material.Foil or Enum.Material.Slate, Parent = f })
+			for i = 1, 3 do
+				P({ Name = "Leaf", Shape = Enum.PartType.Ball, Size = Vector3.new(2.4, 2.4, 2.4), CFrame = L(salon, pos.X + rng:NextNumber(-0.6, 0.6), y0 + 2.8 + i * 0.9, pos.Y + rng:NextNumber(-0.6, 0.6)), Color = Color3.fromRGB(80, 170, 90), Material = Enum.Material.Grass, Parent = f })
+			end
+		end
+	end
+	-- Canapé d'attente
+	if level >= 3 then
+		local velvet = level >= 5 and Color3.fromRGB(150, 20, 50) or theme
+		P({ Name = "Sofa", Size = Vector3.new(10, 1.6, 3.4), CFrame = L(salon, -18, y0 + 0.8, -D / 2 + 6), Color = velvet, Material = Enum.Material.Fabric, Parent = f })
+		P({ Name = "Sofa", Size = Vector3.new(10, 3, 1), CFrame = L(salon, -18, y0 + 2.3, -D / 2 + 4.3), Color = velvet, Material = Enum.Material.Fabric, Parent = f })
+	end
+	-- Néons + lustre
+	if level >= 4 then
+		for _, z in { -D / 2 + 1.2, D / 2 - 1.2 } do
+			P({ Name = "NeonStrip", Size = Vector3.new(W - 3, 0.25, 0.25), CFrame = L(salon, 0, y0 + H - 1, z), Color = theme, Material = Enum.Material.Neon, CastShadow = false, Parent = f })
+		end
+		for _, x in { -W / 2 + 1.2, W / 2 - 1.2 } do
+			P({ Name = "NeonStrip", Size = Vector3.new(0.25, 0.25, D - 3), CFrame = L(salon, x, y0 + H - 1, 0), Color = theme, Material = Enum.Material.Neon, CastShadow = false, Parent = f })
+		end
+		local center = P({ Name = "Chandelier", Shape = Enum.PartType.Ball, Size = Vector3.new(1.6, 1.6, 1.6), CFrame = L(salon, 0, y0 + H - 3.5, 0), Color = Color3.fromRGB(255, 240, 220), Material = Enum.Material.Neon, Parent = f })
+		local pl = Instance.new("PointLight")
+		pl.Range = 30
+		pl.Brightness = 1.5
+		pl.Color = Color3.fromRGB(255, 225, 200)
+		pl.Shadows = true
+		pl.Parent = center
+		for i = 0, 11 do
+			local a = i / 12 * math.pi * 2
+			P({ Name = "Crystal", Shape = Enum.PartType.Ball, Size = Vector3.new(0.6, 0.6, 0.6), CFrame = L(salon, math.cos(a) * 3, y0 + H - 3.2 - (i % 2) * 0.6, math.sin(a) * 3), Color = Color3.fromRGB(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.2, Reflectance = 0.5, Parent = f })
+		end
+		P({ Name = "Rug", Size = Vector3.new(14, 0.1, 22), CFrame = L(salon, 0, y0 + 0.06, -8), Color = level >= 5 and Color3.fromRGB(160, 20, 45) or theme, Material = Enum.Material.Fabric, Parent = f })
+	end
+	-- Tapis rouge, colonnes dorées, projecteurs
+	if level >= 5 then
+		P({ Name = "RedCarpet", Size = Vector3.new(8, 0.15, 12), CFrame = L(salon, 0, 0.9, -D / 2 - 6), Color = Color3.fromRGB(170, 15, 40), Material = Enum.Material.Fabric, Parent = f })
+		for _, x in { -8, 8 } do
+			P({ Name = "Column", Shape = Enum.PartType.Cylinder, Size = Vector3.new(H + 3, 2.4, 2.4), CFrame = L(salon, x, (H + 3) / 2, -D / 2 - 1.8) * CFrame.Angles(0, 0, math.rad(90)), Color = GOLD, Material = Enum.Material.Foil, Parent = f })
+			for _, z in { -D / 2 - 3, -D / 2 - 7, -D / 2 - 11 } do
+				P({ Name = "Stanchion", Size = Vector3.new(0.4, 3, 0.4), CFrame = L(salon, x / 2, 2.4, z), Color = GOLD, Material = Enum.Material.Foil, Parent = f })
+			end
+			local beam = P({ Name = "Spotlight", Size = Vector3.new(1.2, 40, 1.2), CFrame = L(salon, x * 1.6, 20, -D / 2 - 4) * CFrame.Angles(0, 0, math.rad(x > 0 and -14 or 14)), Color = Color3.fromRGB(255, 240, 200), Material = Enum.Material.Neon, Transparency = 0.82, CanCollide = false, CastShadow = false, CanQuery = false, Parent = f })
+			beam:SetAttribute("Sweep", x > 0 and 1 or -1)
+		end
+	end
+end
+
+---------------------------------------------------------------------
+-- Postes de coiffure (fauteuil + miroir lumineux)
+---------------------------------------------------------------------
+local function buildChair(salon: Salon, i: number): Chair
+	local model = Instance.new("Model")
+	model.Name = "Chair" .. i
+	local x = CHAIR_X[i]
+	local y0 = FLOOR + 0.2
+	local theme = salon.Theme
+	-- Poste au mur : comptoir, miroir, ampoules
+	P({ Name = "Counter", Size = Vector3.new(6.4, 3.4, 2.2), CFrame = L(salon, x, y0 + 1.7, D / 2 - 2.1), Color = Color3.fromRGB(250, 248, 252), Material = Enum.Material.Marble, Parent = model })
+	P({ Name = "CounterTop", Size = Vector3.new(6.8, 0.3, 2.6), CFrame = L(salon, x, y0 + 3.55, D / 2 - 2.1), Color = Color3.fromRGB(30, 28, 36), Reflectance = 0.15, Parent = model })
+	P({ Name = "Mirror", Size = Vector3.new(5, 6.4, 0.3), CFrame = L(salon, x, y0 + 7.4, D / 2 - 1.15), Color = Color3.fromRGB(215, 232, 255), Material = Enum.Material.Glass, Reflectance = 0.55, Transparency = 0.05, Parent = model })
+	for k = 0, 13 do
+		local px, py
+		if k < 5 then
+			px, py = -2.6 + k * 1.3, 3.4
+		elseif k < 10 then
+			px, py = -2.6 + (k - 5) * 1.3, -3.4
+		elseif k < 12 then
+			px, py = -2.9, -1.2 + (k - 10) * 2.4
+		else
+			px, py = 2.9, -1.2 + (k - 12) * 2.4
+		end
+		P({ Name = "Bulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.55, 0.55, 0.55), CFrame = L(salon, x + px, y0 + 7.4 + py, D / 2 - 1.3), Color = Color3.fromRGB(255, 236, 200), Material = Enum.Material.Neon, CastShadow = false, Parent = model })
+	end
+	local bulbLight = P({ Name = "StationLight", Size = Vector3.new(0.2, 0.2, 0.2), CFrame = L(salon, x, y0 + 7.4, D / 2 - 2.5), Transparency = 1, CanCollide = false, Parent = model })
+	local pl = Instance.new("PointLight")
+	pl.Range = 11
+	pl.Brightness = 0.9
+	pl.Color = Color3.fromRGB(255, 230, 200)
+	pl.Parent = bulbLight
+	local bottleColors = { theme, Color3.fromRGB(120, 220, 255), Color3.fromRGB(255, 220, 120) }
+	for k, c in bottleColors do
+		P({ Name = "Bottle", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 0.6, 0.6), CFrame = L(salon, x - 2.4 + k * 0.8, y0 + 4.3, D / 2 - 1.8) * CFrame.Angles(0, 0, math.rad(90)), Color = c, Material = Enum.Material.Glass, Transparency = 0.15, Parent = model })
+	end
+	-- Fauteuil hydraulique
+	P({ Name = "Base", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 3.4, 3.4), CFrame = L(salon, x, y0 + 0.15, CHAIR_Z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Reflectance = 0.3, Parent = model })
+	P({ Name = "Pole", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 0.7, 0.7), CFrame = L(salon, x, y0 + 1.1, CHAIR_Z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Reflectance = 0.3, Parent = model })
+	local leather = Color3.fromRGB(35, 30, 40)
+	local seat = P({
+		ClassName = "Seat",
+		Name = "Seat",
+		Size = Vector3.new(3, 0.9, 3),
+		CFrame = L(salon, x, y0 + 2.3, CHAIR_Z) * CFrame.Angles(0, math.pi, 0),
+		Color = leather,
+		Material = Enum.Material.Leather,
+		CanTouch = false,
+		Parent = model,
+	}) :: Seat
+	P({ Name = "Back", Size = Vector3.new(3, 3.4, 0.6), CFrame = L(salon, x, y0 + 4.2, CHAIR_Z - 1.4) * CFrame.Angles(math.rad(-8), 0, 0), Color = leather, Material = Enum.Material.Leather, Parent = model })
+	P({ Name = "BackTrim", Size = Vector3.new(3.1, 0.3, 0.7), CFrame = L(salon, x, y0 + 5.9, CHAIR_Z - 1.6), Color = theme, Material = Enum.Material.Neon, Parent = model })
+	for _, side in { -1, 1 } do
+		P({ Name = "Arm", Size = Vector3.new(0.5, 0.4, 2.6), CFrame = L(salon, x + side * 1.6, y0 + 3.4, CHAIR_Z), Color = Color3.fromRGB(200, 205, 215), Material = Enum.Material.Metal, Parent = model })
+	end
+	model:SetAttribute("Occupied", false)
+	model:SetAttribute("Busy", false)
+	model:SetAttribute("Index", i)
+	prompt(seat, "style", "Coiffer", "Client", 0.15)
+	prompt(seat, "sit", "S'asseoir", "Se faire coiffer", 0.3)
+	model.Parent = salon.ChairsFolder
+	return { Index = i, Model = model, Seat = seat, Customer = nil, Sitter = nil, Reserved = false }
+end
+
+local function chairCount(salon: Salon): number
+	local owner = salon.Owner
+	local profile = owner and Data.Get(owner)
+	return profile and math.clamp(profile.Upgrades.chairs, 1, MAX_CHAIRS) or 0
+end
+
+local function stylistCount(salon: Salon): number
+	local owner = salon.Owner
+	local profile = owner and Data.Get(owner)
+	if not profile or not owner then
+		return 0
+	end
+	local n = profile.Upgrades.stylists + (Stats.HasPass(owner, "autoStylist") and 2 or 0)
+	return math.min(n, MAX_CHAIRS)
+end
+
+---------------------------------------------------------------------
+-- PNJ
+---------------------------------------------------------------------
+local function setAnim(npc: any, name: string?)
+	if npc.Playing then
+		npc.Playing:Stop(0.2)
+		npc.Playing = nil
+	end
+	if name and npc.Tracks and npc.Tracks[name] then
+		npc.Tracks[name]:Play(0.2)
+		npc.Playing = npc.Tracks[name]
+	end
+end
+
+local function makeHumanoid(outfit: Color3?, pants: Color3?): Model?
+	local desc = Instance.new("HumanoidDescription")
+	local skin = SKIN[rng:NextInteger(1, #SKIN)]
+	desc.HeadColor = skin
+	desc.LeftArmColor = skin
+	desc.RightArmColor = skin
+	desc.TorsoColor = outfit or CLOTHES[rng:NextInteger(1, #CLOTHES)]
+	local legs = pants or CLOTHES[rng:NextInteger(1, #CLOTHES)]
+	desc.LeftLegColor = legs
+	desc.RightLegColor = legs
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[Salons] Création PNJ impossible :", model)
+		return nil
+	end
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		hum.WalkSpeed = 12
+		hum.BreakJointsOnDeath = false
+	end
+	local animate = model:FindFirstChild("Animate")
+	if animate then
+		animate:Destroy()
+	end
+	return model
+end
+
+local function loadTracks(npc: any)
+	local hum: Humanoid = npc.Humanoid
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+	npc.Tracks = {}
+	for name, id in ANIM do
+		local anim = Instance.new("Animation")
+		anim.AnimationId = id
+		local ok, track = pcall(function()
+			return animator:LoadAnimation(anim)
+		end)
+		if ok and track then
+			track.Looped = true
+			npc.Tracks[name] = track
+		end
+	end
+end
+
+local function walkTo(npc: any, target: Vector3, timeout: number?)
+	local hum: Humanoid = npc.Humanoid
+	if not hum.Parent then
+		return
+	end
+	setAnim(npc, "walk")
+	hum:MoveTo(target)
+	local reached = false
+	local conn = hum.MoveToFinished:Connect(function()
+		reached = true
+	end)
+	local t0 = os.clock()
+	while not reached and os.clock() - t0 < (timeout or 9) and npc.Model.Parent do
+		task.wait(0.1)
+	end
+	conn:Disconnect()
+	if not reached and npc.Model.Parent then
+		npc.Model:PivotTo(CFrame.new(target + Vector3.new(0, 3, 0)))
+	end
+	setAnim(npc, "idle")
+end
+
+local function makeBillboard(npc: any)
+	local head = npc.Model:FindFirstChild("Head")
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Request"
+	gui.Size = UDim2.fromScale(8, 2.6)
+	gui.StudsOffset = Vector3.new(0, 3.4, 0)
+	gui.MaxDistance = 70
+	gui.LightInfluence = 0
+	gui.Adornee = head
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundColor3 = npc.Celebrity and Color3.fromRGB(60, 40, 10) or Color3.fromRGB(28, 20, 40)
+	frame.BackgroundTransparency = 0.1
+	frame.Parent = gui
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0.25, 0)
+	local stroke = Instance.new("UIStroke", frame)
+	stroke.Thickness = 2
+	stroke.Color = (npc.Vip or npc.Celebrity) and GOLD or Color3.fromRGB(255, 140, 200)
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.BackgroundTransparency = 1
+	title.Size = UDim2.fromScale(1, 0.34)
+	title.Font = Enum.Font.FredokaOne
+	title.TextScaled = true
+	title.TextColor3 = (npc.Vip or npc.Celebrity) and GOLD or Color3.new(1, 1, 1)
+	title.Text = npc.Celebrity and "🌟 CÉLÉBRITÉ (x10)" or (npc.Vip and "⭐ CLIENT VIP (x4)" or "💬 Je voudrais :")
+	title.Parent = frame
+	local req = Instance.new("TextLabel")
+	req.Name = "Wish"
+	req.BackgroundTransparency = 1
+	req.Position = UDim2.fromScale(0.04, 0.34)
+	req.Size = UDim2.fromScale(0.92, 0.38)
+	req.Font = Enum.Font.GothamBold
+	req.TextScaled = true
+	req.TextColor3 = Color3.fromRGB(255, 225, 240)
+	req.Text = HairBuilder.Describe(npc.Request)
+	req.Parent = frame
+	local barBg = Instance.new("Frame")
+	barBg.BackgroundColor3 = Color3.fromRGB(60, 50, 70)
+	barBg.Position = UDim2.fromScale(0.08, 0.78)
+	barBg.Size = UDim2.fromScale(0.84, 0.12)
+	barBg.Parent = frame
+	Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+	local bar = Instance.new("Frame")
+	bar.Name = "Bar"
+	bar.BackgroundColor3 = Color3.fromRGB(120, 230, 140)
+	bar.Size = UDim2.fromScale(1, 1)
+	bar.Parent = barBg
+	Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+	gui.Parent = npc.Model
+	npc.Bar = bar
+	npc.Title = title
+end
+
+local function availableOptions(owner: Player, profile: any)
+	local styles, colors, accs = {}, {}, {}
+	for _, s in Config.Styles do
+		if profile.Styles[s.Id] or (s.Pass and Stats.HasPass(owner, s.Pass)) then
+			table.insert(styles, s)
+		end
+	end
+	for _, c in Config.Colors do
+		if c.Tier == "base" or (c.Tier == "fantasy" and profile.FantasyColors) or (c.Tier == "neon" and Stats.HasPass(owner, "neonColors")) then
+			table.insert(colors, c)
+		end
+	end
+	for _, a in Config.Accessories do
+		if a.Id ~= "aucun" and (profile.Accs[a.Id] or (a.Pass and Stats.HasPass(owner, a.Pass))) then
+			table.insert(accs, a)
+		end
+	end
+	return styles, colors, accs
+end
+
+local function weightedPick(list: { any }): any
+	local total = 0
+	for i in list do
+		total += i
+	end
+	local r = rng:NextNumber() * total
+	for i, v in list do
+		r -= i
+		if r <= 0 then
+			return v
+		end
+	end
+	return list[#list]
+end
+
+local function makeRequest(owner: Player, profile: any)
+	local styles, colors, accs = availableOptions(owner, profile)
+	local request = {
+		style = weightedPick(styles).Id, -- les coupes les plus chères sortent plus souvent
+		length = rng:NextInteger(1, 3),
+		color = weightedPick(colors).Id,
+		acc = (#accs > 0 and rng:NextNumber() < 0.4) and accs[rng:NextInteger(1, #accs)].Id or "aucun",
+	}
+	local messy = {
+		style = Config.Styles[rng:NextInteger(1, 2)].Id,
+		length = rng:NextInteger(1, 3),
+		color = Config.Colors[rng:NextInteger(1, 4)].Id,
+		acc = "aucun",
+	}
+	if messy.style == request.style then
+		messy.style = request.style == "lisse" and "pixie" or "lisse"
+	end
+	return request, messy
+end
+
+local function freeChair(salon: Salon): Chair?
+	local n = chairCount(salon)
+	local candidates = {}
+	for i = 1, n do
+		local c = salon.Chairs[i]
+		if c and not c.Customer and not c.Sitter and not c.Reserved then
+			table.insert(candidates, c)
+		end
+	end
+	if #candidates == 0 then
+		return nil
+	end
+	return candidates[rng:NextInteger(1, #candidates)]
+end
+
+local function updateChairAttrs(chair: Chair)
+	local occupied = (chair.Customer ~= nil and chair.Customer.State == "waiting") or chair.Sitter ~= nil
+	chair.Model:SetAttribute("Occupied", occupied)
+	chair.Model:SetAttribute("Busy", (chair.Customer ~= nil and chair.Customer.State ~= "waiting") or false)
+	chair.Model:SetAttribute("Taken", chair.Customer ~= nil or chair.Sitter ~= nil or chair.Reserved)
+	chair.Model:SetAttribute("SitterName", chair.Sitter and chair.Sitter.DisplayName or "")
+end
+
+local function removeCustomer(salon: Salon, npc: any)
+	local i = table.find(salon.Customers, npc)
+	if i then
+		table.remove(salon.Customers, i)
+	end
+	if npc.Chair and npc.Chair.Customer == npc then
+		npc.Chair.Customer = nil
+		npc.Chair.Reserved = false
+		updateChairAttrs(npc.Chair)
+	end
+	npc.Chair = nil
+	if npc.Model then
+		npc.Model:Destroy()
+	end
+end
+
+local function leave(salon: Salon, npc: any, happy: boolean)
+	if npc.State == "leaving" then
+		return
+	end
+	npc.State = "leaving"
+	local chair = npc.Chair
+	if chair then
+		chair.Customer = nil
+		chair.Reserved = false
+		updateChairAttrs(chair)
+	end
+	npc.Chair = nil
+	local gui = npc.Model:FindFirstChild("Request")
+	if gui then
+		gui:Destroy()
+	end
+	task.spawn(function()
+		local hrp = npc.Model:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if hrp then
+			hrp.Anchored = false
+		end
+		if happy then
+			npc.Humanoid.Jump = true
+			task.wait(0.6)
+		end
+		walkTo(npc, (L(salon, 0, 0, -D / 2 + 3)).Position)
+		walkTo(npc, (L(salon, rng:NextNumber(-20, 20), 0, -D / 2 - 14)).Position)
+		removeCustomer(salon, npc)
+	end)
+end
+
+local function spawnCustomer(salon: Salon, special: string?)
+	local owner = salon.Owner
+	local profile = owner and Data.Get(owner)
+	if not owner or not profile then
+		return
+	end
+	local chair = freeChair(salon)
+	if not chair then
+		return
+	end
+	chair.Reserved = true
+	updateChairAttrs(chair)
+	local request, messy = makeRequest(owner, profile)
+	local isVip = special == nil and rng:NextNumber() < Config.VipChance * (Stats.HasPass(owner, "vip") and 2 or 1)
+	local celebrity = special == "celebrity"
+	local model = makeHumanoid(celebrity and Color3.fromRGB(20, 20, 24) or (isVip and Color3.fromRGB(250, 210, 90) or nil))
+	if not model or salon.Owner ~= owner then
+		chair.Reserved = false
+		updateChairAttrs(chair)
+		if model then
+			model:Destroy()
+		end
+		return
+	end
+	model.Name = celebrity and "Celebrity" or "Client"
+	local hum = model:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local npc = {
+		Model = model,
+		Humanoid = hum,
+		Request = request,
+		Look = messy,
+		Chair = chair,
+		State = "walking",
+		Vip = isVip,
+		Celebrity = celebrity,
+		Patience = Config.CustomerPatience * (celebrity and 3 or 1),
+		Waited = 0,
+	}
+	chair.Customer = npc
+	updateChairAttrs(chair)
+	table.insert(salon.Customers, npc)
+	model:PivotTo(L(salon, rng:NextNumber(-18, 18), 4, -D / 2 - 14) * CFrame.Angles(0, math.pi, 0))
+	model.Parent = salon.CustomersFolder
+	local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	pcall(function()
+		hrp:SetNetworkOwner(nil)
+	end)
+	HairBuilder.Apply(model, messy)
+	if isVip or celebrity then
+		sparkle(hrp, GOLD, 10, 0.5)
+	end
+	makeBillboard(npc)
+	loadTracks(npc)
+	setAnim(npc, "idle")
+
+	task.spawn(function()
+		walkTo(npc, L(salon, 0, 0, -D / 2 + 3).Position)
+		walkTo(npc, L(salon, CHAIR_X[chair.Index], 0, CHAIR_Z - 3).Position)
+		if npc.State ~= "walking" or not model.Parent then
+			return
+		end
+		-- Assis sur le fauteuil (ancré pour la stabilité)
+		hrp.Anchored = true
+		model:PivotTo(chair.Seat.CFrame * CFrame.new(0, 2.1, 0))
+		setAnim(npc, "sit")
+		npc.State = "waiting"
+		chair.Reserved = false
+		updateChairAttrs(chair)
+		if celebrity and salon.Owner then
+			Net.Announce("🌟 Une CÉLÉBRITÉ est arrivée chez " .. salon.Owner.DisplayName .. " !", GOLD)
+		end
+	end)
+end
+
+---------------------------------------------------------------------
+-- Paiement
+---------------------------------------------------------------------
+local function computePay(owner: Player, profile: any, request: any, score: number, npc: any, byPlayer: boolean): (number, boolean)
+	local style = Config.StyleById[request.style]
+	local color = Config.ColorById[request.color]
+	local base = Config.BasePay * style.Value * color.Value * Config.Lengths[request.length].Mult * (request.acc ~= "aucun" and 1.3 or 1)
+	local deco = Config.Upgrades.deco.Mult[math.clamp(profile.Upgrades.deco, 1, #Config.Upgrades.deco.Mult)]
+	local perfect = score >= 0.999
+	local quality
+	if perfect then
+		quality = 1 + Config.PerfectTip * (Stats.HasPass(owner, "bigTips") and 2 or 1)
+	elseif score >= 0.6 then
+		quality = score
+	else
+		quality = score * 0.5
+	end
+	local special = npc.Celebrity and Config.CelebrityPay or (npc.Vip and Config.VipPay or 1)
+	local streak = byPlayer and (1 + math.min(profile.Streak, Config.StreakMax) * Config.StreakBonus) or 1
+	return math.max(1, math.floor(base * deco * quality * special * streak * Stats.Multiplier(owner))), perfect
+end
+
+local function payFor(salon: Salon, npc: any, score: number, byPlayer: boolean)
+	local owner = salon.Owner
+	local profile = owner and Data.Get(owner)
+	if not owner or not profile then
+		return
+	end
+	local pay, perfect = computePay(owner, profile, npc.Request, score, npc, byPlayer)
+	if byPlayer then
+		if perfect then
+			profile.Streak += 1
+			profile.Perfect += 1
+		else
+			profile.Streak = 0
+		end
+	end
+	profile.Served += 1
+	Stats.AddCash(owner, pay)
+	local head = npc.Model:FindFirstChild("Head") :: BasePart?
+	if head then
+		burst(head.Position + Vector3.new(0, 1.5, 0), perfect and GOLD or Color3.fromRGB(255, 150, 210), perfect and 60 or 25)
+	end
+	Net.Notify:FireClient(owner, {
+		Type = "pay",
+		Amount = pay,
+		Perfect = perfect,
+		Score = score,
+		Streak = profile.Streak,
+		ByPlayer = byPlayer,
+		Position = head and head.Position,
+	})
+end
+
+---------------------------------------------------------------------
+-- Stylistes (automatiques)
+---------------------------------------------------------------------
+local staffVersion: { [Salon]: number } = {}
+
+local function rebuildStaff(salon: Salon)
+	local version = (staffVersion[salon] or 0) + 1
+	staffVersion[salon] = version
+	for _, s in salon.Staff do
+		if s.Model then
+			s.Model:Destroy()
+		end
+	end
+	salon.Staff = {}
+	local n = stylistCount(salon)
+	for i = 1, n do
+		local model = makeHumanoid(Color3.fromRGB(30, 28, 36), Color3.fromRGB(30, 28, 36))
+		if staffVersion[salon] ~= version then
+			if model then
+				model:Destroy()
+			end
+			return -- une reconstruction plus récente a démarré
+		end
+		if not model then
+			continue
+		end
+		model.Name = "Styliste"
+		local home = L(salon, CHAIR_X[i] + 3.3, 4, CHAIR_Z + 1.5) * CFrame.Angles(0, math.pi / 2, 0)
+		model:PivotTo(home)
+		local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart
+		hrp.Anchored = true
+		model.Parent = salon.StaffFolder
+		HairBuilder.Apply(model, { style = ({ "crete", "chignon", "boucle", "pixie", "queue", "tresses" })[i], length = 2, color = ({ "neonrose", "platine", "violet", "noir", "rose", "bleu" })[i], acc = "aucun" })
+		-- Tablier aux couleurs du salon
+		local torso = model:FindFirstChild("UpperTorso") :: BasePart?
+		if torso then
+			local apron = P({ Name = "Apron", Size = Vector3.new(torso.Size.X * 0.95, torso.Size.Y * 1.1, 0.1), CFrame = torso.CFrame * CFrame.new(0, -0.1, -torso.Size.Z / 2 - 0.05), Color = salon.Theme, Anchored = false, CanCollide = false, Massless = true, Parent = model })
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = torso
+			weld.Part1 = apron
+			weld.Parent = apron
+		end
+		local tag = Instance.new("BillboardGui")
+		tag.Size = UDim2.fromScale(4, 0.8)
+		tag.StudsOffset = Vector3.new(0, 3, 0)
+		tag.MaxDistance = 40
+		tag.Adornee = model:FindFirstChild("Head")
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.TextColor3 = Color3.fromRGB(255, 220, 240)
+		label.Text = "✂️ Styliste"
+		label.Parent = tag
+		tag.Parent = model
+		local npc = { Model = model, Humanoid = model:FindFirstChildOfClass("Humanoid"), Home = home, Job = nil }
+		loadTracks(npc)
+		setAnim(npc, "idle")
+		table.insert(salon.Staff, npc)
+	end
+end
+
+local function stylistTick(salon: Salon)
+	if not salon.Owner then
+		return
+	end
+	for _, staff in salon.Staff do
+		if staff.Job == nil then
+			-- Cherche un client qui attend et que personne ne coiffe
+			for _, npc in salon.Customers do
+				if npc.State == "waiting" and npc.Chair and not npc.Chair.Model:GetAttribute("Busy") then
+					staff.Job = npc
+					npc.State = "stylist"
+					updateChairAttrs(npc.Chair)
+					staff.Model:PivotTo(L(salon, CHAIR_X[npc.Chair.Index] + 2.6, 4, CHAIR_Z - 0.5) * CFrame.Angles(0, math.pi / 2, 0))
+					local scissors = staff.Model:FindFirstChild("RightHand")
+					if scissors then
+						sparkle(scissors, Color3.fromRGB(255, 200, 240), 12).Name = "Work"
+					end
+					task.delay(Config.StylistWorkTime, function()
+						if npc.State == "stylist" and salon.Owner and npc.Model.Parent then
+							HairBuilder.Apply(npc.Model, npc.Request)
+							payFor(salon, npc, Config.StylistScore, false)
+							leave(salon, npc, true)
+						end
+						staff.Job = nil
+						if staff.Model.Parent then
+							local work = scissors and scissors:FindFirstChild("Work")
+							if work then
+								work:Destroy()
+							end
+							staff.Model:PivotTo(staff.Home)
+						end
+					end)
+					break
+				end
+			end
+		end
+	end
+end
+
+---------------------------------------------------------------------
+-- Construction / attribution
+---------------------------------------------------------------------
+local function ensureChairs(salon: Salon)
+	local n = chairCount(salon)
+	for i = 1, MAX_CHAIRS do
+		if i <= n and not salon.Chairs[i] then
+			salon.Chairs[i] = buildChair(salon, i)
+		elseif i > n and salon.Chairs[i] then
+			local c = salon.Chairs[i]
+			if c.Customer then
+				removeCustomer(salon, c.Customer)
+			end
+			if c.Sitter then
+				Salons.StandUp(c.Sitter)
+			end
+			c.Model:Destroy()
+			salon.Chairs[i] = nil
+		end
+	end
+end
+
+local function refreshSign(salon: Salon)
+	if not salon.SignLabel then
+		return
+	end
+	local owner = salon.Owner
+	if owner then
+		local profile = Data.Get(owner)
+		local stars = string.rep("★", profile and profile.Upgrades.deco or 1)
+		salon.SignLabel.Text = "✂️ Salon de " .. owner.DisplayName .. "  " .. stars
+	else
+		salon.SignLabel.Text = "✂️ SALON LIBRE"
+	end
+end
+
+function Salons.Init()
+	for i, cf in World.SalonCFrames() do
+		local folder = Instance.new("Folder")
+		folder.Name = "Salon" .. i
+		local function sub(name)
+			local f = Instance.new("Folder")
+			f.Name = name
+			f.Parent = folder
+			return f
+		end
+		local salon: Salon = {
+			Index = i,
+			CFrame = cf,
+			Theme = THEMES[i],
+			Root = folder,
+			Building = sub("Building"),
+			ChairsFolder = sub("Chairs"),
+			StaffFolder = sub("Staff"),
+			CustomersFolder = sub("Customers"),
+			Owner = nil,
+			Chairs = {},
+			Customers = {},
+			Staff = {},
+			LastSpawn = 0,
+			PendingCelebrity = 0,
+			SignLabel = nil,
+		}
+		folder:SetAttribute("OwnerId", 0)
+		folder:SetAttribute("Index", i)
+		folder.Parent = root
+		buildBuilding(salon, 1)
+		salons[i] = salon
+	end
+	-- Boucle de jeu des salons
+	task.spawn(function()
+		while true do
+			local dt = task.wait(0.5)
+			for _, salon in salons do
+				local owner = salon.Owner
+				local profile = owner and Data.Get(owner)
+				if owner and profile then
+					local interval = Config.Upgrades.pub.Interval[math.clamp(profile.Upgrades.pub + 1, 1, #Config.Upgrades.pub.Interval)]
+					if Stats.HasPass(owner, "fastClients") then
+						interval *= 0.6
+					end
+					if Stats.RushActive() then
+						interval *= 0.5
+					end
+					if salon.PendingCelebrity > 0 and freeChair(salon) then
+						salon.PendingCelebrity -= 1
+						salon.LastSpawn = os.clock()
+						task.spawn(spawnCustomer, salon, "celebrity")
+					elseif os.clock() - salon.LastSpawn >= interval then
+						salon.LastSpawn = os.clock()
+						task.spawn(spawnCustomer, salon)
+					end
+					-- Patience
+					for _, npc in table.clone(salon.Customers) do
+						if npc.State == "waiting" then
+							npc.Waited += dt
+							local left = 1 - npc.Waited / npc.Patience
+							if npc.Bar then
+								npc.Bar.Size = UDim2.fromScale(math.max(left, 0), 1)
+								npc.Bar.BackgroundColor3 = left > 0.5 and Color3.fromRGB(120, 230, 140) or (left > 0.25 and Color3.fromRGB(255, 200, 80) or Color3.fromRGB(255, 80, 90))
+							end
+							if left <= 0 then
+								if npc.Title then
+									npc.Title.Text = "😠 Trop long !"
+								end
+								leave(salon, npc, false)
+							end
+						end
+					end
+					stylistTick(salon)
+				end
+			end
+		end
+	end)
+end
+
+function Salons.Get(player: Player): Salon?
+	return salonOf[player]
+end
+
+function Salons.HomeCFrame(player: Player): CFrame?
+	local salon = salonOf[player]
+	if not salon then
+		return nil
+	end
+	return L(salon, 0, 4, -D / 2 + 8) * CFrame.Angles(0, math.pi, 0)
+end
+
+function Salons.Rebuild(player: Player, full: boolean?)
+	local salon = salonOf[player]
+	local profile = Data.Get(player)
+	if not salon or not profile then
+		return
+	end
+	if full then
+		buildBuilding(salon, profile.Upgrades.deco)
+	end
+	ensureChairs(salon)
+	task.spawn(rebuildStaff, salon)
+	refreshSign(salon)
+end
+
+function Salons.Assign(player: Player): Salon?
+	for _, salon in salons do
+		if not salon.Owner then
+			salon.Owner = player
+			salonOf[player] = salon
+			salon.Root:SetAttribute("OwnerId", player.UserId)
+			salon.Root:SetAttribute("OwnerName", player.DisplayName)
+			salon.LastSpawn = os.clock() - 100
+			local s = Stats.Session(player)
+			if s then
+				s.SalonIndex = salon.Index
+			end
+			Salons.Rebuild(player, true)
+			return salon
+		end
+	end
+	return nil
+end
+
+function Salons.Unassign(player: Player)
+	local salon = salonOf[player]
+	salonOf[player] = nil
+	if not salon then
+		return
+	end
+	-- Termine les sessions liées à ce salon
+	for stylist, sess in sessions do
+		if sess.Salon == salon then
+			Salons.EndSession(stylist, false)
+		end
+	end
+	for _, npc in table.clone(salon.Customers) do
+		removeCustomer(salon, npc)
+	end
+	for i, chair in salon.Chairs do
+		if chair.Sitter then
+			local hum = chair.Sitter.Character and chair.Sitter.Character:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum.Sit = false
+			end
+			sitterOf[chair.Sitter] = nil
+		end
+		chair.Model:Destroy()
+		salon.Chairs[i] = nil
+	end
+	salon.Owner = nil
+	rebuildStaff(salon)
+	salon.Root:SetAttribute("OwnerId", 0)
+	salon.Root:SetAttribute("OwnerName", "")
+	buildBuilding(salon, 1)
+	refreshSign(salon)
+end
+
+function Salons.AddCelebrity(player: Player): boolean
+	local salon = salonOf[player]
+	if not salon then
+		return false
+	end
+	salon.PendingCelebrity += 1
+	return true
+end
+
+---------------------------------------------------------------------
+-- Sessions de coiffure
+---------------------------------------------------------------------
+local function canUse(player: Player, kind: string, id: any): boolean
+	local profile = Data.Get(player)
+	if not profile then
+		return false
+	end
+	if kind == "style" then
+		local s = Config.StyleById[id]
+		return s ~= nil and (profile.Styles[id] == true or (s.Pass ~= nil and Stats.HasPass(player, s.Pass)))
+	elseif kind == "color" then
+		local c = Config.ColorById[id]
+		if not c then
+			return false
+		end
+		return c.Tier == "base" or (c.Tier == "fantasy" and profile.FantasyColors) or (c.Tier == "neon" and Stats.HasPass(player, "neonColors"))
+	elseif kind == "acc" then
+		local a = Config.AccById[id]
+		return a ~= nil and (profile.Accs[id] == true or (a.Pass ~= nil and Stats.HasPass(player, a.Pass)))
+	elseif kind == "length" then
+		return id == 1 or id == 2 or id == 3
+	end
+	return false
+end
+
+local function near(player: Player, pos: Vector3, dist: number): boolean
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return hrp ~= nil and (hrp.Position - pos).Magnitude <= dist
+end
+
+local function startSession(player: Player, sess: any)
+	sessions[player] = sess
+	Net.Session:FireClient(player, {
+		Open = true,
+		Kind = sess.Kind,
+		Target = sess.TargetModel,
+		Request = sess.Request,
+		Look = sess.Look,
+		Name = sess.TargetName,
+	})
+end
+
+function Salons.EndSession(player: Player, finished: boolean)
+	local sess = sessions[player]
+	if not sess then
+		return
+	end
+	sessions[player] = nil
+	if sess.Kind == "npc" then
+		local npc = sess.Npc
+		if npc.State == "styling" then
+			if finished then
+				payFor(sess.Salon, npc, HairBuilder.Score(npc.Request, sess.Look), true)
+				leave(sess.Salon, npc, true)
+			else
+				npc.State = "waiting"
+				if npc.Chair then
+					updateChairAttrs(npc.Chair)
+				end
+			end
+		end
+	elseif sess.Kind == "player" or sess.Kind == "self" then
+		local target: Player = sess.TargetPlayer
+		local tProfile = Data.Get(target)
+		if finished and tProfile then
+			tProfile.Look = table.clone(sess.Look)
+			Stats.MarkDirty(target)
+			if sess.Kind == "player" then
+				Net.Toast(target, "💇 " .. player.DisplayName .. " t'a fait une nouvelle coiffure !", "success")
+				-- Petite récompense pour le coiffeur (limitée pour éviter les abus)
+				local key = player.UserId .. ":" .. target.UserId
+				if os.clock() - (lastPlayerStyle[key] or -1e9) > 120 then
+					lastPlayerStyle[key] = os.clock()
+					local reward = Stats.MinutesOfIncome(player, 1, 100)
+					Stats.AddCash(player, reward)
+					Net.Toast(player, "Merci ! +" .. Util.Money(reward) .. " pour avoir coiffé " .. target.DisplayName, "money")
+				end
+			end
+		elseif target.Character then
+			if tProfile and tProfile.Look then
+				HairBuilder.Apply(target.Character, tProfile.Look)
+			else
+				-- Pas de coiffure sauvegardée : on remet les cheveux Roblox d'origine
+				local char = target.Character
+				local old = char:FindFirstChild("CustomHair")
+				if old then
+					old:Destroy()
+				end
+				task.spawn(function()
+					local hum = char:FindFirstChildOfClass("Humanoid")
+					local ok, desc = pcall(function()
+						return Players:GetHumanoidDescriptionFromUserId(target.UserId)
+					end)
+					if ok and desc and hum and hum.Parent then
+						pcall(function()
+							hum:ApplyDescription(desc)
+						end)
+					end
+				end)
+			end
+		end
+		if sess.Chair then
+			sess.Chair.Model:SetAttribute("Busy", false)
+		end
+	end
+	Net.Session:FireClient(player, { Open = false })
+end
+
+local function onPrompt(prompt: ProximityPrompt, player: Player)
+	local kind = prompt:GetAttribute("Kind")
+	local salonFolder = prompt:FindFirstAncestorWhichIsA("Folder")
+	while salonFolder and salonFolder.Parent ~= root do
+		salonFolder = salonFolder:FindFirstAncestorWhichIsA("Folder")
+	end
+	if not salonFolder then
+		return
+	end
+	local salon = salons[salonFolder:GetAttribute("Index")]
+	if not salon or sessions[player] then
+		return
+	end
+	local parentPart = prompt.Parent and prompt.Parent.Parent
+	if not parentPart or not parentPart:IsA("BasePart") or not near(player, parentPart.Position, 14) then
+		return
+	end
+
+	if kind == "mirror" then
+		local profile = Data.Get(player)
+		if not profile or not player.Character then
+			return
+		end
+		startSession(player, {
+			Kind = "self",
+			Salon = salon,
+			TargetPlayer = player,
+			TargetModel = player.Character,
+			TargetName = player.DisplayName,
+			Look = HairBuilder.Normalize(profile.Look),
+		})
+	elseif kind == "upgrades" then
+		if salon.Owner == player then
+			Net.Notify:FireClient(player, { Type = "open", Panel = "upgrades" })
+		end
+	elseif kind == "style" then
+		if salon.Owner ~= player then
+			return
+		end
+		local chairModel = parentPart.Parent
+		local chair = salon.Chairs[chairModel and chairModel:GetAttribute("Index") or 0]
+		if not chair or chair.Model:GetAttribute("Busy") then
+			return
+		end
+		if chair.Customer and chair.Customer.State == "waiting" then
+			local npc = chair.Customer
+			npc.State = "styling"
+			updateChairAttrs(chair)
+			startSession(player, {
+				Kind = "npc",
+				Salon = salon,
+				Chair = chair,
+				Npc = npc,
+				TargetModel = npc.Model,
+				TargetName = npc.Celebrity and "Célébrité" or (npc.Vip and "Client VIP" or "Client"),
+				Request = npc.Request,
+				Look = table.clone(npc.Look),
+			})
+		elseif chair.Sitter and chair.Sitter.Character then
+			local target = chair.Sitter
+			local tProfile = Data.Get(target)
+			chair.Model:SetAttribute("Busy", true)
+			startSession(player, {
+				Kind = "player",
+				Salon = salon,
+				Chair = chair,
+				TargetPlayer = target,
+				TargetModel = target.Character,
+				TargetName = target.DisplayName,
+				Look = HairBuilder.Normalize(tProfile and tProfile.Look),
+			})
+			Net.Toast(target, "✂️ " .. player.DisplayName .. " commence ta coiffure…", "info")
+		end
+	elseif kind == "sit" then
+		if salon.Owner == nil or salon.Owner == player or sitterOf[player] then
+			return
+		end
+		local chairModel = parentPart.Parent
+		local chair = salon.Chairs[chairModel and chairModel:GetAttribute("Index") or 0]
+		local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if not chair or chair.Customer or chair.Sitter or chair.Reserved or not hum then
+			return
+		end
+		chair.Seat:Sit(hum)
+		chair.Sitter = player
+		sitterOf[player] = { salon = salon, chair = chair }
+		updateChairAttrs(chair)
+		Net.Toast(salon.Owner, "💺 " .. player.DisplayName .. " attend une coiffure dans ton salon !", "info")
+		Net.Toast(player, "Le propriétaire du salon va te coiffer. Saute pour te lever.", "info")
+		local conn
+		conn = chair.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+			if chair.Seat.Occupant == nil then
+				conn:Disconnect()
+				Salons.StandUp(player)
+			end
+		end)
+	end
+end
+
+function Salons.StandUp(player: Player)
+	local info = sitterOf[player]
+	if not info then
+		return
+	end
+	sitterOf[player] = nil
+	local chair = info.chair
+	if chair.Sitter == player then
+		chair.Sitter = nil
+	end
+	for stylist, sess in sessions do
+		if sess.Kind == "player" and sess.TargetPlayer == player then
+			Salons.EndSession(stylist, false)
+		end
+	end
+	updateChairAttrs(chair)
+end
+
+-- Appelé par le client quand il choisit une option pendant la session.
+function Salons.Apply(player: Player, field: string, value: any): (boolean, string?)
+	local sess = sessions[player]
+	if not sess then
+		return false, "Aucune coiffure en cours"
+	end
+	local kinds = { style = "style", length = "length", color = "color", acc = "acc" }
+	local kind = kinds[field]
+	if not kind then
+		return false
+	end
+	if not canUse(player, kind, value) then
+		return false, "🔒 Pas encore débloqué"
+	end
+	sess.Look[field] = value
+	local model = sess.TargetModel
+	if model and model.Parent then
+		HairBuilder.Apply(model, sess.Look)
+		local head = model:FindFirstChild("Head") :: BasePart?
+		if head then
+			burst(head.Position + Vector3.new(0, 1, 0), Color3.fromRGB(255, 180, 230), 12)
+		end
+	end
+	if sess.Kind == "npc" then
+		sess.Npc.Look = table.clone(sess.Look)
+	end
+	return true
+end
+
+function Salons.HasSession(player: Player): boolean
+	return sessions[player] ~= nil
+end
+
+---------------------------------------------------------------------
+-- Achats en jeu (argent virtuel)
+---------------------------------------------------------------------
+function Salons.Buy(player: Player, kind: string, id: string): (boolean, string?)
+	local profile = Data.Get(player)
+	if not profile then
+		return false, "Chargement…"
+	end
+	if kind == "upgrade" then
+		local def = Config.Upgrades[id]
+		if not def then
+			return false
+		end
+		local level = profile.Upgrades[id]
+		local cost = def.Costs[level + 1]
+		if not cost then
+			return false, "Niveau maximum atteint !"
+		end
+		if not Stats.Spend(player, cost) then
+			return false, "Pas assez d'argent"
+		end
+		profile.Upgrades[id] = level + 1
+		Salons.Rebuild(player, id == "deco")
+		Net.Toast(player, def.Icon .. " " .. def.Name .. " niveau " .. (level + 1) .. " !", "success")
+	elseif kind == "style" or kind == "acc" then
+		local def = kind == "style" and Config.StyleById[id] or Config.AccById[id]
+		local owned = kind == "style" and profile.Styles or profile.Accs
+		if not def or def.Pass or owned[id] then
+			return false
+		end
+		if not Stats.Spend(player, def.Cost) then
+			return false, "Pas assez d'argent"
+		end
+		owned[id] = true
+		Net.Toast(player, def.Icon .. " " .. def.Name .. " débloqué ! Les clients vont le demander.", "success")
+	elseif kind == "fantasy" then
+		if profile.FantasyColors then
+			return false
+		end
+		if not Stats.Spend(player, Config.FantasyColorsCost) then
+			return false, "Pas assez d'argent"
+		end
+		profile.FantasyColors = true
+		Net.Toast(player, "🎨 Teintures fantaisie débloquées !", "success")
+	else
+		return false
+	end
+	Stats.MarkDirty(player)
+	return true
+end
+
+function Salons.Rebirth(player: Player): (boolean, string?)
+	local profile = Data.Get(player)
+	if not profile then
+		return false
+	end
+	local cost = Config.RebirthCost(profile.Rebirths)
+	if profile.Cash < cost then
+		return false, "Il te faut " .. Util.Money(cost)
+	end
+	if sessions[player] then
+		Salons.EndSession(player, false)
+	end
+	profile.Cash = 0
+	profile.Rebirths += 1
+	profile.Streak = 0
+	profile.Upgrades = { chairs = 1, stylists = 0, deco = 1, pub = 0 }
+	local salon = salonOf[player]
+	if salon then
+		for _, npc in table.clone(salon.Customers) do
+			removeCustomer(salon, npc)
+		end
+	end
+	Salons.Rebuild(player, true)
+	Stats.MarkDirty(player)
+	Net.Announce("🏆 " .. player.DisplayName .. " ouvre sa franchise n°" .. profile.Rebirths .. " !", GOLD)
+	return true
+end
+
+function Salons.ApplyLook(player: Player)
+	local profile = Data.Get(player)
+	local char = player.Character
+	if profile and profile.Look and char then
+		HairBuilder.Apply(char, profile.Look)
+	end
+end
+
+function Salons.OnPlayerRemoving(player: Player)
+	if sessions[player] then
+		Salons.EndSession(player, false)
+	end
+	for stylist, sess in sessions do
+		if sess.TargetPlayer == player then
+			Salons.EndSession(stylist, false)
+		end
+	end
+	Salons.StandUp(player)
+	Salons.Unassign(player)
+end
+
+-- Toutes les ProximityPrompts du jeu passent par ici.
+local ProximityPromptService = game:GetService("ProximityPromptService")
+ProximityPromptService.PromptTriggered:Connect(function(p, player)
+	if p:IsDescendantOf(root) then
+		onPrompt(p, player)
+	end
+end)
+
+return Salons
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="14">
+        <Properties>
+          <string name="Name">Stats</string>
+          <string name="Source"><![CDATA[-- Argent, multiplicateurs, passes possédés, état envoyé au client.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Util = require(ReplicatedStorage.Shared.Util)
+local Data = require(script.Parent.Data)
+local Net = require(script.Parent.Net)
+
+local Stats = {}
+
+local passes: { [Player]: { [string]: boolean } } = {}
+local boosts: { [Player]: { friends: number, group: boolean } } = {}
+local rate: { [Player]: number } = {} -- gains moyens / seconde (moyenne glissante)
+local earnedThisSecond: { [Player]: number } = {}
+local dirty: { [Player]: boolean } = {}
+local session: { [Player]: { JoinTime: number, Gifts: { [number]: boolean }, SalonIndex: number? } } = {}
+
+function Stats.Init(player: Player)
+	passes[player] = passes[player] or {}
+	boosts[player] = { friends = 0, group = false }
+	rate[player] = 0
+	earnedThisSecond[player] = 0
+	session[player] = { JoinTime = os.time(), Gifts = {}, SalonIndex = nil }
+end
+
+function Stats.Cleanup(player: Player)
+	passes[player] = nil
+	boosts[player] = nil
+	rate[player] = nil
+	earnedThisSecond[player] = nil
+	dirty[player] = nil
+	session[player] = nil
+end
+
+function Stats.Session(player: Player)
+	return session[player]
+end
+
+---------------------------------------------------------------------
+-- Passes
+---------------------------------------------------------------------
+function Stats.SetPass(player: Player, key: string, owned: boolean)
+	passes[player] = passes[player] or {}
+	passes[player][key] = owned
+	Stats.MarkDirty(player)
+end
+
+function Stats.HasPass(player: Player, key: string): boolean
+	local p = passes[player]
+	return p ~= nil and p[key] == true
+end
+
+---------------------------------------------------------------------
+-- Boosts (amis, groupe, premium, heure de pointe)
+---------------------------------------------------------------------
+function Stats.SetFriends(player: Player, count: number)
+	if boosts[player] then
+		boosts[player].friends = count
+		Stats.MarkDirty(player)
+	end
+end
+
+function Stats.SetGroup(player: Player, inGroup: boolean)
+	if boosts[player] then
+		boosts[player].group = inGroup
+		Stats.MarkDirty(player)
+	end
+end
+
+function Stats.RushActive(): boolean
+	local untilT = ReplicatedStorage:GetAttribute("RushUntil") or 0
+	return Workspace:GetServerTimeNow() < untilT
+end
+
+function Stats.BoostBreakdown(player: Player)
+	local profile = Data.Get(player)
+	local b = boosts[player] or { friends = 0, group = false }
+	local friend = math.min(b.friends * Config.FriendBoostPerFriend, Config.FriendBoostMax)
+	return {
+		Rebirth = profile and profile.Rebirths * Config.RebirthBonus or 0,
+		Friends = friend,
+		Group = b.group and Config.GroupBoost or 0,
+		Premium = player.MembershipType == Enum.MembershipType.Premium and Config.PremiumBoost or 0,
+		Vip = Stats.HasPass(player, "vip") and Config.VipBoost or 0,
+		Double = Stats.HasPass(player, "doubleCash"),
+		Rush = Stats.RushActive(),
+	}
+end
+
+function Stats.Multiplier(player: Player): number
+	local b = Stats.BoostBreakdown(player)
+	local m = (1 + b.Rebirth) * (1 + b.Friends + b.Group + b.Premium) * (1 + b.Vip)
+	if b.Double then
+		m *= 2
+	end
+	if b.Rush then
+		m *= Config.RushMultiplier
+	end
+	return m
+end
+
+---------------------------------------------------------------------
+-- Argent
+---------------------------------------------------------------------
+function Stats.AddCash(player: Player, amount: number, countsAsEarned: boolean?)
+	local profile = Data.Get(player)
+	if not profile or amount ~= amount then
+		return
+	end
+	amount = math.floor(amount)
+	profile.Cash += amount
+	if countsAsEarned ~= false and amount > 0 then
+		profile.TotalEarned += amount
+		earnedThisSecond[player] = (earnedThisSecond[player] or 0) + amount
+	end
+	Stats.MarkDirty(player)
+end
+
+function Stats.Spend(player: Player, amount: number): boolean
+	local profile = Data.Get(player)
+	if not profile or amount < 0 or profile.Cash < amount then
+		return false
+	end
+	profile.Cash -= amount
+	Stats.MarkDirty(player)
+	return true
+end
+
+-- Gains par seconde estimés (sert à dimensionner les packs et récompenses).
+function Stats.Rate(player: Player): number
+	local profile = Data.Get(player)
+	local floorRate = 2
+	if profile then
+		floorRate = math.max(2, profile.Upgrades.stylists * Config.BasePay * 0.15 * Stats.Multiplier(player))
+	end
+	return math.max(rate[player] or 0, floorRate)
+end
+
+-- N minutes de gains (avec un minimum)
+function Stats.MinutesOfIncome(player: Player, minutes: number, minimum: number): number
+	return math.floor(math.max(minimum, Stats.Rate(player) * 60 * minutes))
+end
+
+---------------------------------------------------------------------
+-- État envoyé au client
+---------------------------------------------------------------------
+function Stats.MarkDirty(player: Player)
+	dirty[player] = true
+end
+
+local function snapshot(player: Player)
+	local profile = Data.Get(player)
+	if not profile then
+		return nil
+	end
+	local ownedPasses = {}
+	for key in Config.GamePasses do
+		ownedPasses[key] = Stats.HasPass(player, key)
+	end
+	local s = session[player]
+	return {
+		Cash = profile.Cash,
+		TotalEarned = profile.TotalEarned,
+		Served = profile.Served,
+		Perfect = profile.Perfect,
+		Streak = profile.Streak,
+		Rebirths = profile.Rebirths,
+		Upgrades = profile.Upgrades,
+		Styles = profile.Styles,
+		Accs = profile.Accs,
+		FantasyColors = profile.FantasyColors,
+		Look = profile.Look,
+		Daily = profile.Daily,
+		StarterBought = profile.StarterBought,
+		Passes = ownedPasses,
+		Mult = Stats.Multiplier(player),
+		Boosts = Stats.BoostBreakdown(player),
+		Rate = Stats.Rate(player),
+		JoinTime = s and s.JoinTime or os.time(),
+		Gifts = s and s.Gifts or {},
+		SalonIndex = s and s.SalonIndex,
+		ServerNow = os.time(),
+	}
+end
+
+function Stats.PushNow(player: Player)
+	local snap = snapshot(player)
+	if snap then
+		dirty[player] = nil
+		Net.State:FireClient(player, snap)
+		local ls = player:FindFirstChild("leaderstats")
+		if ls then
+			local cash = ls:FindFirstChild("Argent") :: StringValue
+			local served = ls:FindFirstChild("Clients") :: IntValue
+			cash.Value = Util.Format(snap.Cash)
+			served.Value = snap.Served
+		end
+	end
+end
+
+function Stats.CreateLeaderstats(player: Player)
+	local ls = Instance.new("Folder")
+	ls.Name = "leaderstats"
+	local cash = Instance.new("StringValue")
+	cash.Name = "Argent"
+	cash.Value = "0"
+	cash.Parent = ls
+	local served = Instance.new("IntValue")
+	served.Name = "Clients"
+	served.Parent = ls
+	ls.Parent = player
+end
+
+task.spawn(function()
+	local acc = 0
+	while true do
+		local dt = task.wait(0.25)
+		acc += dt
+		if acc >= 1 then
+			acc -= 1
+			for player, earned in earnedThisSecond do
+				-- moyenne glissante sur ~3 minutes
+				rate[player] = (rate[player] or 0) * (1 - 1 / 180) + earned / 180
+				earnedThisSecond[player] = 0
+			end
+		end
+		for player in dirty do
+			if player.Parent then
+				Stats.PushNow(player)
+			else
+				dirty[player] = nil
+			end
+		end
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	dirty[player] = nil
+end)
+
+return Stats
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">World</string>
+          <string name="Source"><![CDATA[-- Génère la carte : terrain, éclairage cinématique, boulevard, fontaine, arbres.
+
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+local World = {}
+
+World.SalonWidth = 56
+World.SalonDepth = 50
+World.SalonCount = 8
+
+local rng = Random.new(42)
+
+local map = Instance.new("Folder")
+map.Name = "Map"
+map.Parent = Workspace
+
+function World.Part(props: { [string]: any }): BasePart
+	local className = props.ClassName or "Part"
+	local p = Instance.new(className)
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	if props.Shape then
+		(p :: any).Shape = props.Shape
+	end
+	if props.Size then
+		p.Size = props.Size
+	end
+	for k, v in props do
+		if k ~= "ClassName" and k ~= "Parent" and k ~= "Shape" and k ~= "Size" then
+			(p :: any)[k] = v
+		end
+	end
+	p.Parent = props.Parent or map
+	return p
+end
+local P = World.Part
+
+local function light(parent: Instance, color: Color3, range: number, brightness: number)
+	local l = Instance.new("PointLight")
+	l.Color = color
+	l.Range = range
+	l.Brightness = brightness
+	l.Shadows = false
+	l.Parent = parent
+	return l
+end
+
+---------------------------------------------------------------------
+-- Éclairage
+---------------------------------------------------------------------
+local function setupLighting()
+	for _, c in Lighting:GetChildren() do
+		if c:IsA("PostEffect") or c:IsA("Atmosphere") or c:IsA("Sky") then
+			c:Destroy()
+		end
+	end
+	local atmo = Instance.new("Atmosphere")
+	atmo.Density = 0.32
+	atmo.Offset = 0.2
+	atmo.Color = Color3.fromRGB(214, 190, 230)
+	atmo.Decay = Color3.fromRGB(120, 92, 150)
+	atmo.Glare = 0.35
+	atmo.Haze = 1.4
+	atmo.Parent = Lighting
+
+	local sky = Instance.new("Sky")
+	sky.SunAngularSize = 14
+	sky.MoonAngularSize = 9
+	sky.StarCount = 4000
+	sky.Parent = Lighting
+
+	local bloom = Instance.new("BloomEffect")
+	bloom.Intensity = 0.7
+	bloom.Size = 28
+	bloom.Threshold = 1.4
+	bloom.Parent = Lighting
+
+	local rays = Instance.new("SunRaysEffect")
+	rays.Intensity = 0.07
+	rays.Spread = 0.65
+	rays.Parent = Lighting
+
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Saturation = 0.18
+	cc.Contrast = 0.08
+	cc.Brightness = 0.02
+	cc.TintColor = Color3.fromRGB(255, 246, 250)
+	cc.Parent = Lighting
+
+	local dof = Instance.new("DepthOfFieldEffect")
+	dof.FarIntensity = 0.12
+	dof.FocusDistance = 50
+	dof.InFocusRadius = 90
+	dof.NearIntensity = 0
+	dof.Parent = Lighting
+
+	local clouds = Instance.new("Clouds")
+	clouds.Cover = 0.45
+	clouds.Density = 0.55
+	clouds.Color = Color3.fromRGB(255, 240, 250)
+	clouds.Parent = Workspace.Terrain
+end
+
+---------------------------------------------------------------------
+-- Terrain
+---------------------------------------------------------------------
+local function setupTerrain()
+	local t = Workspace.Terrain
+	t.WaterColor = Color3.fromRGB(60, 170, 200)
+	t.WaterReflectance = 0.6
+	t.WaterTransparency = 0.6
+	t.WaterWaveSize = 0.12
+	t.WaterWaveSpeed = 8
+	pcall(function()
+		t:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(110, 170, 80))
+		t:SetMaterialColor(Enum.Material.LeafyGrass, Color3.fromRGB(95, 160, 75))
+	end)
+
+	t:FillBlock(CFrame.new(0, -8, 0), Vector3.new(900, 16, 900), Enum.Material.Grass)
+	-- Collines tout autour
+	for i = 1, 46 do
+		local a = (i / 46) * math.pi * 2 + rng:NextNumber(-0.05, 0.05)
+		local r = rng:NextNumber(330, 400)
+		local size = rng:NextNumber(45, 95)
+		t:FillBall(Vector3.new(math.cos(a) * r, -size * 0.35, math.sin(a) * r), size, i % 3 == 0 and Enum.Material.Rock or Enum.Material.LeafyGrass)
+	end
+	-- Lac derrière les salons nord
+	t:FillBlock(CFrame.new(0, -4, 175), Vector3.new(160, 8, 70), Enum.Material.Air)
+	t:FillBlock(CFrame.new(0, -5, 175), Vector3.new(160, 6, 70), Enum.Material.Water)
+	t:FillBlock(CFrame.new(0, -9, 175), Vector3.new(170, 2, 80), Enum.Material.Sand)
+end
+
+---------------------------------------------------------------------
+-- Décor
+---------------------------------------------------------------------
+local BLOSSOM = {
+	Color3.fromRGB(255, 183, 213),
+	Color3.fromRGB(255, 205, 225),
+	Color3.fromRGB(245, 160, 200),
+}
+local GREEN = {
+	Color3.fromRGB(96, 168, 82),
+	Color3.fromRGB(78, 150, 70),
+	Color3.fromRGB(120, 185, 90),
+}
+
+function World.Tree(pos: Vector3, blossom: boolean?, parent: Instance?)
+	local model = Instance.new("Model")
+	model.Name = "Tree"
+	local h = rng:NextNumber(9, 14)
+	P({
+		Name = "Trunk",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(h, 1.6, 1.6),
+		CFrame = CFrame.new(pos + Vector3.new(0, h / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(105, 72, 52),
+		Material = Enum.Material.Wood,
+		Parent = model,
+	})
+	local palette = blossom and BLOSSOM or GREEN
+	for i = 1, 4 do
+		local d = rng:NextNumber(6, 9)
+		P({
+			Name = "Leaves",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(d, d, d),
+			Position = pos + Vector3.new(rng:NextNumber(-2.5, 2.5), h + rng:NextNumber(-1, 2.5), rng:NextNumber(-2.5, 2.5)),
+			Color = palette[rng:NextInteger(1, #palette)],
+			Material = Enum.Material.Grass,
+			CastShadow = true,
+			Parent = model,
+		})
+	end
+	if blossom then
+		local petals = Instance.new("ParticleEmitter")
+		petals.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		petals.Rate = 1.5
+		petals.Lifetime = NumberRange.new(4, 7)
+		petals.Speed = NumberRange.new(0.5, 1.5)
+		petals.Acceleration = Vector3.new(0.6, -1.2, 0.3)
+		petals.Size = NumberSequence.new(0.25)
+		petals.Color = ColorSequence.new(Color3.fromRGB(255, 190, 220))
+		petals.SpreadAngle = Vector2.new(180, 180)
+		petals.Rotation = NumberRange.new(0, 360)
+		petals.RotSpeed = NumberRange.new(-90, 90)
+		petals.Parent = model:FindFirstChild("Leaves")
+	end
+	model.Parent = parent or map
+	return model
+end
+
+local lamps: { PointLight } = {}
+
+local function lampPost(pos: Vector3)
+	P({ Name = "LampPole", Size = Vector3.new(0.6, 12, 0.6), Position = pos + Vector3.new(0, 6, 0), Color = Color3.fromRGB(40, 36, 50), Material = Enum.Material.Metal })
+	P({ Name = "LampBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 1.6, 1.6), CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(40, 36, 50), Material = Enum.Material.Metal })
+	local bulb = P({ Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.8, 1.8), Position = pos + Vector3.new(0, 12.4, 0), Color = Color3.fromRGB(255, 225, 180), Material = Enum.Material.Neon, CastShadow = false })
+	table.insert(lamps, light(bulb, Color3.fromRGB(255, 205, 150), 26, 1.6))
+end
+
+local function bench(cf: CFrame)
+	local wood = Color3.fromRGB(150, 98, 62)
+	P({ Name = "Bench", Size = Vector3.new(7, 0.4, 2), CFrame = cf * CFrame.new(0, 1.8, 0), Color = wood, Material = Enum.Material.Wood })
+	P({ Name = "Bench", Size = Vector3.new(7, 1.6, 0.3), CFrame = cf * CFrame.new(0, 2.8, 0.9) * CFrame.Angles(math.rad(-10), 0, 0), Color = wood, Material = Enum.Material.Wood })
+	for _, x in { -3, 3 } do
+		P({ Name = "Bench", Size = Vector3.new(0.3, 1.8, 1.8), CFrame = cf * CFrame.new(x, 0.9, 0), Color = Color3.fromRGB(40, 36, 50), Material = Enum.Material.Metal })
+	end
+end
+
+local function flowerBed(pos: Vector3, w: number, d: number)
+	P({ Name = "Bed", Size = Vector3.new(w, 1, d), Position = pos + Vector3.new(0, 0.5, 0), Color = Color3.fromRGB(235, 228, 220), Material = Enum.Material.Concrete })
+	P({ Name = "Soil", Size = Vector3.new(w - 0.6, 0.2, d - 0.6), Position = pos + Vector3.new(0, 1.05, 0), Color = Color3.fromRGB(80, 56, 40), Material = Enum.Material.Ground })
+	local colors = { Color3.fromRGB(255, 90, 140), Color3.fromRGB(255, 220, 90), Color3.fromRGB(180, 120, 255), Color3.fromRGB(255, 255, 255) }
+	for _ = 1, math.floor(w * d / 3) do
+		P({ Name = "Flower", Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7), Position = pos + Vector3.new(rng:NextNumber(-w / 2 + 0.8, w / 2 - 0.8), 1.4, rng:NextNumber(-d / 2 + 0.8, d / 2 - 0.8)), Color = colors[rng:NextInteger(1, #colors)], CastShadow = false })
+	end
+end
+
+local function fountain(pos: Vector3)
+	local marble = Color3.fromRGB(240, 236, 245)
+	P({ Name = "Fountain", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 22, 22), CFrame = CFrame.new(pos + Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = marble, Material = Enum.Material.Marble })
+	P({ Name = "FountainWater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 20, 20), CFrame = CFrame.new(pos + Vector3.new(0, 2.05, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(90, 200, 235), Material = Enum.Material.Glass, Transparency = 0.25, Reflectance = 0.3, CanCollide = false })
+	P({ Name = "Fountain", Shape = Enum.PartType.Cylinder, Size = Vector3.new(7, 2.4, 2.4), CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = marble, Material = Enum.Material.Marble })
+	P({ Name = "Fountain", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.8, 9, 9), CFrame = CFrame.new(pos + Vector3.new(0, 8.4, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = marble, Material = Enum.Material.Marble })
+	local top = P({ Name = "FountainTop", Shape = Enum.PartType.Ball, Size = Vector3.new(2.2, 2.2, 2.2), Position = pos + Vector3.new(0, 9.6, 0), Color = Color3.fromRGB(255, 150, 210), Material = Enum.Material.Neon })
+	light(top, Color3.fromRGB(255, 160, 220), 22, 1.2)
+	local spray = Instance.new("ParticleEmitter")
+	spray.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	spray.Rate = 60
+	spray.Lifetime = NumberRange.new(1.2, 1.6)
+	spray.Speed = NumberRange.new(14, 18)
+	spray.SpreadAngle = Vector2.new(18, 18)
+	spray.Acceleration = Vector3.new(0, -30, 0)
+	spray.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0.2) })
+	spray.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	spray.Color = ColorSequence.new(Color3.fromRGB(170, 230, 255))
+	spray.LightEmission = 0.6
+	spray.EmissionDirection = Enum.NormalId.Top
+	spray.Parent = top
+end
+
+local function boulevard()
+	local length = 440
+	-- Route
+	P({ Name = "Road", Size = Vector3.new(length, 0.4, 20), Position = Vector3.new(0, 0.2, 0), Color = Color3.fromRGB(52, 50, 60), Material = Enum.Material.Asphalt })
+	for x = -length / 2 + 6, length / 2 - 6, 12 do
+		if math.abs(x) > 16 then
+			P({ Name = "Line", Size = Vector3.new(5, 0.05, 0.4), Position = Vector3.new(x, 0.42, 0), Color = Color3.fromRGB(250, 240, 220), CastShadow = false, CanCollide = false })
+		end
+	end
+	-- Trottoirs en pavés roses
+	for _, z in { -14, 14 } do
+		P({ Name = "Sidewalk", Size = Vector3.new(length, 0.8, 8), Position = Vector3.new(0, 0.4, z), Color = Color3.fromRGB(232, 205, 210), Material = Enum.Material.Pavement })
+		P({ Name = "Curb", Size = Vector3.new(length, 0.9, 0.6), Position = Vector3.new(0, 0.45, z - math.sign(z) * 3.9), Color = Color3.fromRGB(250, 245, 245), Material = Enum.Material.Concrete })
+		for x = -length / 2 + 15, length / 2 - 15, 30 do
+			lampPost(Vector3.new(x, 0.8, z + math.sign(z) * 2.5))
+		end
+	end
+	-- Place centrale
+	P({ Name = "Plaza", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 44, 44), CFrame = CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(245, 225, 232), Material = Enum.Material.Pavement })
+	fountain(Vector3.new(0, 0.5, 0))
+	for i = 0, 5 do
+		local a = i / 6 * math.pi * 2 + math.pi / 6
+		bench(CFrame.new(math.cos(a) * 17, 0.5, math.sin(a) * 17) * CFrame.Angles(0, -a - math.pi / 2, 0))
+	end
+
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "Spawn"
+	spawn.Anchored = true
+	spawn.Size = Vector3.new(8, 0.4, 8)
+	spawn.Position = Vector3.new(-30, 0.6, 0)
+	spawn.Transparency = 1
+	spawn.CanCollide = false
+	spawn.Duration = 0
+	spawn.Neutral = true
+	spawn.Parent = map
+
+	-- Arbres et massifs
+	for x = -200, 200, 45 do
+		for _, z in { -110, 110 } do
+			World.Tree(Vector3.new(x + rng:NextNumber(-6, 6), 0, z + rng:NextNumber(-8, 8)), rng:NextNumber() < 0.6)
+		end
+	end
+	for i = 1, 40 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(240, 310)
+		World.Tree(Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), rng:NextNumber() < 0.5)
+	end
+	for _, x in { -215, 215 } do
+		flowerBed(Vector3.new(x, 0, 0), 10, 30)
+	end
+end
+
+---------------------------------------------------------------------
+-- Cycle jour / nuit (10 min jour, 4 min nuit)
+---------------------------------------------------------------------
+local function dayNight()
+	task.spawn(function()
+		local t = 9
+		while true do
+			local dt = task.wait(0.5)
+			local isDay = t > 6.5 and t < 18.5
+			t += dt * (isDay and (12 / 600) or (12 / 240))
+			if t >= 24 then
+				t -= 24
+			end
+			Lighting.ClockTime = t
+			local night = not (t > 6 and t < 18.7)
+			for _, l in lamps do
+				l.Enabled = night
+			end
+		end
+	end)
+end
+
+-- Position (CFrame) de chaque salon, façade tournée vers le boulevard.
+function World.SalonCFrames(): { CFrame }
+	local list = {}
+	local xs = { -150, -75, 75, 150 }
+	local zFront = 22
+	for _, side in { -1, 1 } do
+		for _, x in xs do
+			local center = Vector3.new(x, 0, side * (zFront + World.SalonDepth / 2))
+			table.insert(list, CFrame.lookAt(center, Vector3.new(x, 0, 0)))
+		end
+	end
+	return list
+end
+
+function World.Build()
+	setupLighting()
+	setupTerrain()
+	boulevard()
+	dayNight()
+end
+
+World.Map = map
+
+return World
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="16">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+      <float name="CharacterJumpPower">50</float>
+      <float name="CharacterWalkSpeed">18</float>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="17">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="18">
+        <Properties>
+          <string name="Name">Client</string>
+        </Properties>
+        <Item class="LocalScript" referent="19">
+          <Properties>
+            <string name="Name">Main</string>
+            <string name="Source"><![CDATA[-- Client de Salon Star : interface, atelier de coiffure, effets.
+
+local CollectionService = game:GetService("CollectionService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local SocialService = game:GetService("SocialService")
+local SoundService = game:GetService("SoundService")
+local TextChatService = game:GetService("TextChatService")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local HairBuilder = require(Shared:WaitForChild("HairBuilder"))
+local Util = require(Shared:WaitForChild("Util"))
+local Ui = require(script.Parent:WaitForChild("Ui"))
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local Action: RemoteFunction = Remotes:WaitForChild("Action")
+local StateEvent: RemoteEvent = Remotes:WaitForChild("State")
+local NotifyEvent: RemoteEvent = Remotes:WaitForChild("Notify")
+local SessionEvent: RemoteEvent = Remotes:WaitForChild("Session")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local C = Ui.Colors
+
+local state: any = nil
+local stateReceivedAt = os.clock()
+local session: any = nil
+local refreshers: { () -> () } = {}
+
+local function refreshAll()
+	for _, f in refreshers do
+		task.spawn(f)
+	end
+end
+
+---------------------------------------------------------------------
+-- Sons (uniquement des sons intégrés au client Roblox)
+---------------------------------------------------------------------
+local function sound(id: string, volume: number?, pitch: number?)
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = volume or 0.5
+	s.PlaybackSpeed = pitch or 1
+	s.Parent = SoundService
+	s:Play()
+	s.Ended:Once(function()
+		s:Destroy()
+	end)
+	task.delay(5, function()
+		if s.Parent then
+			s:Destroy()
+		end
+	end)
+end
+local PING = "rbxasset://sounds/electronicpingshort.wav"
+
+---------------------------------------------------------------------
+-- Racine de l'interface
+---------------------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "SalonUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local hud = Ui.Frame({ Parent = gui, Name = "HUD", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) })
+
+---------------------------------------------------------------------
+-- Argent (haut centre)
+---------------------------------------------------------------------
+local cashPill = Ui.Frame({ Parent = hud, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 14), Size = UDim2.fromOffset(300, 74), BackgroundColor3 = C.Bg })
+Ui.Corner(cashPill, 37)
+Ui.Stroke(cashPill, C.Gold, 3)
+Ui.Gradient(cashPill, Color3.fromRGB(70, 44, 100), Color3.fromRGB(30, 20, 46))
+local cashLabel = Ui.Label({ Parent = cashPill, Text = "💰 0 $", Size = UDim2.new(1, -24, 0, 42), Position = UDim2.fromOffset(12, 4), TextColor3 = C.Gold })
+local rateLabel = Ui.Label({ Parent = cashPill, Text = "", Size = UDim2.new(1, -24, 0, 22), Position = UDim2.fromOffset(12, 46), TextColor3 = C.Muted, Font = Enum.Font.GothamBold })
+
+local rushBanner = Ui.Frame({ Parent = hud, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 96), Size = UDim2.fromOffset(360, 36), BackgroundColor3 = Color3.fromRGB(255, 110, 50), Visible = false })
+Ui.Corner(rushBanner, 18)
+Ui.Gradient(rushBanner, Color3.fromRGB(255, 160, 60), Color3.fromRGB(255, 60, 90), 0)
+local rushLabel = Ui.Label({ Parent = rushBanner, Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), Text = "" })
+
+local streakLabel = Ui.Label({ Parent = hud, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 70), Size = UDim2.fromOffset(260, 30), Text = "", TextColor3 = Color3.fromRGB(255, 170, 80), TextXAlignment = Enum.TextXAlignment.Right })
+
+local displayedCash = 0
+RunService.RenderStepped:Connect(function(dt)
+	if state then
+		displayedCash += (state.Cash - displayedCash) * math.min(1, dt * 8)
+		if math.abs(state.Cash - displayedCash) < 1 then
+			displayedCash = state.Cash
+		end
+		cashLabel.Text = "💰 " .. Util.Money(displayedCash)
+	end
+	local rushUntil = ReplicatedStorage:GetAttribute("RushUntil") or 0
+	local left = rushUntil - Workspace:GetServerTimeNow()
+	rushBanner.Visible = left > 0 and not session
+	if left > 0 then
+		rushLabel.Text = "🔥 HEURE DE POINTE x2 — " .. Util.Time(left)
+	end
+end)
+
+table.insert(refreshers, function()
+	rateLabel.Text = string.format("≈ %s $/s  •  boost x%.1f", Util.Format(state.Rate), state.Mult)
+	if state.Streak >= 2 then
+		streakLabel.Text = string.format("🔥 Série parfaite x%d (+%d%%)", state.Streak, math.min(state.Streak, Config.StreakMax) * Config.StreakBonus * 100)
+	else
+		streakLabel.Text = ""
+	end
+end)
+
+---------------------------------------------------------------------
+-- Notifications
+---------------------------------------------------------------------
+local toastHolder = Ui.Frame({ Parent = gui, BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 110), Size = UDim2.fromOffset(340, 400), ZIndex = 50 })
+local toastLayout = Instance.new("UIListLayout")
+toastLayout.Padding = UDim.new(0, 8)
+toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+toastLayout.Parent = toastHolder
+
+local TOAST_COLORS = { info = C.Blue, success = C.Green, error = C.Red, money = C.Gold }
+
+local function toast(text: string, kind: string?)
+	local f = Ui.Frame({ Parent = toastHolder, Size = UDim2.fromOffset(340, 52), BackgroundColor3 = C.Bg, BackgroundTransparency = 0.05 })
+	Ui.Corner(f, 14)
+	Ui.Stroke(f, TOAST_COLORS[kind or "info"] or C.Blue, 2.5)
+	Ui.Label({ Parent = f, Text = text, Size = UDim2.new(1, -20, 1, -12), Position = UDim2.fromOffset(10, 6), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left })
+	Ui.Pop(f)
+	if kind == "error" then
+		sound(PING, 0.3, 0.6)
+	end
+	task.delay(4.5, function()
+		Ui.Tween(f, 0.3, { BackgroundTransparency = 1 })
+		task.wait(0.3)
+		f:Destroy()
+	end)
+end
+
+local announce = Ui.Label({ Parent = gui, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 150), Size = UDim2.new(0.8, 0, 0, 46), Text = "", Visible = false, ZIndex = 60, TextColor3 = C.Gold })
+local function showAnnounce(text: string, color: Color3?)
+	announce.Text = text
+	announce.TextColor3 = color or C.Gold
+	announce.Visible = true
+	announce.TextTransparency = 0
+	Ui.Pop(announce)
+	sound(PING, 0.5, 1.3)
+	task.delay(5, function()
+		if announce.Text == text then
+			Ui.Tween(announce, 0.4, { TextTransparency = 1 })
+			task.wait(0.4)
+			if announce.Text == text then
+				announce.Visible = false
+			end
+		end
+	end)
+end
+
+-- « +120 $ » qui s'envole
+local function payPopup(amount: number, perfect: boolean, streak: number)
+	local text = "+" .. Util.Money(amount)
+	if perfect then
+		text = "✨ PARFAIT ! " .. text .. (streak >= 2 and ("  🔥x" .. streak) or "")
+	end
+	local l = Ui.Label({ Parent = gui, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(520, perfect and 64 or 48), Text = text, TextColor3 = perfect and C.Gold or C.Green, ZIndex = 70 })
+	Ui.Pop(l)
+	sound(PING, 0.6, perfect and 1.5 or 1.1)
+	Ui.Tween(l, 1.4, { Position = UDim2.fromScale(0.5, 0.3), TextTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	task.delay(1.5, function()
+		l:Destroy()
+	end)
+end
+
+-- Confettis
+local function confetti()
+	local colors = { C.Pink, C.Gold, C.Blue, C.Green, Color3.fromRGB(190, 120, 255) }
+	for i = 1, 60 do
+		local f = Ui.Frame({ Parent = gui, Size = UDim2.fromOffset(math.random(8, 14), math.random(14, 22)), Position = UDim2.fromScale(math.random(), -0.05), BackgroundColor3 = colors[(i % #colors) + 1], Rotation = math.random(0, 360), ZIndex = 80 })
+		local t = math.random(15, 30) / 10
+		Ui.Tween(f, t, { Position = UDim2.fromScale(f.Position.X.Scale + math.random(-15, 15) / 100, 1.05), Rotation = f.Rotation + math.random(-400, 400) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		task.delay(t, function()
+			f:Destroy()
+		end)
+	end
+	sound(PING, 0.6, 1.8)
+end
+
+---------------------------------------------------------------------
+-- Achats Robux
+---------------------------------------------------------------------
+local priceCache: { [string]: string } = {}
+local function priceText(id: number, isPass: boolean): string
+	if id == 0 then
+		return "Bientôt"
+	end
+	local key = (isPass and "p" or "d") .. id
+	if priceCache[key] then
+		return priceCache[key]
+	end
+	local ok, info = pcall(function()
+		return MarketplaceService:GetProductInfo(id, isPass and Enum.InfoType.GamePass or Enum.InfoType.Product)
+	end)
+	local text = (ok and info and info.PriceInRobux) and ("R$ " .. info.PriceInRobux) or "R$ ?"
+	priceCache[key] = text
+	return text
+end
+
+local function buyPass(key: string)
+	local def = Config.GamePasses[key]
+	if not def or def.Id == 0 then
+		toast("Ce pass arrive bientôt !", "info")
+		return
+	end
+	MarketplaceService:PromptGamePassPurchase(player, def.Id)
+end
+
+local function buyProduct(key: string)
+	local def = Config.Products[key]
+	if not def or def.Id == 0 then
+		toast("Ce pack arrive bientôt !", "info")
+		return
+	end
+	MarketplaceService:PromptProductPurchase(player, def.Id)
+end
+
+local function call(...)
+	local ok, res, msg = pcall(function(...)
+		return Action:InvokeServer(...)
+	end, ...)
+	if not ok then
+		return false
+	end
+	if not res and msg then
+		toast(msg, "error")
+	end
+	return res
+end
+
+---------------------------------------------------------------------
+-- Fenêtres
+---------------------------------------------------------------------
+local windows: { [string]: Frame } = {}
+local function openWindow(name: string)
+	for n, w in windows do
+		w.Visible = (n == name) and not w.Visible
+		if w.Visible then
+			Ui.Pop(w)
+		end
+	end
+	refreshAll()
+end
+
+-- Carte générique pour les listes
+local function rowCard(parent: Instance, order: number, icon: string, title: string, desc: string, buttonText: string, buttonColor: Color3, onClick: (() -> ())?)
+	local card = Ui.Frame({ Parent = parent, LayoutOrder = order, Size = UDim2.new(1, -10, 0, 78), BackgroundColor3 = C.Card })
+	Ui.Corner(card, 16)
+	Ui.Stroke(card, Color3.fromRGB(120, 80, 160), 1.5)
+	Ui.Label({ Parent = card, Text = icon, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(10, 11), NoStroke = true })
+	Ui.Label({ Parent = card, Text = title, Size = UDim2.new(1, -250, 0, 30), Position = UDim2.fromOffset(76, 8), TextXAlignment = Enum.TextXAlignment.Left })
+	Ui.Label({ Parent = card, Text = desc, Size = UDim2.new(1, -250, 0, 30), Position = UDim2.fromOffset(76, 40), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamMedium, TextColor3 = C.Muted, NoStroke = true })
+	local btn = Ui.Button({ Parent = card, Text = buttonText, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(150, 50), BackgroundColor3 = buttonColor }, onClick)
+	return card, btn
+end
+
+local function sectionTitle(parent: Instance, order: number, text: string)
+	Ui.Label({ Parent = parent, LayoutOrder = order, Text = text, Size = UDim2.new(1, -10, 0, 34), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.Pink2 })
+end
+
+-- Boutique Robux ---------------------------------------------------
+local shopWin, shopContent = Ui.Window(gui, "🛒 Boutique", C.Gold)
+windows.shop = shopWin
+local shopScroll = Ui.Scroll(shopContent)
+local function buildShop()
+	for _, c in shopScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	sectionTitle(shopScroll, 0, "⚡ Boosts")
+	local order = 1
+	for _, key in { "rushHour", "celebrity", "starterPack" } do
+		local def = Config.Products[key]
+		if not (key == "starterPack" and state and state.StarterBought) then
+			rowCard(shopScroll, order, def.Icon, def.Name, def.Desc or "", priceText(def.Id, false), C.Green, function()
+				buyProduct(key)
+			end)
+			order += 1
+		end
+	end
+	sectionTitle(shopScroll, 10, "💰 Argent (s'adapte à ton niveau)")
+	order = 11
+	for _, key in { "cashSmall", "cashMedium", "cashLarge", "cashHuge" } do
+		local def = Config.Products[key]
+		local amount = state and math.max(def.Min, state.Rate * 60 * def.Minutes) or def.Min
+		rowCard(shopScroll, order, def.Icon, def.Name, "+" .. Util.Money(amount), priceText(def.Id, false), C.Green, function()
+			buyProduct(key)
+		end)
+		order += 1
+	end
+	sectionTitle(shopScroll, 20, "💎 Passes (pour toujours)")
+	order = 21
+	for _, key in { "vip", "doubleCash", "neonColors", "premiumStyles", "autoStylist", "fastClients", "bigTips" } do
+		local def = Config.GamePasses[key]
+		local owned = state and state.Passes[key]
+		rowCard(shopScroll, order, def.Icon, def.Name, def.Desc, owned and "✅ Possédé" or priceText(def.Id, true), owned and C.Card or C.Gold, function()
+			if not owned then
+				buyPass(key)
+			end
+		end)
+		order += 1
+	end
+end
+
+-- Améliorations du salon ------------------------------------------
+local upWin, upContent = Ui.Window(gui, "⬆️ Mon Salon", C.Pink)
+windows.upgrades = upWin
+local upScroll = Ui.Scroll(upContent)
+local function buildUpgrades()
+	if not state then
+		return
+	end
+	for _, c in upScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	sectionTitle(upScroll, 0, "🏠 Améliorations")
+	local order = 1
+	for _, key in { "chairs", "stylists", "deco", "pub" } do
+		local def = Config.Upgrades[key]
+		local level = state.Upgrades[key]
+		local cost = def.Costs[level + 1]
+		local desc = def.Desc .. "  •  niveau " .. level
+		local canBuy = cost ~= nil and state.Cash >= cost
+		rowCard(upScroll, order, def.Icon, def.Name, desc, cost and Util.Money(cost) or "MAX", canBuy and C.Green or C.Card, function()
+			if cost and call("Buy", "upgrade", key) then
+				sound(PING, 0.5, 1.2)
+			end
+		end)
+		order += 1
+	end
+	sectionTitle(upScroll, 10, "✂️ Coupes (les clients les demanderont)")
+	order = 11
+	for _, s in Config.Styles do
+		local owned = state.Styles[s.Id] or (s.Pass and state.Passes[s.Pass])
+		local text, color
+		if owned then
+			text, color = "✅ Débloqué", C.Card
+		elseif s.Pass then
+			text, color = "💎 Pass", C.Gold
+		else
+			text, color = Util.Money(s.Cost), state.Cash >= s.Cost and C.Green or C.Card
+		end
+		rowCard(upScroll, order, s.Icon, s.Name, "Valeur x" .. s.Value, text, color, function()
+			if owned then
+				return
+			end
+			if s.Pass then
+				buyPass(s.Pass)
+			else
+				call("Buy", "style", s.Id)
+			end
+		end)
+		order += 1
+	end
+	sectionTitle(upScroll, 30, "🎨 Teintures & accessoires")
+	order = 31
+	rowCard(upScroll, order, "🎨", "Teintures fantaisie", "Rose, bleu, lavande, menthe, platine (x1.6)", state.FantasyColors and "✅ Débloqué" or Util.Money(Config.FantasyColorsCost), state.FantasyColors and C.Card or C.Green, function()
+		if not state.FantasyColors then
+			call("Buy", "fantasy", "fantasy")
+		end
+	end)
+	order += 1
+	rowCard(upScroll, order, "🌈", "Teintures néon", "Néon, or pur, arc-en-ciel (x3)", state.Passes.neonColors and "✅ Possédé" or "💎 Pass", state.Passes.neonColors and C.Card or C.Gold, function()
+		if not state.Passes.neonColors then
+			buyPass("neonColors")
+		end
+	end)
+	order += 1
+	for _, a in Config.Accessories do
+		if a.Id ~= "aucun" then
+			local owned = state.Accs[a.Id] or (a.Pass and state.Passes[a.Pass])
+			local text = owned and "✅ Débloqué" or (a.Pass and "💎 Pass" or Util.Money(a.Cost))
+			rowCard(upScroll, order, a.Icon, a.Name, "Accessoire (+30% sur la coupe)", text, owned and C.Card or (a.Pass and C.Gold or C.Green), function()
+				if owned then
+					return
+				end
+				if a.Pass then
+					buyPass(a.Pass)
+				else
+					call("Buy", "acc", a.Id)
+				end
+			end)
+			order += 1
+		end
+	end
+end
+
+-- Franchise (renaissance) -----------------------------------------
+local rbWin, rbContent = Ui.Window(gui, "🏆 Franchise", Color3.fromRGB(190, 120, 255))
+windows.rebirth = rbWin
+local rbText = Ui.Label({ Parent = rbContent, Size = UDim2.new(1, 0, 0.42, 0), Font = Enum.Font.GothamBold, Text = "" })
+local rbBarBg = Ui.Frame({ Parent = rbContent, Position = UDim2.fromScale(0.08, 0.5), Size = UDim2.fromScale(0.84, 0.08), BackgroundColor3 = C.Bg2 })
+Ui.Corner(rbBarBg, 20)
+local rbBar = Ui.Frame({ Parent = rbBarBg, Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(190, 120, 255) })
+Ui.Corner(rbBar, 20)
+local rbBtn = Ui.Button({ Parent = rbContent, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.68), Size = UDim2.fromScale(0.5, 0.18), Text = "Ouvrir une franchise", BackgroundColor3 = Color3.fromRGB(190, 120, 255) }, function()
+	if call("Rebirth") then
+		confetti()
+		rbWin.Visible = false
+	end
+end)
+local function buildRebirth()
+	if not state then
+		return
+	end
+	local cost = Config.RebirthCost(state.Rebirths)
+	local nextBonus = (state.Rebirths + 1) * Config.RebirthBonus * 100
+	rbText.Text = string.format(
+		"Franchises : %d  (bonus actuel +%d%%)\n\nRepars de zéro avec un salon tout neuf mais <font color='#FFC846'>+%d%% d'argent pour toujours</font>.\nTes coupes débloquées sont conservées.\n\nPrix : %s",
+		state.Rebirths,
+		state.Rebirths * Config.RebirthBonus * 100,
+		nextBonus,
+		Util.Money(cost)
+	)
+	rbBar.Size = UDim2.fromScale(math.clamp(state.Cash / cost, 0, 1), 1)
+	rbBtn.BackgroundColor3 = state.Cash >= cost and Color3.fromRGB(190, 120, 255) or C.Card
+end
+
+-- Cadeaux de temps de jeu -----------------------------------------
+local giftWin, giftContent = Ui.Window(gui, "🎁 Cadeaux", C.Green)
+windows.gifts = giftWin
+local giftScroll = Ui.Scroll(giftContent)
+local giftButtons = {}
+for i, g in Config.PlaytimeGifts do
+	local _, btn = rowCard(giftScroll, i, "🎁", g.Name, "Après " .. g.Minutes .. " min de jeu", "...", C.Card, function()
+		if call("Gift", i) then
+			confetti()
+		end
+	end)
+	giftButtons[i] = btn
+end
+local function giftReady(i: number): (boolean, number)
+	if not state then
+		return false, 0
+	end
+	local elapsed = (state.ServerNow - state.JoinTime) + (os.clock() - stateReceivedAt)
+	local left = Config.PlaytimeGifts[i].Minutes * 60 - elapsed
+	return left <= 0 and not state.Gifts[i], left
+end
+
+-- Bonus quotidien -------------------------------------------------
+local dailyWin, dailyContent = Ui.Window(gui, "📅 Bonus quotidien", C.Blue)
+windows.daily = dailyWin
+local dailyGrid = Ui.Frame({ Parent = dailyContent, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0.7) })
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0.13, 0, 0.9, 0)
+grid.CellPadding = UDim2.new(0.012, 0, 0, 0)
+grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+grid.VerticalAlignment = Enum.VerticalAlignment.Center
+grid.Parent = dailyGrid
+local dayTiles = {}
+for d = 1, #Config.DailyRewards do
+	local tile = Ui.Frame({ Parent = dailyGrid, BackgroundColor3 = C.Card })
+	Ui.Corner(tile, 14)
+	Ui.Stroke(tile, C.Blue, 2)
+	Ui.Label({ Parent = tile, Text = "Jour " .. d, Size = UDim2.fromScale(1, 0.25), Position = UDim2.fromScale(0, 0.05) })
+	Ui.Label({ Parent = tile, Text = d == 7 and "💎" or "💰", Size = UDim2.fromScale(1, 0.35), Position = UDim2.fromScale(0, 0.32), NoStroke = true })
+	Ui.Label({ Parent = tile, Text = "x" .. Config.DailyRewards[d], Size = UDim2.fromScale(1, 0.22), Position = UDim2.fromScale(0, 0.72), TextColor3 = C.Gold })
+	dayTiles[d] = tile
+end
+local dailyBtn = Ui.Button({ Parent = dailyContent, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.76), Size = UDim2.fromScale(0.45, 0.2), Text = "Récupérer", BackgroundColor3 = C.Green }, function()
+	call("Daily")
+end)
+local function dailyReady(): boolean
+	if not state then
+		return false
+	end
+	local now = state.ServerNow + (os.clock() - stateReceivedAt)
+	return state.Daily.Last == 0 or (now // 86400) > (state.Daily.Last // 86400)
+end
+local function buildDaily()
+	if not state then
+		return
+	end
+	local ready = dailyReady()
+	local nextDay = ready and (((state.Daily.Last > 0 and (state.ServerNow // 86400) - (state.Daily.Last // 86400) == 1) and state.Daily.Streak % 7 + 1) or 1) or state.Daily.Streak
+	for d, tile in dayTiles do
+		tile.BackgroundColor3 = d == nextDay and (ready and C.Green or C.Bg2) or (d < nextDay and C.Bg2 or C.Card)
+	end
+	dailyBtn.Text = ready and "Récupérer" or "Reviens demain ⏳"
+	dailyBtn.BackgroundColor3 = ready and C.Green or C.Card
+end
+
+-- Codes -----------------------------------------------------------
+local codeWin, codeContent = Ui.Window(gui, "🎟️ Codes", C.Pink)
+windows.codes = codeWin
+Ui.Label({ Parent = codeContent, Text = "Rejoins le groupe et suis les mises à jour pour de nouveaux codes !", Size = UDim2.new(1, 0, 0.2, 0), Font = Enum.Font.GothamBold })
+local codeBox = Instance.new("TextBox")
+codeBox.PlaceholderText = "Entre un code…"
+codeBox.Text = ""
+codeBox.Font = Enum.Font.FredokaOne
+codeBox.TextScaled = true
+codeBox.TextColor3 = C.Text
+codeBox.BackgroundColor3 = C.Bg2
+codeBox.AnchorPoint = Vector2.new(0.5, 0)
+codeBox.Position = UDim2.fromScale(0.5, 0.3)
+codeBox.Size = UDim2.fromScale(0.7, 0.2)
+codeBox.ClearTextOnFocus = false
+codeBox.Parent = codeContent
+Ui.Corner(codeBox, 14)
+Ui.Stroke(codeBox, C.Pink, 2)
+Ui.Button({ Parent = codeContent, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.6), Size = UDim2.fromScale(0.4, 0.2), Text = "Valider", BackgroundColor3 = C.Green }, function()
+	if call("Code", codeBox.Text) then
+		codeBox.Text = ""
+		confetti()
+	end
+end)
+
+---------------------------------------------------------------------
+-- Barre de boutons (gauche)
+---------------------------------------------------------------------
+local sideBar = Ui.Frame({ Parent = hud, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 12, 0.5, 0), Size = UDim2.fromOffset(84, 560) })
+local sideLayout = Instance.new("UIListLayout")
+sideLayout.Padding = UDim.new(0, 8)
+sideLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+sideLayout.Parent = sideBar
+local sideScale = Instance.new("UIScale")
+sideScale.Parent = sideBar
+
+local badges = {}
+local function sideButton(icon: string, label: string, color: Color3, onClick: () -> ())
+	local b = Ui.Button({ Parent = sideBar, Size = UDim2.fromOffset(80, 66), Text = "", BackgroundColor3 = color }, onClick)
+	Ui.Gradient(b, Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190))
+	Ui.Label({ Parent = b, Text = icon, Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 4), NoStroke = true })
+	Ui.Label({ Parent = b, Text = label, Size = UDim2.new(1, -6, 0, 20), Position = UDim2.fromOffset(3, 40) })
+	local badge = Ui.Frame({ Parent = b, Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -14, 0, -4), BackgroundColor3 = C.Red, Visible = false })
+	Ui.Corner(badge, 9)
+	badges[label] = badge
+	return b
+end
+sideButton("🛒", "Boutique", C.Gold, function()
+	openWindow("shop")
+end)
+sideButton("⬆️", "Salon", C.Pink, function()
+	openWindow("upgrades")
+end)
+sideButton("🏆", "Franchise", Color3.fromRGB(190, 120, 255), function()
+	openWindow("rebirth")
+end)
+sideButton("🎁", "Cadeaux", C.Green, function()
+	openWindow("gifts")
+end)
+sideButton("📅", "Bonus", C.Blue, function()
+	openWindow("daily")
+end)
+sideButton("🎟️", "Codes", Color3.fromRGB(255, 140, 90), function()
+	openWindow("codes")
+end)
+sideButton("🏠", "Mon salon", Color3.fromRGB(120, 200, 200), function()
+	call("GoHome")
+end)
+sideButton("👥", "Inviter", Color3.fromRGB(100, 150, 255), function()
+	pcall(function()
+		SocialService:PromptGameInvite(player)
+	end)
+end)
+
+local function adaptScale()
+	local h = camera.ViewportSize.Y
+	sideScale.Scale = math.clamp(h / 760, 0.62, 1.1)
+end
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(adaptScale)
+adaptScale()
+
+table.insert(refreshers, function()
+	if shopWin.Visible then
+		buildShop()
+	end
+	if upWin.Visible then
+		buildUpgrades()
+	end
+	buildRebirth()
+	buildDaily()
+	badges["Bonus"].Visible = dailyReady()
+	badges["Franchise"].Visible = state.Cash >= Config.RebirthCost(state.Rebirths)
+end)
+
+-- Mise à jour des timers des cadeaux
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if state then
+			local any = false
+			for i, btn in giftButtons do
+				local ready, left = giftReady(i)
+				if state.Gifts[i] then
+					btn.Text = "✅ Reçu"
+					btn.BackgroundColor3 = C.Card
+				elseif ready then
+					btn.Text = "Ouvrir !"
+					btn.BackgroundColor3 = C.Green
+					any = true
+				else
+					btn.Text = "⏳ " .. Util.Time(left)
+					btn.BackgroundColor3 = C.Card
+				end
+			end
+			badges["Cadeaux"].Visible = any
+		end
+	end
+end)
+
+---------------------------------------------------------------------
+-- Atelier de coiffure (session)
+---------------------------------------------------------------------
+local studio = Ui.Frame({ Parent = gui, Name = "Studio", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(0.96, 0, 0.4, 0), BackgroundColor3 = C.Bg, Visible = false, ZIndex = 30 })
+Ui.Corner(studio, 22)
+Ui.Stroke(studio, C.Pink, 3)
+Ui.Gradient(studio, Color3.fromRGB(64, 38, 96), Color3.fromRGB(26, 16, 40))
+local studioMax = Instance.new("UISizeConstraint")
+studioMax.MaxSize = Vector2.new(1100, 360)
+studioMax.Parent = studio
+
+local requestCard = Ui.Frame({ Parent = studio, Position = UDim2.fromOffset(14, 14), Size = UDim2.new(0.28, -14, 1, -28), BackgroundColor3 = C.Card })
+Ui.Corner(requestCard, 16)
+local requestTitle = Ui.Label({ Parent = requestCard, Text = "💬 Demande", Size = UDim2.new(1, -16, 0.18, 0), Position = UDim2.fromOffset(8, 6), TextColor3 = C.Pink2 })
+local requestText = Ui.Label({ Parent = requestCard, Text = "", Size = UDim2.new(1, -16, 0.42, 0), Position = UDim2.new(0, 8, 0.2, 0), Font = Enum.Font.GothamBold })
+local scoreText = Ui.Label({ Parent = requestCard, Text = "", Size = UDim2.new(1, -16, 0.18, 0), Position = UDim2.new(0, 8, 0.62, 0), TextColor3 = C.Gold })
+local rotateLeft = Ui.Button({ Parent = requestCard, Text = "⟲", Size = UDim2.new(0.3, 0, 0.16, 0), Position = UDim2.new(0.05, 0, 0.82, 0), BackgroundColor3 = C.Bg2 })
+local rotateRight = Ui.Button({ Parent = requestCard, Text = "⟳", Size = UDim2.new(0.3, 0, 0.16, 0), Position = UDim2.new(0.65, 0, 0.82, 0), BackgroundColor3 = C.Bg2 })
+
+local tabsBar = Ui.Frame({ Parent = studio, BackgroundTransparency = 1, Position = UDim2.new(0.28, 14, 0, 14), Size = UDim2.new(0.52, -14, 0, 44) })
+local tabsLayout = Instance.new("UIListLayout")
+tabsLayout.FillDirection = Enum.FillDirection.Horizontal
+tabsLayout.Padding = UDim.new(0, 8)
+tabsLayout.Parent = tabsBar
+
+local optionsFrame = Ui.Frame({ Parent = studio, BackgroundTransparency = 1, Position = UDim2.new(0.28, 14, 0, 66), Size = UDim2.new(0.52, -14, 1, -80) })
+local optionsScroll = Instance.new("ScrollingFrame")
+optionsScroll.BackgroundTransparency = 1
+optionsScroll.BorderSizePixel = 0
+optionsScroll.Size = UDim2.fromScale(1, 1)
+optionsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+optionsScroll.CanvasSize = UDim2.new()
+optionsScroll.ScrollBarThickness = 6
+optionsScroll.Parent = optionsFrame
+local optGrid = Instance.new("UIGridLayout")
+optGrid.CellSize = UDim2.fromOffset(104, 92)
+optGrid.CellPadding = UDim2.fromOffset(8, 8)
+optGrid.SortOrder = Enum.SortOrder.LayoutOrder
+optGrid.Parent = optionsScroll
+
+local actionCol = Ui.Frame({ Parent = studio, BackgroundTransparency = 1, Position = UDim2.new(0.8, 14, 0, 14), Size = UDim2.new(0.2, -28, 1, -28) })
+local finishBtn = Ui.Button({ Parent = actionCol, Text = "✅ Terminer", Size = UDim2.fromScale(1, 0.55), BackgroundColor3 = C.Green })
+local cancelBtn = Ui.Button({ Parent = actionCol, Text = "✖ Annuler", Size = UDim2.fromScale(1, 0.35), Position = UDim2.fromScale(0, 0.65), BackgroundColor3 = C.Red })
+
+local currentTab = "style"
+local camAngle = 0
+
+local function isUnlocked(kind: string, id: any): (boolean, string?)
+	if not state then
+		return false
+	end
+	if kind == "style" then
+		local s = Config.StyleById[id]
+		if state.Styles[id] then
+			return true
+		end
+		if s.Pass then
+			return state.Passes[s.Pass] == true, "pass:" .. s.Pass
+		end
+		return false, "money"
+	elseif kind == "color" then
+		local c = Config.ColorById[id]
+		if c.Tier == "base" then
+			return true
+		elseif c.Tier == "fantasy" then
+			return state.FantasyColors, "money"
+		else
+			return state.Passes.neonColors == true, "pass:neonColors"
+		end
+	elseif kind == "acc" then
+		local a = Config.AccById[id]
+		if state.Accs[id] then
+			return true
+		end
+		if a.Pass then
+			return state.Passes[a.Pass] == true, "pass:" .. a.Pass
+		end
+		return false, "money"
+	end
+	return true
+end
+
+local function updateScore()
+	if not session then
+		return
+	end
+	if session.Request then
+		local score = HairBuilder.Score(session.Request, session.Look)
+		local pct = math.floor(score * 100 + 0.5)
+		scoreText.Text = (pct == 100 and "✨ " or "") .. "Ressemblance : " .. pct .. "%"
+		scoreText.TextColor3 = pct == 100 and C.Gold or (pct >= 60 and C.Green or C.Red)
+	else
+		scoreText.Text = "Choisis ton style !"
+		scoreText.TextColor3 = C.Gold
+	end
+end
+
+local buildOptions
+
+local function choose(field: string, value: any)
+	local ok, unlockReason = isUnlocked(field, value)
+	if not ok then
+		if unlockReason and unlockReason:sub(1, 5) == "pass:" then
+			buyPass(unlockReason:sub(6))
+		else
+			toast("🔒 Débloque-le dans ⬆️ Salon", "error")
+		end
+		return
+	end
+	if call("Apply", field, value) then
+		session.Look[field] = value
+		sound(PING, 0.25, 1.6)
+		updateScore()
+		buildOptions()
+	end
+end
+
+function buildOptions()
+	for _, c in optionsScroll:GetChildren() do
+		if c:IsA("GuiObject") then
+			c:Destroy()
+		end
+	end
+	local function option(order: number, icon: string, name: string, selected: boolean, wanted: boolean, locked: string?, color: Color3?, onClick: () -> ())
+		local b = Ui.Button({ Parent = optionsScroll, LayoutOrder = order, Text = "", BackgroundColor3 = selected and C.Pink or C.Card }, onClick)
+		if wanted then
+			Ui.Stroke(b, C.Gold, 3)
+		end
+		if color then
+			local sw = Ui.Frame({ Parent = b, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 8), Size = UDim2.fromOffset(44, 44), BackgroundColor3 = color })
+			Ui.Corner(sw, 22)
+			Ui.Stroke(sw, Color3.new(1, 1, 1), 2)
+		else
+			Ui.Label({ Parent = b, Text = icon, Size = UDim2.new(1, 0, 0, 46), Position = UDim2.fromOffset(0, 6), NoStroke = true })
+		end
+		Ui.Label({ Parent = b, Text = name, Size = UDim2.new(1, -8, 0, 26), Position = UDim2.new(0, 4, 1, -32) })
+		if locked then
+			local lock = Ui.Frame({ Parent = b, Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45 })
+			Ui.Corner(lock, 12)
+			Ui.Label({ Parent = lock, Text = locked, Size = UDim2.fromScale(0.8, 0.4), Position = UDim2.fromScale(0.1, 0.25), NoStroke = true })
+		end
+	end
+	local look, req = session.Look, session.Request
+	if currentTab == "style" then
+		for i, s in Config.Styles do
+			local ok, why = isUnlocked("style", s.Id)
+			option(i, s.Icon, s.Name, look.style == s.Id, req ~= nil and req.style == s.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, nil, function()
+				choose("style", s.Id)
+			end)
+		end
+	elseif currentTab == "length" then
+		for i, l in Config.Lengths do
+			option(i, ({ "✂️", "💇", "👸" })[i], l.Name, look.length == l.Id, req ~= nil and req.length == l.Id, nil, nil, function()
+				choose("length", l.Id)
+			end)
+		end
+	elseif currentTab == "color" then
+		for i, c in Config.Colors do
+			local ok, why = isUnlocked("color", c.Id)
+			option(i, "", c.Name, look.color == c.Id, req ~= nil and req.color == c.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, c.Color, function()
+				choose("color", c.Id)
+			end)
+		end
+	elseif currentTab == "acc" then
+		for i, a in Config.Accessories do
+			local ok, why = isUnlocked("acc", a.Id)
+			option(i, a.Icon, a.Name, look.acc == a.Id, req ~= nil and req.acc == a.Id, (not ok) and (why == "money" and "🔒" or "💎") or nil, nil, function()
+				choose("acc", a.Id)
+			end)
+		end
+	end
+end
+
+local tabButtons = {}
+for _, t in { { "style", "✂️ Coupe" }, { "length", "📏 Longueur" }, { "color", "🎨 Couleur" }, { "acc", "🎀 Accessoire" } } do
+	tabButtons[t[1]] = Ui.Button({ Parent = tabsBar, Text = t[2], Size = UDim2.new(0.25, -6, 1, 0), BackgroundColor3 = C.Bg2 }, function()
+		currentTab = t[1]
+		for k, b in tabButtons do
+			b.BackgroundColor3 = k == currentTab and C.Pink or C.Bg2
+		end
+		buildOptions()
+	end)
+end
+
+local camConn: RBXScriptConnection? = nil
+local function closeStudio()
+	session = nil
+	studio.Visible = false
+	hud.Visible = true
+	if camConn then
+		camConn:Disconnect()
+		camConn = nil
+	end
+	camera.CameraType = Enum.CameraType.Custom
+	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		camera.CameraSubject = hum
+	end
+end
+
+local function openStudio(data: any)
+	session = {
+		Kind = data.Kind,
+		Target = data.Target,
+		Request = data.Request,
+		Look = HairBuilder.Normalize(data.Look),
+	}
+	for _, w in windows do
+		w.Visible = false
+	end
+	hud.Visible = false
+	studio.Visible = true
+	Ui.Pop(studio)
+	currentTab = "style"
+	for k, b in tabButtons do
+		b.BackgroundColor3 = k == currentTab and C.Pink or C.Bg2
+	end
+	if data.Request then
+		requestTitle.Text = "💬 " .. (data.Name or "Client") .. " veut :"
+		requestText.Text = HairBuilder.Describe(data.Request)
+		finishBtn.Text = "✅ Terminer"
+	else
+		requestTitle.Text = data.Kind == "self" and "✨ Ton nouveau look" or ("💇 Coiffe " .. (data.Name or ""))
+		requestText.Text = "Crée la coiffure de tes rêves ! Elle sera sauvegardée."
+		finishBtn.Text = "✅ Valider"
+	end
+	updateScore()
+	buildOptions()
+	-- Caméra face au visage
+	camAngle = 0
+	camera.CameraType = Enum.CameraType.Scriptable
+	camConn = RunService.RenderStepped:Connect(function()
+		local target = session and session.Target
+		local head = target and target:FindFirstChild("Head")
+		if not head then
+			return
+		end
+		local cf = head.CFrame * CFrame.Angles(0, math.rad(camAngle), 0)
+		local eye = (cf * CFrame.new(0, 0.6, -6.5)).Position
+		camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(eye, head.Position + Vector3.new(0, -0.6, 0)), 0.15)
+	end)
+end
+
+rotateLeft.Activated:Connect(function()
+	camAngle -= 45
+end)
+rotateRight.Activated:Connect(function()
+	camAngle += 45
+end)
+finishBtn.Activated:Connect(function()
+	if session then
+		call("Finish")
+	end
+end)
+cancelBtn.Activated:Connect(function()
+	if session then
+		call("Cancel")
+		closeStudio()
+	end
+end)
+
+SessionEvent.OnClientEvent:Connect(function(data)
+	if data.Open then
+		openStudio(data)
+	else
+		closeStudio()
+	end
+end)
+
+---------------------------------------------------------------------
+-- Visibilité des ProximityPrompts (chacun ne voit que ce qui le concerne)
+---------------------------------------------------------------------
+local salonsFolder = Workspace:WaitForChild("Salons")
+local prompts: { [ProximityPrompt]: boolean } = {}
+local function track(d: Instance)
+	if d:IsA("ProximityPrompt") then
+		prompts[d] = true
+	end
+end
+for _, d in salonsFolder:GetDescendants() do
+	track(d)
+end
+salonsFolder.DescendantAdded:Connect(track)
+salonsFolder.DescendantRemoving:Connect(function(d)
+	if d:IsA("ProximityPrompt") then
+		prompts[d] = nil
+	end
+end)
+
+local function salonOwner(inst: Instance): number
+	local node = inst
+	while node and node.Parent ~= salonsFolder do
+		node = node.Parent
+	end
+	return node and (node:GetAttribute("OwnerId") or 0) or 0
+end
+
+local function updatePrompts()
+	for p in prompts do
+		local kind = p:GetAttribute("Kind")
+		local owner = salonOwner(p)
+		local chair = p.Parent and p.Parent.Parent and p.Parent.Parent.Parent
+		local visible = false
+		if session == nil then
+			if kind == "mirror" then
+				visible = true
+			elseif kind == "upgrades" then
+				visible = owner == player.UserId
+			elseif kind == "style" and chair then
+				visible = owner == player.UserId and chair:GetAttribute("Occupied") == true and chair:GetAttribute("Busy") ~= true
+				if visible then
+					local sitter = chair:GetAttribute("SitterName")
+					p.ObjectText = (sitter and sitter ~= "") and sitter or "Client"
+				end
+			elseif kind == "sit" and chair then
+				visible = owner ~= 0 and owner ~= player.UserId and chair:GetAttribute("Taken") ~= true
+			end
+		end
+		if p.Enabled ~= visible then
+			p.Enabled = visible
+		end
+	end
+end
+task.spawn(function()
+	while true do
+		updatePrompts()
+		task.wait(0.25)
+	end
+end)
+
+---------------------------------------------------------------------
+-- Effets visuels : cheveux arc-en-ciel, projecteurs
+---------------------------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	local t = os.clock()
+	for _, p in CollectionService:GetTagged("RainbowHair") do
+		if p:IsA("BasePart") then
+			p.Color = Color3.fromHSV((t * 0.25 + p.Position.Y * 0.08) % 1, 0.75, 1)
+		end
+	end
+end)
+
+local beams: { [BasePart]: CFrame } = {}
+task.spawn(function()
+	while true do
+		for _, d in salonsFolder:GetDescendants() do
+			if d:IsA("BasePart") and d:GetAttribute("Sweep") and not beams[d] then
+				beams[d] = d.CFrame
+			end
+		end
+		for part in beams do
+			if not part.Parent then
+				beams[part] = nil
+			end
+		end
+		task.wait(3)
+	end
+end)
+RunService.Heartbeat:Connect(function()
+	local t = os.clock()
+	for part, base in beams do
+		local dir = part:GetAttribute("Sweep") or 1
+		part.CFrame = base * CFrame.Angles(math.sin(t * 0.7 * dir) * 0.35, 0, math.cos(t * 0.5) * 0.15)
+	end
+end)
+
+---------------------------------------------------------------------
+-- Tag VIP dans le chat
+---------------------------------------------------------------------
+pcall(function()
+	TextChatService.OnIncomingMessage = function(message: TextChatMessage)
+		local source = message.TextSource
+		if not source then
+			return nil
+		end
+		local p = Players:GetPlayerByUserId(source.UserId)
+		if p and p:GetAttribute("Pass_vip") then
+			local props = Instance.new("TextChatMessageProperties")
+			props.PrefixText = "<font color='#FFC846'>[👑 VIP]</font> " .. message.PrefixText
+			return props
+		end
+		return nil
+	end
+end)
+
+---------------------------------------------------------------------
+-- Messages du serveur
+---------------------------------------------------------------------
+local tutorialShown = false
+
+NotifyEvent.OnClientEvent:Connect(function(msg)
+	if msg.Type == "toast" then
+		toast(msg.Text, msg.Kind)
+	elseif msg.Type == "announce" then
+		showAnnounce(msg.Text, msg.Color)
+	elseif msg.Type == "pay" then
+		payPopup(msg.Amount, msg.Perfect, msg.Streak)
+		if session and session.Kind == "npc" then
+			closeStudio()
+		end
+	elseif msg.Type == "celebrate" then
+		confetti()
+	elseif msg.Type == "open" then
+		openWindow(msg.Panel)
+	elseif msg.Type == "offline" then
+		showAnnounce("💤 Tes stylistes ont gagné " .. Util.Money(msg.Amount) .. " pendant ton absence !", C.Green)
+	elseif msg.Type == "welcome" then
+		if msg.First and not tutorialShown then
+			tutorialShown = true
+			task.spawn(function()
+				task.wait(2)
+				toast("👋 Bienvenue dans ton salon de coiffure !", "success")
+				task.wait(3)
+				toast("💺 Des clients vont s'asseoir sur tes fauteuils.", "info")
+				task.wait(3)
+				toast("✂️ Approche-toi et appuie sur E pour les coiffer.", "info")
+				task.wait(3)
+				toast("⭐ Fais exactement ce qu'ils demandent = gros pourboire !", "money")
+			end)
+		end
+		-- Offre de bienvenue (une fois par session, si pas déjà acheté)
+		task.delay(60, function()
+			if state and not state.StarterBought and Config.Products.starterPack.Id ~= 0 and not session then
+				openWindow("shop")
+			end
+		end)
+	end
+end)
+
+StateEvent.OnClientEvent:Connect(function(s)
+	local first = state == nil
+	state = s
+	stateReceivedAt = os.clock()
+	if first then
+		displayedCash = s.Cash
+	end
+	refreshAll()
+end)
+
+-- Quand on finit la session côté joueur/self, le serveur ferme via SessionEvent.
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="20">
+          <Properties>
+            <string name="Name">Ui</string>
+            <string name="Source"><![CDATA[-- Petite bibliothèque d'interface : composants arrondis, dégradés, animations.
+
+local TweenService = game:GetService("TweenService")
+
+local Ui = {}
+
+Ui.Colors = {
+	Bg = Color3.fromRGB(28, 20, 44),
+	Bg2 = Color3.fromRGB(44, 32, 68),
+	Card = Color3.fromRGB(56, 40, 86),
+	Pink = Color3.fromRGB(255, 105, 180),
+	Pink2 = Color3.fromRGB(255, 160, 210),
+	Gold = Color3.fromRGB(255, 200, 70),
+	Green = Color3.fromRGB(90, 220, 130),
+	Red = Color3.fromRGB(255, 85, 100),
+	Blue = Color3.fromRGB(90, 170, 255),
+	Text = Color3.fromRGB(255, 255, 255),
+	Muted = Color3.fromRGB(200, 185, 220),
+}
+
+function Ui.Corner(parent: Instance, radius: number?)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 14)
+	c.Parent = parent
+	return c
+end
+
+function Ui.Stroke(parent: Instance, color: Color3?, thickness: number?)
+	local s = Instance.new("UIStroke")
+	s.Color = color or Color3.fromRGB(255, 140, 210)
+	s.Thickness = thickness or 2
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = parent
+	return s
+end
+
+function Ui.Gradient(parent: Instance, a: Color3, b: Color3, rotation: number?)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(a, b)
+	g.Rotation = rotation or 90
+	g.Parent = parent
+	return g
+end
+
+function Ui.Padding(parent: Instance, px: number)
+	local p = Instance.new("UIPadding")
+	p.PaddingTop = UDim.new(0, px)
+	p.PaddingBottom = UDim.new(0, px)
+	p.PaddingLeft = UDim.new(0, px)
+	p.PaddingRight = UDim.new(0, px)
+	p.Parent = parent
+	return p
+end
+
+function Ui.Frame(props: { [string]: any }): Frame
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = Ui.Colors.Bg
+	for k, v in props do
+		if k ~= "Parent" then
+			(f :: any)[k] = v
+		end
+	end
+	f.Parent = props.Parent
+	return f
+end
+
+function Ui.Label(props: { [string]: any }): TextLabel
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.FredokaOne
+	l.TextColor3 = Ui.Colors.Text
+	l.TextScaled = true
+	l.RichText = true
+	for k, v in props do
+		if k ~= "Parent" then
+			(l :: any)[k] = v
+		end
+	end
+	if not props.NoStroke then
+		local s = Instance.new("UIStroke")
+		s.Thickness = 1.5
+		s.Color = Color3.fromRGB(30, 10, 40)
+		s.Transparency = 0.2
+		s.Parent = l
+	end
+	l.Parent = props.Parent
+	return l
+end
+
+-- Bouton avec effet de survol / clic
+function Ui.Button(props: { [string]: any }, onClick: (() -> ())?): TextButton
+	local b = Instance.new("TextButton")
+	b.AutoButtonColor = false
+	b.BorderSizePixel = 0
+	b.Font = Enum.Font.FredokaOne
+	b.TextScaled = true
+	b.TextColor3 = Ui.Colors.Text
+	b.BackgroundColor3 = Ui.Colors.Pink
+	b.RichText = true
+	for k, v in props do
+		if k ~= "Parent" and k ~= "Radius" and k ~= "NoStroke" then
+			(b :: any)[k] = v
+		end
+	end
+	Ui.Corner(b, props.Radius or 12)
+	local ts = Instance.new("UIStroke")
+	ts.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	ts.Thickness = 1.5
+	ts.Color = Color3.fromRGB(30, 10, 40)
+	ts.Parent = b
+	local scale = Instance.new("UIScale")
+	scale.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1.06 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.12), { Scale = 1 }):Play()
+	end)
+	b.MouseButton1Down:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.06), { Scale = 0.94 }):Play()
+	end)
+	b.MouseButton1Up:Connect(function()
+		TweenService:Create(scale, TweenInfo.new(0.1), { Scale = 1 }):Play()
+	end)
+	if onClick then
+		b.Activated:Connect(onClick)
+	end
+	b.Parent = props.Parent
+	return b
+end
+
+function Ui.Tween(obj: Instance, time: number, goal: { [string]: any }, style: Enum.EasingStyle?, dir: Enum.EasingDirection?)
+	local t = TweenService:Create(obj, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), goal)
+	t:Play()
+	return t
+end
+
+function Ui.Pop(obj: GuiObject)
+	local scale = obj:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	scale.Parent = obj
+	scale.Scale = 0.6
+	Ui.Tween(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+end
+
+-- Fenêtre modale avec titre et bouton fermer. Renvoie (fenêtre, contenu).
+function Ui.Window(parent: Instance, title: string, accent: Color3?): (Frame, Frame)
+	local win = Ui.Frame({
+		Name = title,
+		Parent = parent,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.52),
+		Size = UDim2.fromScale(0.62, 0.72),
+		BackgroundColor3 = Ui.Colors.Bg,
+		Visible = false,
+		ZIndex = 20,
+	})
+	Ui.Corner(win, 22)
+	Ui.Stroke(win, accent or Ui.Colors.Pink, 3)
+	Ui.Gradient(win, Color3.fromRGB(60, 36, 92), Color3.fromRGB(24, 16, 38), 90)
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = Vector2.new(820, 600)
+	limit.MinSize = Vector2.new(300, 260)
+	limit.Parent = win
+	local header = Ui.Frame({ Parent = win, Size = UDim2.new(1, 0, 0, 56), BackgroundColor3 = accent or Ui.Colors.Pink, ZIndex = 21 })
+	Ui.Corner(header, 22)
+	Ui.Gradient(header, Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200), 90)
+	Ui.Frame({ Parent = header, Position = UDim2.new(0, 0, 1, -22), Size = UDim2.new(1, 0, 0, 22), BackgroundColor3 = accent or Ui.Colors.Pink, ZIndex = 21 })
+	Ui.Label({ Parent = header, Text = title, Size = UDim2.new(1, -80, 0, 40), Position = UDim2.fromOffset(20, 8), TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 22 })
+	Ui.Button({ Parent = header, Text = "✕", Size = UDim2.fromOffset(42, 42), Position = UDim2.new(1, -50, 0, 7), BackgroundColor3 = Ui.Colors.Red, ZIndex = 23 }, function()
+		win.Visible = false
+	end)
+	local content = Ui.Frame({ Parent = win, Name = "Content", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 68), Size = UDim2.new(1, -32, 1, -84), ZIndex = 21 })
+	return win, content
+end
+
+function Ui.Scroll(parent: Instance, padding: number?): ScrollingFrame
+	local s = Instance.new("ScrollingFrame")
+	s.BackgroundTransparency = 1
+	s.BorderSizePixel = 0
+	s.Size = UDim2.fromScale(1, 1)
+	s.CanvasSize = UDim2.new()
+	s.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	s.ScrollBarThickness = 6
+	s.ScrollBarImageColor3 = Ui.Colors.Pink2
+	s.ZIndex = 21
+	s.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, padding or 10)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = s
+	return s
+end
+
+return Ui
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="21">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <float name="Gravity">196.2</float>
+      <bool name="NeedsPivotMigration">false</bool>
+    </Properties>
+  </Item>
+</roblox>
