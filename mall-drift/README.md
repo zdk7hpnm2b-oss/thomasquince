@@ -15,8 +15,9 @@ Ce prototype contient :
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
 - **🏬 Deux étages** : au-dessus du rez-de-chaussée, un **1er étage** avec ses propres boutiques. Au
-  centre, un grand **atrium** ouvert sur les deux étages, traversé par une **passerelle**. On monte en
-  kart par **deux rampes** au-dessus de la place centrale (le kart s'incline dans la pente). Garde-corps
+  centre, un grand **atrium** ouvert sur les deux étages, traversé par une **passerelle**. On change d'étage
+  en kart par **deux tapis roulants** au-dessus de la place centrale : celui de gauche **monte**, celui de
+  droite **descend**, et ils t'emportent tout seuls. Garde-corps
   vitrés partout pour ne pas tomber
 - **👥 Du monde partout** : un **vendeur à la caisse** de chaque boutique, des **clients** qui font leurs
   courses (ou assis chez le coiffeur), des gens sur les bancs et aux kiosques. Chaque boutique a une

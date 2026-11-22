@@ -177,6 +177,13 @@ Config.Securite = {
 }
 
 ---------------------------------------------------------------------
+-- LES TAPIS ROULANTS (les rampes entre les 2 étages)
+---------------------------------------------------------------------
+Config.Tapis = {
+	Vitesse = 32, -- vitesse minimum à laquelle le tapis t'emporte (montée ou descente)
+}
+
+---------------------------------------------------------------------
 -- LES GENS DANS LE MALL (vendeurs à la caisse, clients dans les boutiques)
 ---------------------------------------------------------------------
 Config.PNJ = {

@@ -820,15 +820,16 @@ joueur.CharacterAdded:Connect(brancherPersonnage)
 -- LA CONDUITE (exécutée à chaque image)
 ---------------------------------------------------------------------
 -- Ce qu'il y a sous le kart : "normal", "mouille" ou nil (en l'air), + la pente du sol
-local function surfaceSous(chassis: BasePart): (string?, Vector3)
+-- + la pièce touchée (pour savoir si c'est un tapis roulant)
+local function surfaceSous(chassis: BasePart): (string?, Vector3, BasePart?)
 	local resultat = workspace:Raycast(chassis.Position, Vector3.new(0, -3, 0), parametresRayon)
 	if not resultat then
-		return nil, Vector3.yAxis -- en l'air
+		return nil, Vector3.yAxis, nil -- en l'air
 	end
 	if resultat.Instance:GetAttribute("Mouille") then
-		return "mouille", resultat.Normal
+		return "mouille", resultat.Normal, resultat.Instance
 	end
-	return "normal", resultat.Normal
+	return "normal", resultat.Normal, resultat.Instance
 end
 
 -- La pente sous le kart (lissée) : permet de monter les rampes du 1er étage
@@ -855,7 +856,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local droite = Vector3.new(-avant.Z, 0, avant.X)
 
 	-- Le sol sous le kart (et sa pente, pour les rampes)
-	local surface, normale = surfaceSous(ch)
+	local surface, normale, pieceSol = surfaceSous(ch)
 	local cibleNormale = if surface and normale.Y > 0.6 then normale else Vector3.yAxis
 	normaleSol = normaleSol:Lerp(cibleNormale, math.clamp(dt * 10, 0, 1)).Unit
 	-- L'avant et le côté du kart, couchés le long de la pente
@@ -870,6 +871,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local vAvant = vel:Dot(avantPente)
 	local vCote = vel:Dot(droitePente)
 	local vSol = vel:Dot(normaleSol)
+	-- Dans une pente, la gravité ne freine plus le kart (il monte comme sur du plat)
+	if surface and normaleSol.Y < 0.999 then
+		vAvant += workspace.Gravity * avantPente.Y * dt
+		vCote += workspace.Gravity * droitePente.Y * dt
+	end
 	local vitesse = Vector3.new(vel.X, 0, vel.Z).Magnitude
 	local rotationReelle = ch.AssemblyAngularVelocity.Y
 
@@ -962,7 +968,17 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local rotationCible = -volant * puissance * facteur * sens
 	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 8, 0, 1)
 
-	ch.AssemblyLinearVelocity = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
+	local nouvelleVitesse = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
+	-- Tapis roulant : il t'emporte au moins à sa vitesse, dans son sens
+	local sensTapis = pieceSol and pieceSol:GetAttribute("Tapis")
+	if typeof(sensTapis) == "Vector3" then
+		local vitesseTapis = Config.Tapis and Config.Tapis.Vitesse or 32
+		local leLong = nouvelleVitesse:Dot(sensTapis)
+		if leLong < vitesseTapis then
+			nouvelleVitesse += sensTapis * (vitesseTapis - leLong)
+		end
+	end
+	ch.AssemblyLinearVelocity = nouvelleVitesse
 	ch.AssemblyAngularVelocity = normaleSol * vitesseRotation
 
 	-----------------------------------------------------------------
@@ -1115,5 +1131,60 @@ RunService.Heartbeat:Connect(function()
 		for _, l in ipairs(k.lumieres) do
 			l.Color = couleur
 		end
+	end
+end)
+
+---------------------------------------------------------------------
+-- TAPIS ROULANTS : les marches défilent (effet visuel, chez toi seulement)
+---------------------------------------------------------------------
+local marchesTapis: { { part: BasePart, rampe: BasePart, decalage: number } } = {}
+local ESPACE_MARCHES = 4
+
+local function preparerTapis()
+	local carte = workspace:WaitForChild("GoldenMall", 30)
+	local dossierRampes = carte and carte:WaitForChild("Rampes", 30)
+	if not dossierRampes then
+		return
+	end
+	local dossierMarches = Instance.new("Folder")
+	dossierMarches.Name = "MarchesTapis"
+	dossierMarches.Parent = workspace
+	for _, rampe in ipairs(dossierRampes:GetChildren()) do
+		if rampe:IsA("BasePart") and rampe:GetAttribute("Tapis") then
+			local longueur = rampe:GetAttribute("Longueur") or rampe.Size.Z
+			for k = 0, math.floor(longueur / ESPACE_MARCHES) - 1 do
+				local m = Instance.new("Part")
+				m.Name = "Marche"
+				m.Size = Vector3.new(rampe.Size.X - 1.4, 0.06, 0.5)
+				m.Color = Color3.fromRGB(150, 155, 165)
+				m.Material = Enum.Material.Metal
+				m.Anchored = true
+				m.CanCollide = false
+				m.CanQuery = false
+				m.CanTouch = false
+				m.CastShadow = false
+				m.Parent = dossierMarches
+				table.insert(marchesTapis, { part = m, rampe = rampe, decalage = k * ESPACE_MARCHES })
+			end
+		end
+	end
+end
+task.spawn(preparerTapis)
+
+RunService.RenderStepped:Connect(function()
+	if #marchesTapis == 0 then
+		return
+	end
+	local t = os.clock()
+	local vitesse = (Config.Tapis and Config.Tapis.Vitesse or 32) * 0.5
+	for _, m in ipairs(marchesTapis) do
+		local r = m.rampe
+		local longueur = r:GetAttribute("Longueur") or r.Size.Z
+		local sens = r:GetAttribute("Tapis")
+		-- Le tapis qui monte fait défiler les marches vers le haut (vers -Z de la rampe)
+		local monte = typeof(sens) == "Vector3" and sens:Dot(r.CFrame.LookVector) > 0
+		local d = (m.decalage + t * vitesse) % longueur
+		local z = if monte then longueur / 2 - d else -longueur / 2 + d
+		m.part.CFrame = r.CFrame * CFrame.new(0, r.Size.Y / 2 + 0.04, z)
 	end
 end)

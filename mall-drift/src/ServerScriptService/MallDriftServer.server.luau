@@ -791,8 +791,9 @@ for _, moitie in ipairs(MOITIES) do
 end
 
 ---------------------------------------------------------------------
--- LES RAMPES pour monter au 1er étage en kart (au-dessus de la place centrale)
--- Elles partent du sol vers le sud et arrivent sur la passerelle.
+-- LES TAPIS ROULANTS entre les 2 étages (au-dessus de la place centrale) :
+-- celui de gauche (ouest) MONTE, celui de droite (est) DESCEND. Ils emportent
+-- le kart tout seuls (le script du joueur lit l'attribut « Tapis »).
 ---------------------------------------------------------------------
 local rampes = Instance.new("Folder")
 rampes.Name = "Rampes"
@@ -802,16 +803,20 @@ local RAMPE_LONGUEUR_SOL = RAMPE_BAS_Z - RAMPE_HAUT_Z
 local PENTE = math.atan2(ETAGE, RAMPE_LONGUEUR_SOL)
 local RAMPE_LONGUEUR = math.sqrt(RAMPE_LONGUEUR_SOL ^ 2 + ETAGE ^ 2)
 local RAMPE_MILIEU_Z = (RAMPE_BAS_Z + RAMPE_HAUT_Z) / 2
-local function rampe(xCentre: number, largeur: number)
+local function rampe(xCentre: number, largeur: number, monte: boolean)
 	local milieu = CFrame.new(xCentre, SOL + ETAGE / 2, RAMPE_MILIEU_Z) * CFrame.Angles(PENTE, 0, 0)
-	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR + 1), milieu * CFrame.new(0, -0.5, 0), Color3.fromRGB(175, 178, 186), Enum.Material.DiamondPlate, rampes)
+	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR + 1), milieu * CFrame.new(0, -0.5, 0), Color3.fromRGB(70, 72, 80), Enum.Material.DiamondPlate, rampes)
 	r.CastShadow = true
+	-- Le sens du tapis : vers le haut (LookVector = vers le 1er étage) ou vers le bas
+	r:SetAttribute("Tapis", if monte then milieu.LookVector else -milieu.LookVector)
+	r:SetAttribute("Longueur", RAMPE_LONGUEUR)
 	-- Bandes jaunes sur les bords + garde-corps vitrés
 	for _, cote in ipairs({ -1, 1 }) do
 		deco(bloc("BandeJaune", Vector3.new(0.6, 0.06, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 - 0.5), 0.03, 0), Color3.fromRGB(250, 200, 20), Enum.Material.SmoothPlastic, rampes))
 		local vitre = bloc("GardeCorps", Vector3.new(0.3, 3.2, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 1.6, 0), Color3.fromRGB(200, 225, 245), Enum.Material.Glass, rampes)
 		vitre.Transparency = 0.55
-		deco(bloc("MainCourante", Vector3.new(0.4, 0.3, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 3.3, 0), Color3.fromRGB(200, 200, 205), Enum.Material.Metal, rampes))
+		deco(bloc("MainCourante", Vector3.new(0.5, 0.35, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 3.3, 0), Color3.fromRGB(20, 20, 22), Enum.Material.Rubber, rampes))
+		deco(bloc("Plinthe", Vector3.new(0.4, 0.8, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 0.4, 0), Color3.fromRGB(200, 200, 205), Enum.Material.Metal, rampes))
 	end
 	-- Piliers sous la rampe
 	for z = RAMPE_HAUT_Z + 15, RAMPE_BAS_Z - 20, 20 do
@@ -820,11 +825,12 @@ local function rampe(xCentre: number, largeur: number)
 			cylindreDebout("Pilier", hauteurSousRampe, 1.6, Vector3.new(xCentre, SOL + hauteurSousRampe / 2, z), Color3.fromRGB(235, 235, 238), Enum.Material.SmoothPlastic, rampes)
 		end
 	end
-	local panneauR = pancarte("PanneauRampe", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + 4, RAMPE_BAS_Z + 1), Vector3.new(0, 0, 1), "⬆ 1er ÉTAGE", Color3.fromRGB(30, 30, 36), OR, rampes)
-	panneauR.CanCollide = false
+	-- Panneaux en bas et en haut
+	pancarte("PanneauRampe", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + 4.5, RAMPE_BAS_Z + 1), Vector3.new(0, 0, 1), if monte then "⬆ MONTÉE · 1er ÉTAGE" else "⛔ SENS INTERDIT", if monte then Color3.fromRGB(30, 120, 60) else Color3.fromRGB(170, 30, 30), Color3.new(1, 1, 1), rampes)
+	pancarte("PanneauRampeHaut", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + ETAGE + 4.5, RAMPE_HAUT_Z - 1), Vector3.new(0, 0, -1), if monte then "⛔ SENS INTERDIT" else "⬇ DESCENTE · REZ-DE-CHAUSSÉE", if monte then Color3.fromRGB(170, 30, 30) else Color3.fromRGB(30, 120, 60), Color3.new(1, 1, 1), rampes)
 end
-rampe(-22, 10)
-rampe(22, 10)
+rampe(-22, 10, true) -- tapis qui monte
+rampe(22, 10, false) -- tapis qui descend
 
 -- Garde-corps vitrés autour de l'atrium au 1er étage (pour ne pas tomber)
 local function gardeCorps(x1: number, x2: number, z1: number, z2: number)

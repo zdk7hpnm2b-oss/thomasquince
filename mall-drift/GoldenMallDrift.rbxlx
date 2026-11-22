@@ -517,6 +517,13 @@ Config.Securite = {
 }
 
 ---------------------------------------------------------------------
+-- LES TAPIS ROULANTS (les rampes entre les 2 étages)
+---------------------------------------------------------------------
+Config.Tapis = {
+	Vitesse = 32, -- vitesse minimum à laquelle le tapis t'emporte (montée ou descente)
+}
+
+---------------------------------------------------------------------
 -- LES GENS DANS LE MALL (vendeurs à la caisse, clients dans les boutiques)
 ---------------------------------------------------------------------
 Config.PNJ = {
@@ -1393,8 +1400,9 @@ for _, moitie in ipairs(MOITIES) do
 end
 
 ---------------------------------------------------------------------
--- LES RAMPES pour monter au 1er étage en kart (au-dessus de la place centrale)
--- Elles partent du sol vers le sud et arrivent sur la passerelle.
+-- LES TAPIS ROULANTS entre les 2 étages (au-dessus de la place centrale) :
+-- celui de gauche (ouest) MONTE, celui de droite (est) DESCEND. Ils emportent
+-- le kart tout seuls (le script du joueur lit l'attribut « Tapis »).
 ---------------------------------------------------------------------
 local rampes = Instance.new("Folder")
 rampes.Name = "Rampes"
@@ -1404,16 +1412,20 @@ local RAMPE_LONGUEUR_SOL = RAMPE_BAS_Z - RAMPE_HAUT_Z
 local PENTE = math.atan2(ETAGE, RAMPE_LONGUEUR_SOL)
 local RAMPE_LONGUEUR = math.sqrt(RAMPE_LONGUEUR_SOL ^ 2 + ETAGE ^ 2)
 local RAMPE_MILIEU_Z = (RAMPE_BAS_Z + RAMPE_HAUT_Z) / 2
-local function rampe(xCentre: number, largeur: number)
+local function rampe(xCentre: number, largeur: number, monte: boolean)
 	local milieu = CFrame.new(xCentre, SOL + ETAGE / 2, RAMPE_MILIEU_Z) * CFrame.Angles(PENTE, 0, 0)
-	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR + 1), milieu * CFrame.new(0, -0.5, 0), Color3.fromRGB(175, 178, 186), Enum.Material.DiamondPlate, rampes)
+	local r = bloc("Rampe", Vector3.new(largeur, 1, RAMPE_LONGUEUR + 1), milieu * CFrame.new(0, -0.5, 0), Color3.fromRGB(70, 72, 80), Enum.Material.DiamondPlate, rampes)
 	r.CastShadow = true
+	-- Le sens du tapis : vers le haut (LookVector = vers le 1er étage) ou vers le bas
+	r:SetAttribute("Tapis", if monte then milieu.LookVector else -milieu.LookVector)
+	r:SetAttribute("Longueur", RAMPE_LONGUEUR)
 	-- Bandes jaunes sur les bords + garde-corps vitrés
 	for _, cote in ipairs({ -1, 1 }) do
 		deco(bloc("BandeJaune", Vector3.new(0.6, 0.06, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 - 0.5), 0.03, 0), Color3.fromRGB(250, 200, 20), Enum.Material.SmoothPlastic, rampes))
 		local vitre = bloc("GardeCorps", Vector3.new(0.3, 3.2, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 1.6, 0), Color3.fromRGB(200, 225, 245), Enum.Material.Glass, rampes)
 		vitre.Transparency = 0.55
-		deco(bloc("MainCourante", Vector3.new(0.4, 0.3, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 3.3, 0), Color3.fromRGB(200, 200, 205), Enum.Material.Metal, rampes))
+		deco(bloc("MainCourante", Vector3.new(0.5, 0.35, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 3.3, 0), Color3.fromRGB(20, 20, 22), Enum.Material.Rubber, rampes))
+		deco(bloc("Plinthe", Vector3.new(0.4, 0.8, RAMPE_LONGUEUR), milieu * CFrame.new(cote * (largeur / 2 + 0.15), 0.4, 0), Color3.fromRGB(200, 200, 205), Enum.Material.Metal, rampes))
 	end
 	-- Piliers sous la rampe
 	for z = RAMPE_HAUT_Z + 15, RAMPE_BAS_Z - 20, 20 do
@@ -1422,11 +1434,12 @@ local function rampe(xCentre: number, largeur: number)
 			cylindreDebout("Pilier", hauteurSousRampe, 1.6, Vector3.new(xCentre, SOL + hauteurSousRampe / 2, z), Color3.fromRGB(235, 235, 238), Enum.Material.SmoothPlastic, rampes)
 		end
 	end
-	local panneauR = pancarte("PanneauRampe", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + 4, RAMPE_BAS_Z + 1), Vector3.new(0, 0, 1), "⬆ 1er ÉTAGE", Color3.fromRGB(30, 30, 36), OR, rampes)
-	panneauR.CanCollide = false
+	-- Panneaux en bas et en haut
+	pancarte("PanneauRampe", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + 4.5, RAMPE_BAS_Z + 1), Vector3.new(0, 0, 1), if monte then "⬆ MONTÉE · 1er ÉTAGE" else "⛔ SENS INTERDIT", if monte then Color3.fromRGB(30, 120, 60) else Color3.fromRGB(170, 30, 30), Color3.new(1, 1, 1), rampes)
+	pancarte("PanneauRampeHaut", Vector3.new(largeur, 2, 0.3), Vector3.new(xCentre, SOL + ETAGE + 4.5, RAMPE_HAUT_Z - 1), Vector3.new(0, 0, -1), if monte then "⛔ SENS INTERDIT" else "⬇ DESCENTE · REZ-DE-CHAUSSÉE", if monte then Color3.fromRGB(170, 30, 30) else Color3.fromRGB(30, 120, 60), Color3.new(1, 1, 1), rampes)
 end
-rampe(-22, 10)
-rampe(22, 10)
+rampe(-22, 10, true) -- tapis qui monte
+rampe(22, 10, false) -- tapis qui descend
 
 -- Garde-corps vitrés autour de l'atrium au 1er étage (pour ne pas tomber)
 local function gardeCorps(x1: number, x2: number, z1: number, z2: number)
@@ -5371,15 +5384,16 @@ joueur.CharacterAdded:Connect(brancherPersonnage)
 -- LA CONDUITE (exécutée à chaque image)
 ---------------------------------------------------------------------
 -- Ce qu'il y a sous le kart : "normal", "mouille" ou nil (en l'air), + la pente du sol
-local function surfaceSous(chassis: BasePart): (string?, Vector3)
+-- + la pièce touchée (pour savoir si c'est un tapis roulant)
+local function surfaceSous(chassis: BasePart): (string?, Vector3, BasePart?)
 	local resultat = workspace:Raycast(chassis.Position, Vector3.new(0, -3, 0), parametresRayon)
 	if not resultat then
-		return nil, Vector3.yAxis -- en l'air
+		return nil, Vector3.yAxis, nil -- en l'air
 	end
 	if resultat.Instance:GetAttribute("Mouille") then
-		return "mouille", resultat.Normal
+		return "mouille", resultat.Normal, resultat.Instance
 	end
-	return "normal", resultat.Normal
+	return "normal", resultat.Normal, resultat.Instance
 end
 
 -- La pente sous le kart (lissée) : permet de monter les rampes du 1er étage
@@ -5406,7 +5420,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local droite = Vector3.new(-avant.Z, 0, avant.X)
 
 	-- Le sol sous le kart (et sa pente, pour les rampes)
-	local surface, normale = surfaceSous(ch)
+	local surface, normale, pieceSol = surfaceSous(ch)
 	local cibleNormale = if surface and normale.Y > 0.6 then normale else Vector3.yAxis
 	normaleSol = normaleSol:Lerp(cibleNormale, math.clamp(dt * 10, 0, 1)).Unit
 	-- L'avant et le côté du kart, couchés le long de la pente
@@ -5421,6 +5435,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local vAvant = vel:Dot(avantPente)
 	local vCote = vel:Dot(droitePente)
 	local vSol = vel:Dot(normaleSol)
+	-- Dans une pente, la gravité ne freine plus le kart (il monte comme sur du plat)
+	if surface and normaleSol.Y < 0.999 then
+		vAvant += workspace.Gravity * avantPente.Y * dt
+		vCote += workspace.Gravity * droitePente.Y * dt
+	end
 	local vitesse = Vector3.new(vel.X, 0, vel.Z).Magnitude
 	local rotationReelle = ch.AssemblyAngularVelocity.Y
 
@@ -5513,7 +5532,17 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local rotationCible = -volant * puissance * facteur * sens
 	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 8, 0, 1)
 
-	ch.AssemblyLinearVelocity = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
+	local nouvelleVitesse = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
+	-- Tapis roulant : il t'emporte au moins à sa vitesse, dans son sens
+	local sensTapis = pieceSol and pieceSol:GetAttribute("Tapis")
+	if typeof(sensTapis) == "Vector3" then
+		local vitesseTapis = Config.Tapis and Config.Tapis.Vitesse or 32
+		local leLong = nouvelleVitesse:Dot(sensTapis)
+		if leLong < vitesseTapis then
+			nouvelleVitesse += sensTapis * (vitesseTapis - leLong)
+		end
+	end
+	ch.AssemblyLinearVelocity = nouvelleVitesse
 	ch.AssemblyAngularVelocity = normaleSol * vitesseRotation
 
 	-----------------------------------------------------------------
@@ -5666,6 +5695,61 @@ RunService.Heartbeat:Connect(function()
 		for _, l in ipairs(k.lumieres) do
 			l.Color = couleur
 		end
+	end
+end)
+
+---------------------------------------------------------------------
+-- TAPIS ROULANTS : les marches défilent (effet visuel, chez toi seulement)
+---------------------------------------------------------------------
+local marchesTapis: { { part: BasePart, rampe: BasePart, decalage: number } } = {}
+local ESPACE_MARCHES = 4
+
+local function preparerTapis()
+	local carte = workspace:WaitForChild("GoldenMall", 30)
+	local dossierRampes = carte and carte:WaitForChild("Rampes", 30)
+	if not dossierRampes then
+		return
+	end
+	local dossierMarches = Instance.new("Folder")
+	dossierMarches.Name = "MarchesTapis"
+	dossierMarches.Parent = workspace
+	for _, rampe in ipairs(dossierRampes:GetChildren()) do
+		if rampe:IsA("BasePart") and rampe:GetAttribute("Tapis") then
+			local longueur = rampe:GetAttribute("Longueur") or rampe.Size.Z
+			for k = 0, math.floor(longueur / ESPACE_MARCHES) - 1 do
+				local m = Instance.new("Part")
+				m.Name = "Marche"
+				m.Size = Vector3.new(rampe.Size.X - 1.4, 0.06, 0.5)
+				m.Color = Color3.fromRGB(150, 155, 165)
+				m.Material = Enum.Material.Metal
+				m.Anchored = true
+				m.CanCollide = false
+				m.CanQuery = false
+				m.CanTouch = false
+				m.CastShadow = false
+				m.Parent = dossierMarches
+				table.insert(marchesTapis, { part = m, rampe = rampe, decalage = k * ESPACE_MARCHES })
+			end
+		end
+	end
+end
+task.spawn(preparerTapis)
+
+RunService.RenderStepped:Connect(function()
+	if #marchesTapis == 0 then
+		return
+	end
+	local t = os.clock()
+	local vitesse = (Config.Tapis and Config.Tapis.Vitesse or 32) * 0.5
+	for _, m in ipairs(marchesTapis) do
+		local r = m.rampe
+		local longueur = r:GetAttribute("Longueur") or r.Size.Z
+		local sens = r:GetAttribute("Tapis")
+		-- Le tapis qui monte fait défiler les marches vers le haut (vers -Z de la rampe)
+		local monte = typeof(sens) == "Vector3" and sens:Dot(r.CFrame.LookVector) > 0
+		local d = (m.decalage + t * vitesse) % longueur
+		local z = if monte then longueur / 2 - d else -longueur / 2 + d
+		m.part.CFrame = r.CFrame * CFrame.new(0, r.Size.Y / 2 + 0.04, z)
 	end
 end)
 ]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
