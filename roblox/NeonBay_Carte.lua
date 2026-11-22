@@ -600,6 +600,22 @@ bloc(dMarais, {
 	Material = Enum.Material.WoodPlanks,
 })
 
+-- Passerelle en bois du ponton jusqu'à l'îlot de la planque
+bloc(dMarais, {
+	Name = "Passerelle",
+	Size = Vector3.new(164, 1, 8),
+	CFrame = CFrame.new(222, -0.5, 0),
+	Color = C.bois,
+	Material = Enum.Material.WoodPlanks,
+})
+bloc(dMarais, {
+	Name = "Passerelle",
+	Size = Vector3.new(8, 1, 42),
+	CFrame = CFrame.new(300, -0.5, -17),
+	Color = C.bois,
+	Material = Enum.Material.WoodPlanks,
+})
+
 -- Îlots
 local function ilot(nom, x, z, taille)
 	return bloc(dMarais, {

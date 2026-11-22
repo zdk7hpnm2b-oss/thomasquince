@@ -201,9 +201,13 @@ local function joueurArrive(player)
 	local perte = appliquerFonte(d)
 	donnees[player] = d
 
-	local stats = Instance.new("Folder")
-	stats.Name = "leaderstats"
-	stats.Parent = player
+	-- Le dossier peut déjà exister (créé par CoupService pour les billets)
+	local stats = player:FindFirstChild("leaderstats")
+	if not stats then
+		stats = Instance.new("Folder")
+		stats.Name = "leaderstats"
+		stats.Parent = player
+	end
 	local force = Instance.new("IntValue")
 	force.Name = "Force"
 	force.Value = d.Force
