@@ -2,118 +2,178 @@
 	KartConfig  (ModuleScript)
 	À placer dans : ReplicatedStorage   — nom exact : KartConfig
 
-	C'est le fichier des RÉGLAGES. Tu peux changer les chiffres ici
-	pour modifier le ressenti du jeu sans toucher au reste du code.
+	Le fichier des RÉGLAGES. Change les chiffres ici pour modifier le jeu
+	sans toucher au reste du code.
 ]]
 
 local Lighting = game:GetService("Lighting")
 
 local Config = {}
 
+Config.NomDuJeu = "Golden Mall Drift"
+Config.Lieu = "Dubaï"
+
 ---------------------------------------------------------------------
--- LES KARTS
--- VitesseMax      : vitesse de pointe (en studs/s ≈ km/h affichés)
--- Acceleration    : à quelle vitesse on atteint la vitesse max
--- Freinage        : puissance du frein
--- Rotation        : vitesse à laquelle le kart tourne (normal)
--- RotationDrift   : multiplicateur de rotation quand on drifte (360 !)
--- Adherence       : plus c'est haut, moins le kart glisse (conduite normale)
--- AdherenceDrift  : adhérence pendant le drift (bas = grosse glissade)
--- Boost           : vitesse gagnée après un beau drift (2 étoiles ou +)
+-- LES KARTS  (Niveau = niveau du joueur nécessaire pour le débloquer)
+-- VitesseMax     : vitesse de pointe (≈ km/h affichés)
+-- Acceleration   : vitesse pour atteindre la vitesse max
+-- Freinage       : puissance du frein
+-- Rotation       : vitesse de rotation en conduite normale
+-- RotationDrift  : multiplicateur de rotation en drift (360 !)
+-- Adherence      : plus c'est haut, moins ça glisse (conduite normale)
+-- AdherenceDrift : adhérence en drift (bas = grosse glissade)
+-- Boost          : vitesse gagnée après un beau drift (2 étoiles ou +)
 ---------------------------------------------------------------------
 Config.Karts = {
 	Basique = {
-		Nom = "Kart Basique",
-		Couleur = Color3.fromRGB(35, 105, 215),
-		VitesseMax = 50,
-		Acceleration = 32,
-		Freinage = 70,
-		Rotation = 2.4,
-		RotationDrift = 1.7,
-		Adherence = 9,
-		AdherenceDrift = 1.4,
-		Boost = 16,
+		Nom = "Kart Basique", Niveau = 1, Ordre = 1,
+		Description = "Équilibré, parfait pour apprendre.",
+		VitesseMax = 50, Acceleration = 32, Freinage = 70,
+		Rotation = 2.4, RotationDrift = 1.7, Adherence = 9, AdherenceDrift = 1.4, Boost = 16,
 	},
 	Chariot = {
-		Nom = "Chariot Turbo",
-		Couleur = Color3.fromRGB(165, 170, 180),
-		VitesseMax = 42,
-		Acceleration = 28,
-		Freinage = 60,
-		Rotation = 3.1,
-		RotationDrift = 2.1,
-		Adherence = 6,
-		AdherenceDrift = 0.9,
-		Boost = 14,
+		Nom = "Chariot Turbo", Niveau = 3, Ordre = 2,
+		Description = "Un caddie motorisé. Glisse énormément !",
+		VitesseMax = 46, Acceleration = 30, Freinage = 60,
+		Rotation = 3.1, RotationDrift = 2.1, Adherence = 6, AdherenceDrift = 0.9, Boost = 15,
 	},
 	Bolide = {
-		Nom = "Bolide Rouge",
-		Couleur = Color3.fromRGB(215, 40, 40),
-		VitesseMax = 68,
-		Acceleration = 42,
-		Freinage = 80,
-		Rotation = 2.5,
-		RotationDrift = 1.9,
-		Adherence = 10,
-		AdherenceDrift = 1.1,
-		Boost = 22,
+		Nom = "Bolide Sport", Niveau = 6, Ordre = 3,
+		Description = "Rapide et précis, avec un aileron.",
+		VitesseMax = 66, Acceleration = 42, Freinage = 80,
+		Rotation = 2.5, RotationDrift = 1.9, Adherence = 10, AdherenceDrift = 1.1, Boost = 22,
+	},
+	ProDubai = {
+		Nom = "Kart Pro Dubaï", Niveau = 10, Ordre = 4,
+		Description = "Le kart des champions. Finitions dorées.",
+		VitesseMax = 74, Acceleration = 48, Freinage = 85,
+		Rotation = 2.7, RotationDrift = 2.0, Adherence = 11, AdherenceDrift = 1.0, Boost = 26,
 	},
 }
 
--- L'ordre dans lequel les karts sont garés au départ
-Config.OrdreKarts = { "Basique", "Chariot", "Basique", "Bolide" }
+---------------------------------------------------------------------
+-- PERSONNALISATION (le garage VIP)
+---------------------------------------------------------------------
+Config.Couleurs = {
+	{ Nom = "Blanc", Couleur = Color3.fromRGB(240, 240, 240), Niveau = 1 },
+	{ Nom = "Noir", Couleur = Color3.fromRGB(25, 25, 28), Niveau = 1 },
+	{ Nom = "Rouge", Couleur = Color3.fromRGB(215, 35, 40), Niveau = 1 },
+	{ Nom = "Bleu", Couleur = Color3.fromRGB(35, 105, 215), Niveau = 1 },
+	{ Nom = "Gris", Couleur = Color3.fromRGB(140, 145, 155), Niveau = 1 },
+	{ Nom = "Jaune", Couleur = Color3.fromRGB(250, 205, 30), Niveau = 2 },
+	{ Nom = "Vert", Couleur = Color3.fromRGB(40, 170, 80), Niveau = 2 },
+	{ Nom = "Orange", Couleur = Color3.fromRGB(245, 130, 30), Niveau = 2 },
+	{ Nom = "Rose", Couleur = Color3.fromRGB(245, 120, 180), Niveau = 4 },
+	{ Nom = "Violet", Couleur = Color3.fromRGB(130, 70, 200), Niveau = 4 },
+	{ Nom = "Turquoise", Couleur = Color3.fromRGB(30, 200, 200), Niveau = 4 },
+	{ Nom = "Bleu nuit", Couleur = Color3.fromRGB(20, 35, 90), Niveau = 5 },
+	{ Nom = "Bordeaux", Couleur = Color3.fromRGB(110, 20, 40), Niveau = 5 },
+	{ Nom = "Sable", Couleur = Color3.fromRGB(215, 190, 140), Niveau = 7 },
+	{ Nom = "Vert menthe", Couleur = Color3.fromRGB(150, 230, 190), Niveau = 7 },
+	{ Nom = "Or", Couleur = Color3.fromRGB(225, 175, 45), Niveau = 10 },
+}
+
+-- Finition de la peinture (aspect réaliste)
+Config.Finitions = {
+	{ Nom = "Brillant", Materiau = Enum.Material.SmoothPlastic, Reflet = 0.12, Niveau = 1 },
+	{ Nom = "Mat", Materiau = Enum.Material.SmoothPlastic, Reflet = 0, Niveau = 2 },
+	{ Nom = "Métallisé", Materiau = Enum.Material.Metal, Reflet = 0.1, Niveau = 4 },
+	{ Nom = "Nacré", Materiau = Enum.Material.SmoothPlastic, Reflet = 0.35, Niveau = 8 },
+	{ Nom = "Chrome", Materiau = Enum.Material.Foil, Reflet = 0.55, Niveau = 12 },
+}
+
+-- Autocollants sur les flancs du kart
+Config.Autocollants = {
+	{ Nom = "Aucun", Texte = "", Niveau = 1 },
+	{ Nom = "Étoile", Texte = "⭐", Niveau = 1 },
+	{ Nom = "Lunettes", Texte = "😎", Niveau = 2 },
+	{ Nom = "Chat", Texte = "🐱", Niveau = 3 },
+	{ Nom = "Donut", Texte = "🍩", Niveau = 5 },
+	{ Nom = "Éclair", Texte = "⚡", Niveau = 7 },
+	{ Nom = "Couronne", Texte = "👑", Niveau = 9 },
+	{ Nom = "Diamant", Texte = "💎", Niveau = 12 },
+}
+
+-- Le kart d'un nouveau joueur
+Config.PersoParDefaut = {
+	Kart = "Basique",
+	Carrosserie = "Bleu",
+	Finition = "Brillant",
+	Jantes = "Blanc",
+	Siege = "Noir",
+	Bandes = "Blanc",
+	BandesActives = true,
+	Autocollant = "Étoile",
+	Numero = 7,
+}
+
+-- Petites fonctions pour retrouver un élément par son nom
+local function chercher(liste, nom)
+	for _, element in ipairs(liste) do
+		if element.Nom == nom then
+			return element
+		end
+	end
+	return nil
+end
+function Config.Couleur(nom: string) return chercher(Config.Couleurs, nom) end
+function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
+function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
+
+---------------------------------------------------------------------
+-- PROGRESSION : les drifts donnent de l'XP → le niveau du joueur monte
+-- → débloque karts, couleurs, finitions, autocollants
+---------------------------------------------------------------------
+Config.NiveauMax = 30
+function Config.XPPourNiveauSuivant(niveau: number): number
+	return 800 + 400 * (niveau - 1) -- niv.1→2 : 800 XP, niv.2→3 : 1200 XP, etc.
+end
+function Config.NiveauDepuisXP(xp: number): (number, number, number)
+	local niveau = 1
+	local reste = xp
+	while niveau < Config.NiveauMax and reste >= Config.XPPourNiveauSuivant(niveau) do
+		reste -= Config.XPPourNiveauSuivant(niveau)
+		niveau += 1
+	end
+	return niveau, reste, Config.XPPourNiveauSuivant(niveau)
+end
 
 ---------------------------------------------------------------------
 -- LE SOL MOUILLÉ
 ---------------------------------------------------------------------
 Config.Mouille = {
-	Adherence = 0.25, -- l'adhérence est multipliée par ce chiffre (0.25 = 4x plus glissant)
+	Adherence = 0.25, -- adhérence x0.25 = 4x plus glissant
 	Acceleration = 0.5, -- on accélère 2x moins bien sur l'eau
-	BonusPoints = 1.5, -- un drift sur l'eau rapporte 1,5x plus de points
+	BonusPoints = 1.5, -- un drift sur l'eau rapporte x1,5
 }
 
 ---------------------------------------------------------------------
 -- LE SCORE DE DRIFT
 ---------------------------------------------------------------------
 Config.Score = {
-	VitesseMin = 10, -- en dessous de cette vitesse, pas de points
-	AngleMin = 12, -- angle de glisse minimum (en degrés) pour compter un drift
-	Tolerance = 0.35, -- secondes "sans glisser" avant que le drift soit encaissé
-	ComboParSeconde = 0.6, -- le multiplicateur monte de 0.6 par seconde de drift
-	ComboMax = 5, -- multiplicateur maximum (x5)
-	PointsParStud = 0.5, -- points de base
-	Bonus360 = 150, -- bonus pour chaque 360° (multiplié par le combo)
-	SeuilChoc = 22, -- perte de vitesse brutale = choc contre un mur = drift raté
-	Minimum = 20, -- en dessous, le drift ne compte pas
-	Etoiles = { 150, 500, 1200 }, -- points pour 1, 2 et 3 étoiles
-	DureeBoost = 1.5, -- durée du boost après un drift 2 étoiles ou +
+	VitesseMin = 10, -- en dessous, pas de points
+	AngleMin = 12, -- angle de glisse minimum (degrés)
+	Tolerance = 0.35, -- secondes sans glisser avant d'encaisser le drift
+	ComboParSeconde = 0.6, -- le multiplicateur monte de 0.6 par seconde
+	ComboMax = 5,
+	PointsParStud = 0.5,
+	Bonus360 = 150, -- bonus par 360° (x combo)
+	SeuilChoc = 22, -- perte de vitesse brutale = choc = drift perdu
+	Minimum = 20,
+	Etoiles = { 150, 500, 1200 }, -- points pour 1, 2, 3 étoiles
+	DureeBoost = 1.5,
+	MaxParDrift = 8000, -- sécurité anti-triche côté serveur
 }
 
 ---------------------------------------------------------------------
--- LES SONS (optionnel)
--- Mets ici l'identifiant d'un son trouvé dans la Boîte à outils
--- (Toolbox > Audio) de Roblox Studio, par exemple "rbxassetid://1234567".
--- Laisse vide ("") pour ne pas avoir de son.
+-- SONS (optionnel) : colle un identifiant de la Boîte à outils > Audio
+-- ex. "rbxassetid://1234567". Vide = pas de son.
 ---------------------------------------------------------------------
 Config.Sons = {
 	Moteur = "",
 	Drift = "",
 	Eclaboussure = "",
 }
-
----------------------------------------------------------------------
--- LES NIVEAUX (la progression du jeu)
--- Seul le niveau 1 est construit dans ce prototype. Les autres sont
--- la feuille de route : chaque nouveau niveau = un centre plus grand.
----------------------------------------------------------------------
-Config.Niveaux = {
-	{ Nom = "Le Petit Marché", Lieu = "Ton quartier", Pret = true },
-	{ Nom = "Hyper Géant", Lieu = "Zone commerciale", Pret = false },
-	{ Nom = "Galerie Lumière", Lieu = "Centre-ville", Pret = false },
-	{ Nom = "Mega Mall", Lieu = "Grande métropole", Pret = false },
-	{ Nom = "Golden Mall", Lieu = "Dubaï", Pret = false },
-}
-Config.NiveauActuel = 1
 
 ---------------------------------------------------------------------
 -- JOUR / NUIT
@@ -124,13 +184,13 @@ function Config.AppliquerAmbiance(nuit: boolean)
 	if nuit then
 		Lighting.ClockTime = 0
 		Lighting.Brightness = 1
-		Lighting.Ambient = Color3.fromRGB(70, 70, 95)
-		Lighting.OutdoorAmbient = Color3.fromRGB(45, 45, 70)
+		Lighting.Ambient = Color3.fromRGB(75, 70, 95)
+		Lighting.OutdoorAmbient = Color3.fromRGB(50, 45, 70)
 	else
 		Lighting.ClockTime = 13
 		Lighting.Brightness = 2.5
-		Lighting.Ambient = Color3.fromRGB(140, 140, 140)
-		Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
+		Lighting.Ambient = Color3.fromRGB(145, 140, 130)
+		Lighting.OutdoorAmbient = Color3.fromRGB(155, 150, 140)
 	end
 	Lighting:SetAttribute("Nuit", nuit)
 end

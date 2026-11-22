@@ -12,6 +12,8 @@
 	  Avancer / reculer / tourner : flèches, ZQSD (ou WASD), manette, joystick mobile
 	  Drift : Maj (Shift) — gâchette R2/L2 — bouton DRIFT sur mobile
 	  Descendre du kart : Espace (saut)
+	Les points de drift deviennent de l'XP : en montant de niveau, on débloque
+	des karts, des couleurs et des décos au GARAGE VIP.
 ]]
 
 local Players = game:GetService("Players")
@@ -22,6 +24,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 
 local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
 
 local joueur = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -73,10 +76,33 @@ hud.ZIndex = 5
 hud.Visible = false
 hud.Parent = gui
 
-local niveauInfo = Config.Niveaux[Config.NiveauActuel]
-local titreNiveau = label("Niveau", hud, UDim2.new(0, 420, 0, 26), UDim2.new(0, 16, 0, 56))
-titreNiveau.TextXAlignment = Enum.TextXAlignment.Left
-titreNiveau.Text = ("NIVEAU %d · %s"):format(Config.NiveauActuel, string.upper(niveauInfo.Nom))
+-- Niveau du joueur + barre d'XP (toujours visible, en haut à gauche)
+local blocNiveau = Instance.new("Frame")
+blocNiveau.Name = "NiveauJoueur"
+blocNiveau.Size = UDim2.new(0, 300, 0, 64)
+blocNiveau.Position = UDim2.new(0, 16, 0, 56)
+blocNiveau.BackgroundTransparency = 1
+blocNiveau.ZIndex = 5
+blocNiveau.Parent = gui
+local niveauLabel = label("Niveau", blocNiveau, UDim2.new(1, 0, 0, 28), UDim2.new(0, 0, 0, 0))
+niveauLabel.TextXAlignment = Enum.TextXAlignment.Left
+niveauLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
+niveauLabel.Text = "NIV. 1"
+local fondBarre = Instance.new("Frame")
+fondBarre.Size = UDim2.new(1, 0, 0, 12)
+fondBarre.Position = UDim2.new(0, 0, 0, 32)
+fondBarre.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+fondBarre.BackgroundTransparency = 0.3
+fondBarre.Parent = blocNiveau
+Instance.new("UICorner", fondBarre).CornerRadius = UDim.new(0.5, 0)
+local barreXP = Instance.new("Frame")
+barreXP.Size = UDim2.fromScale(0, 1)
+barreXP.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+barreXP.Parent = fondBarre
+Instance.new("UICorner", barreXP).CornerRadius = UDim.new(0.5, 0)
+local xpLabel = label("XP", blocNiveau, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, 47))
+xpLabel.TextXAlignment = Enum.TextXAlignment.Left
+xpLabel.TextTransparency = 0.2
 
 local scoreLabel = label("Score", hud, UDim2.new(0, 320, 0, 40), UDim2.new(1, -336, 0, 56))
 scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -90,7 +116,7 @@ vitesseLabel.TextXAlignment = Enum.TextXAlignment.Left
 local aide = label("Aide", hud, UDim2.new(1, -32, 0, 18), UDim2.new(0, 16, 1, -30))
 aide.TextXAlignment = Enum.TextXAlignment.Left
 aide.TextTransparency = 0.25
-aide.Text = "Maj : DRIFT  ·  V : caméra  ·  N : jour/nuit  ·  R : redresser  ·  Espace : descendre"
+aide.Text = "Maj : DRIFT  ·  V : caméra  ·  N : jour/nuit  ·  R : redresser  ·  Espace : descendre  ·  Garage VIP : personnaliser ton kart"
 
 -- Le compteur de drift (au centre, en bas)
 local blocDrift = Instance.new("Frame")
@@ -109,7 +135,7 @@ comboLabel.TextColor3 = Color3.fromRGB(120, 220, 255)
 
 -- Messages qui apparaissent au milieu (« SUPER DRIFT ★★ », « 360° ! »…)
 local function message(texte: string, couleur: Color3?, duree: number?)
-	local m = label("Message", hud, UDim2.new(0, 600, 0, 60), UDim2.new(0.5, -300, 0.28, 0))
+	local m = label("Message", gui, UDim2.new(0, 600, 0, 60), UDim2.new(0.5, -300, 0.28, 0))
 	m.Text = texte
 	m.TextColor3 = couleur or Color3.new(1, 1, 1)
 	m.ZIndex = 10
@@ -226,9 +252,36 @@ end
 
 local function majScore()
 	scoreLabel.Text = ("SCORE  %d"):format(scoreTotal)
-	meilleurLabel.Text = ("MEILLEUR DRIFT  %d"):format(meilleurDrift)
+	meilleurLabel.Text = ("RECORD  %d"):format(meilleurDrift)
 end
 majScore()
+
+-- Profil envoyé par le serveur (niveau, XP, record)
+local function afficherProfil(profil, niveauGagne: number?)
+	if type(profil) ~= "table" then
+		return
+	end
+	niveauLabel.Text = ("NIV. %d"):format(profil.Niveau)
+	local pleinNiveau = profil.Niveau >= Config.NiveauMax
+	xpLabel.Text = if pleinNiveau then "NIVEAU MAX !" else ("%d / %d XP"):format(profil.XPDansNiveau, profil.XPRequis)
+	local ratio = if pleinNiveau then 1 else math.clamp(profil.XPDansNiveau / profil.XPRequis, 0, 1)
+	TweenService:Create(barreXP, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { Size = UDim2.fromScale(ratio, 1) }):Play()
+	meilleurDrift = math.max(meilleurDrift, profil.Record or 0)
+	majScore()
+	if niveauGagne then
+		message(("NIVEAU %d ! 🎉"):format(niveauGagne), Color3.fromRGB(255, 215, 80), 2.5)
+		task.delay(0.8, function()
+			message("Nouveautés au GARAGE VIP !", Color3.fromRGB(200, 150, 255), 2)
+		end)
+	end
+end
+remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
+task.spawn(function()
+	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
+	message(("Bienvenue au %s ✦ %s"):format(Config.NomDuJeu, Config.Lieu), Color3.fromRGB(255, 215, 80), 3)
+	task.wait(3.4)
+	message("Va à l'atelier du GARAGE VIP : E = personnaliser · F = sortir ton kart", Color3.new(1, 1, 1), 4)
+end)
 
 local function vers(valeur: number, cible: number, pas: number): number
 	if valeur < cible then
@@ -248,6 +301,7 @@ local function terminerDrift(reussi: boolean)
 		if points > meilleurDrift then
 			meilleurDrift = points
 		end
+		remotes.DriftTermine:FireServer(points) -- le serveur transforme les points en XP
 		local titres = { [0] = "PETIT DRIFT", "JOLI DRIFT", "SUPER DRIFT", "DRIFT DE LÉGENDE" }
 		local couleurs = { [0] = Color3.new(1, 1, 1), Color3.fromRGB(150, 230, 255), Color3.fromRGB(255, 215, 60), Color3.fromRGB(255, 120, 220) }
 		local titre = titres[math.min(etoiles, 3)]
@@ -410,7 +464,7 @@ local function entrerDansKart(siege: Seat)
 	ContextActionService:SetPosition("MallDrift_Redresser", UDim2.new(1, -290, 1, -150))
 
 	hud.Visible = true
-	message(("%s · C'EST PARTI !"):format(string.upper(kart.stats.Nom)), Color3.new(1, 1, 1), 1.5)
+	message(("%s · c'est parti !"):format(kart.stats.Nom), Color3.new(1, 1, 1), 1.5)
 end
 
 local function brancherPersonnage(perso: Model)
