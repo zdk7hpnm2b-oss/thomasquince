@@ -166,45 +166,83 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 
 	local CYL = Enum.PartType.Cylinder -- les cylindres Roblox sont couchés sur l'axe X : parfait pour des roues
 
-	-- Roues avant + roues arrière pivotantes (plus petites, comme les vrais karts de drift)
-	for _, r in ipairs({
-		{ x = -2.2, y = 0.2, z = -2.3, d = 1.6, l = 0.8 },
-		{ x = 2.2, y = 0.2, z = -2.3, d = 1.6, l = 0.8 },
-		{ x = -1.9, y = -0.05, z = 2.5, d = 1.1, l = 0.6 },
-		{ x = 1.9, y = -0.05, z = 2.5, d = 1.1, l = 0.6 },
-	}) do
-		piece("Roue", Vector3.new(r.l, r.d, r.d), CFrame.new(r.x, r.y, r.z), NOIR, nil, Enum.Material.SmoothPlastic, CYL)
-		local dehors = math.sign(r.x) * (math.abs(r.x) + r.l / 2 + 0.03)
-		piece("Jante", Vector3.new(0.06, r.d * 0.6, r.d * 0.6), CFrame.new(dehors, r.y, r.z), Color3.new(1, 1, 1), "Jantes", Enum.Material.Metal, CYL)
+	-- Une pièce arrondie (ellipsoïde) : capot bombé, nez du kart
+	local function arrondi(nom: string, taille: Vector3, decalage: CFrame, couleur: Color3, peinture: string?, matiere: Enum.Material?): Part
+		local p = piece(nom, taille, decalage, couleur, peinture, matiere)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = p
+		return p
 	end
 
-	-- CADRE EN TUBES (comme les vrais karts de drift)
-	local TUBE = Color3.fromRGB(30, 30, 34)
-	local LONG = CFrame.Angles(0, math.rad(90), 0) -- tube couché dans le sens de la longueur
-	local DEBOUT = CFrame.Angles(0, 0, math.rad(90)) -- tube vertical
-	for _, cote in ipairs({ -1, 1 }) do
-		piece("TubeLateral", Vector3.new(5.8, 0.38, 0.38), CFrame.new(cote * 1.95, 0.05, 0) * LONG, TUBE, nil, Enum.Material.Metal, CYL)
-		piece("TubeArceau", Vector3.new(2.6, 0.3, 0.3), CFrame.new(cote * 1.05, 1.5, 2.45) * DEBOUT, TUBE, nil, Enum.Material.Metal, CYL)
-		piece("Pedale", Vector3.new(0.35, 0.5, 0.15), CFrame.new(cote * 0.4, 0.35, -2.3) * CFrame.Angles(math.rad(-30), 0, 0), Color3.fromRGB(190, 195, 205), nil, Enum.Material.Metal)
-		-- Fourches des roues arrière pivotantes
-		for _, dx in ipairs({ -0.38, 0.38 }) do
-			piece("Fourche", Vector3.new(0.12, 0.75, 0.12), CFrame.new(cote * 1.9 + dx, 0.35, 2.5), TUBE, nil, Enum.Material.Metal)
-		end
-		piece("TeteFourche", Vector3.new(0.9, 0.15, 0.3), CFrame.new(cote * 1.9, 0.75, 2.5), TUBE, nil, Enum.Material.Metal)
-	end
-	piece("PareChocAvant", Vector3.new(4.4, 0.4, 0.4), CFrame.new(0, 0.05, -3.15), TUBE, nil, Enum.Material.Metal, CYL)
-	piece("PareChocArriere", Vector3.new(4.2, 0.35, 0.35), CFrame.new(0, 0.3, 3.15), TUBE, nil, Enum.Material.Metal, CYL)
-	piece("HautArceau", Vector3.new(2.4, 0.3, 0.3), CFrame.new(0, 2.8, 2.45), TUBE, nil, Enum.Material.Metal, CYL)
+	-------------------------------------------------------------------
+	-- LE KART DE DRIFT : coque basse, nez arrondi, capot bombé, colonne de
+	-- direction, siège baquet à l'arrière, levier de drift, roues pivotantes
+	-------------------------------------------------------------------
+	local NOIR_MAT = Color3.fromRGB(28, 28, 32)
+	local GRIS_FONCE = Color3.fromRGB(55, 55, 62)
 
-	-- CARROSSERIE (aux couleurs du joueur) : plancher, pontons latéraux, carénage avant
-	piece("Plancher", Vector3.new(3.6, 0.15, 5.6), CFrame.new(0, -0.2, 0), Color3.new(1, 1, 1), "Carrosserie")
+	-- Coque (aux couleurs du joueur)
+	piece("Coque", Vector3.new(3.6, 0.5, 5.4), CFrame.new(0, -0.1, -0.1), Color3.new(1, 1, 1), "Carrosserie")
 	for _, cote in ipairs({ -1, 1 }) do
-		piece("Ponton", Vector3.new(0.95, 0.7, 2.6), CFrame.new(cote * 2.3, 0.15, 0.2), Color3.new(1, 1, 1), "Carrosserie")
-		piece("PontonBas", Vector3.new(0.95, 0.12, 2.6), CFrame.new(cote * 2.3, -0.26, 0.2), TUBE)
+		piece("BordCoque", Vector3.new(0.3, 0.45, 5), CFrame.new(cote * 1.7, 0.35, -0.1), Color3.new(1, 1, 1), "Carrosserie")
+		piece("Bande", Vector3.new(0.32, 0.05, 5), CFrame.new(cote * 1.7, 0.6, -0.1), Color3.new(1, 1, 1), "Bandes")
+		-- Petite lumière bleue sur le côté
+		piece("LedCote", Vector3.new(0.06, 0.14, 0.45), CFrame.new(cote * 1.87, 0.2, 0.7), Color3.fromRGB(60, 140, 255), nil, Enum.Material.Neon)
 	end
-	piece("Carenage", Vector3.new(3.2, 0.5, 1.6), CFrame.new(0, 0.45, -2.35) * CFrame.Angles(math.rad(-12), 0, 0), Color3.new(1, 1, 1), "Carrosserie")
-	-- Plaque numéro à l'avant
-	local plaque = piece("PlaqueNumero", Vector3.new(1.5, 0.9, 0.1), CFrame.new(0, 0.6, -3.25), Color3.fromRGB(245, 245, 245))
+	-- Nez arrondi + capot bombé devant la colonne
+	arrondi("Nez", Vector3.new(3.6, 0.75, 1.6), CFrame.new(0, 0.05, -2.8), Color3.new(1, 1, 1), "Carrosserie")
+	arrondi("Capot", Vector3.new(1.7, 0.9, 1.9), CFrame.new(0, 0.45, -2.15), Color3.new(1, 1, 1), "Carrosserie")
+	-- Plancher antidérapant (où vont les pieds)
+	piece("ReposePieds", Vector3.new(3, 0.08, 2.2), CFrame.new(0, 0.2, -0.6), GRIS_FONCE, nil, Enum.Material.DiamondPlate)
+
+	-- Roue avant motrice (cachée sous le nez) + roues arrière pivotantes à jantes blanches
+	piece("Roue", Vector3.new(0.7, 1.1, 1.1), CFrame.new(0, -0.05, -2.3), NOIR_MAT, nil, Enum.Material.SmoothPlastic, CYL)
+	piece("BarreArriere", Vector3.new(3.2, 0.25, 0.3), CFrame.new(0, 0.25, 2.75), NOIR_MAT, nil, Enum.Material.Metal)
+	for _, cote in ipairs({ -1, 1 }) do
+		local x = cote * 1.35
+		piece("Roue", Vector3.new(0.45, 0.9, 0.9), CFrame.new(x, -0.12, 3.05), NOIR_MAT, nil, Enum.Material.SmoothPlastic, CYL)
+		piece("Jante", Vector3.new(0.47, 0.5, 0.5), CFrame.new(x, -0.12, 3.05), Color3.new(1, 1, 1), "Jantes", Enum.Material.SmoothPlastic, CYL)
+		piece("Fourche", Vector3.new(0.12, 0.55, 0.12), CFrame.new(x - 0.3, 0.12, 2.95), NOIR_MAT, nil, Enum.Material.Metal)
+		piece("Fourche", Vector3.new(0.12, 0.55, 0.12), CFrame.new(x + 0.3, 0.12, 2.95), NOIR_MAT, nil, Enum.Material.Metal)
+		piece("TeteFourche", Vector3.new(0.75, 0.15, 0.3), CFrame.new(x, 0.4, 2.85), NOIR_MAT, nil, Enum.Material.Metal)
+	end
+
+	-- Colonne de direction + volant
+	piece("Colonne", Vector3.new(0.2, 1.75, 0.2), CFrame.new(0, 1.0, -1.45) * CFrame.Angles(math.rad(-18), 0, 0), Color3.fromRGB(40, 40, 46), nil, Enum.Material.Metal)
+	piece("BagueColonne", Vector3.new(0.3, 0.3, 0.3), CFrame.new(0, 1.2, -1.38) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(235, 235, 240), nil, Enum.Material.SmoothPlastic, CYL)
+	piece("Volant", Vector3.new(0.14, 1.55, 1.55), CFrame.new(0, 1.85, -1.2) * CFrame.Angles(math.rad(-55), math.rad(90), 0), NOIR_MAT, nil, Enum.Material.SmoothPlastic, CYL)
+	piece("MoyeuVolant", Vector3.new(0.18, 0.5, 0.5), CFrame.new(0, 1.86, -1.18) * CFrame.Angles(math.rad(-55), math.rad(90), 0), Color3.fromRGB(70, 70, 78), nil, Enum.Material.Metal, CYL)
+	piece("EcranVolant", Vector3.new(0.5, 0.32, 0.08), CFrame.new(0, 1.35, -1.55) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(60, 170, 255), nil, Enum.Material.Neon)
+
+	-- Siège baquet (couleur du siège) : dossier + petits rebords
+	piece("Dossier", Vector3.new(2.1, 1.3, 0.3), CFrame.new(0, 1.05, 2.15) * CFrame.Angles(math.rad(-15), 0, 0), Color3.new(1, 1, 1), "Siege", Enum.Material.SmoothPlastic)
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("RebordSiege", Vector3.new(0.25, 0.5, 1.8), CFrame.new(cote * 1.1, 0.75, 1.25), Color3.new(1, 1, 1), "Siege", Enum.Material.SmoothPlastic)
+	end
+
+	-- Levier de drift rouge (côté droit) avec sa poignée noire
+	piece("LevierDrift", Vector3.new(0.14, 0.14, 1.9), CFrame.new(1.45, 0.85, 1.35) * CFrame.Angles(math.rad(-20), 0, 0), Color3.fromRGB(220, 30, 35), nil, Enum.Material.SmoothPlastic)
+	piece("PoigneeLevier", Vector3.new(0.22, 0.22, 0.55), CFrame.new(1.45, 1.15, 0.45) * CFrame.Angles(math.rad(-20), 0, 0), NOIR_MAT, nil, Enum.Material.Fabric)
+
+	-- Néons sous le kart (underglow) + la lumière qu'ils projettent sur le sol
+	for _, cote in ipairs({ -1, 1 }) do
+		piece("Neon", Vector3.new(0.25, 0.12, 5.2), CFrame.new(cote * 1.6, -0.4, -0.1), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
+		piece("Neon", Vector3.new(3, 0.12, 0.25), CFrame.new(0, -0.4, cote * 2.6), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
+	end
+	local attLumiere = Instance.new("Attachment")
+	attLumiere.Name = "SousLeKart"
+	attLumiere.Position = Vector3.new(0, -0.7, 0)
+	attLumiere.Parent = chassis
+	local lumiereNeon = Instance.new("PointLight")
+	lumiereNeon.Name = "LumiereNeon"
+	lumiereNeon.Range = 11
+	lumiereNeon.Brightness = 4
+	lumiereNeon.Shadows = false
+	lumiereNeon.Parent = attLumiere
+
+	-- Plaque numéro à l'avant + autocollant et numéro sur les côtés
+	local plaque = piece("PlaqueNumero", Vector3.new(1.1, 0.45, 0.08), CFrame.new(0, 0.25, -3.62), Color3.fromRGB(245, 245, 245))
 	local sgPlaque = Instance.new("SurfaceGui")
 	sgPlaque.Face = Enum.NormalId.Front
 	sgPlaque.LightInfluence = 0.5
@@ -219,49 +257,8 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	textePlaque.Font = Enum.Font.GothamBlack
 	textePlaque.TextColor3 = Color3.fromRGB(20, 20, 24)
 	textePlaque.Parent = sgPlaque
-	-- Petit moteur électrique entre les roues arrière
-	piece("Moteur", Vector3.new(1.6, 0.6, 1), CFrame.new(0, 0.1, 2.65), Color3.fromRGB(45, 45, 52), nil, Enum.Material.Metal)
-	piece("BandeMoteur", Vector3.new(1.62, 0.12, 1.02), CFrame.new(0, 0.3, 2.65), Color3.fromRGB(250, 200, 20))
-	piece("Colonne", Vector3.new(0.3, 0.3, 2), CFrame.new(0, 1.1, -1.6) * CFrame.Angles(math.rad(35), 0, 0), GRIS)
-	piece("Volant", Vector3.new(0.2, 1.7, 1.7), CFrame.new(0, 1.7, -0.9) * CFrame.Angles(math.rad(-35), math.rad(90), 0), OR, nil, Enum.Material.Metal, CYL)
-	-- Petit écran sur la colonne de direction + gants du pilote posés sur le volant
-	piece("EcranVolant", Vector3.new(0.7, 0.45, 0.1), CFrame.new(0, 1.3, -1.3) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(60, 170, 255), nil, Enum.Material.Neon)
-	piece("Gant", Vector3.new(0.45, 0.45, 0.55), CFrame.new(-0.72, 1.85, -0.85) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(30, 30, 30), nil, Enum.Material.Fabric)
-	piece("Gant", Vector3.new(0.45, 0.45, 0.55), CFrame.new(0.72, 1.85, -0.85) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(30, 30, 30), nil, Enum.Material.Fabric)
-
-	-- Néons sous le kart (underglow) + la lumière qu'ils projettent sur le sol
 	for _, cote in ipairs({ -1, 1 }) do
-		piece("Neon", Vector3.new(0.25, 0.12, 5.4), CFrame.new(cote * 1.8, -0.43, 0), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
-		piece("Neon", Vector3.new(3.4, 0.12, 0.25), CFrame.new(0, -0.43, cote * 2.75), Color3.new(1, 1, 1), "Neon", Enum.Material.Neon)
-	end
-	local attLumiere = Instance.new("Attachment")
-	attLumiere.Name = "SousLeKart"
-	attLumiere.Position = Vector3.new(0, -0.7, 0)
-	attLumiere.Parent = chassis
-	local lumiereNeon = Instance.new("PointLight")
-	lumiereNeon.Name = "LumiereNeon"
-	lumiereNeon.Range = 11
-	lumiereNeon.Brightness = 4
-	lumiereNeon.Shadows = false
-	lumiereNeon.Parent = attLumiere
-
-	-- Siège baquet : dossier + renforts sur les côtés
-	piece("Dossier", Vector3.new(2.4, 2.2, 0.4), CFrame.new(0, 1.6, 2.15) * CFrame.Angles(math.rad(-10), 0, 0), NOIR, "Siege", Enum.Material.Fabric)
-	for _, cote in ipairs({ -1, 1 }) do
-		piece("RenfortSiege", Vector3.new(0.35, 1.1, 2), CFrame.new(cote * 1.3, 1.05, 1.15), NOIR, "Siege", Enum.Material.Fabric)
-	end
-
-	-- Bandes de course sur le carénage avant et sur les pontons
-	for _, x in ipairs({ -0.6, 0.6 }) do
-		piece("Bande", Vector3.new(0.45, 0.05, 1.6), CFrame.new(0, 0.45, -2.35) * CFrame.Angles(math.rad(-12), 0, 0) * CFrame.new(x, 0.26, 0), Color3.new(1, 1, 1), "Bandes")
-	end
-	for _, cote in ipairs({ -1, 1 }) do
-		piece("Bande", Vector3.new(0.97, 0.05, 2.62), CFrame.new(cote * 2.3, 0.51, 0.2), Color3.new(1, 1, 1), "Bandes")
-	end
-
-	-- Flancs avec autocollant + numéro
-	for _, cote in ipairs({ -1, 1 }) do
-		local flanc = piece("Flanc", Vector3.new(0.05, 0.55, 2.3), CFrame.new(cote * 2.8, 0.15, 0.2), Color3.new(1, 1, 1), nil)
+		local flanc = piece("Flanc", Vector3.new(0.05, 0.4, 1.8), CFrame.new(cote * 1.88, 0.3, -0.9), Color3.new(1, 1, 1), nil)
 		flanc.Transparency = 1
 		local sg = Instance.new("SurfaceGui")
 		sg.Face = cote < 0 and Enum.NormalId.Left or Enum.NormalId.Right
@@ -310,8 +307,8 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	-- Le siège (on s'assoit dedans)
 	local siege = Instance.new("Seat")
 	siege.Name = "Siege"
-	siege.Size = Vector3.new(2.4, 0.6, 2.2)
-	siege.CFrame = chassis.CFrame * CFrame.new(0, 0.7, 1)
+	siege.Size = Vector3.new(2, 0.45, 1.9)
+	siege.CFrame = chassis.CFrame * CFrame.new(0, 0.55, 1.2)
 	siege.Material = Enum.Material.Fabric
 	siege.CanCollide = false
 	siege.Massless = true

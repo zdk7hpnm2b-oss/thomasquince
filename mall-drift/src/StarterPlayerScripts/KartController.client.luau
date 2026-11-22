@@ -1325,3 +1325,44 @@ task.spawn(function()
 		end
 	end
 end)
+
+---------------------------------------------------------------------
+-- LES MAINS SUR LE VOLANT : chaque pilote (toi et les autres joueurs)
+-- tend les bras vers le volant de son kart (personnages R15)
+---------------------------------------------------------------------
+local POSE_EPAULE_DROITE = CFrame.Angles(math.rad(72), 0, math.rad(-12))
+local POSE_EPAULE_GAUCHE = CFrame.Angles(math.rad(72), 0, math.rad(12))
+local POSE_COUDE = CFrame.Angles(math.rad(22), 0, 0)
+
+RunService.Stepped:Connect(function()
+	local dossier = workspace:FindFirstChild("KartsJoueurs")
+	if not dossier then
+		return
+	end
+	for _, k in ipairs(dossier:GetChildren()) do
+		local siege = k:FindFirstChild("Siege") :: Seat?
+		local pilote = siege and siege.Occupant and siege.Occupant.Parent
+		if pilote then
+			local brasD = pilote:FindFirstChild("RightUpperArm")
+			local brasG = pilote:FindFirstChild("LeftUpperArm")
+			local avantD = pilote:FindFirstChild("RightLowerArm")
+			local avantG = pilote:FindFirstChild("LeftLowerArm")
+			local epauleD = brasD and brasD:FindFirstChild("RightShoulder") :: Motor6D?
+			local epauleG = brasG and brasG:FindFirstChild("LeftShoulder") :: Motor6D?
+			local coudeD = avantD and avantD:FindFirstChild("RightElbow") :: Motor6D?
+			local coudeG = avantG and avantG:FindFirstChild("LeftElbow") :: Motor6D?
+			if epauleD then
+				epauleD.Transform = POSE_EPAULE_DROITE
+			end
+			if epauleG then
+				epauleG.Transform = POSE_EPAULE_GAUCHE
+			end
+			if coudeD then
+				coudeD.Transform = POSE_COUDE
+			end
+			if coudeG then
+				coudeG.Transform = POSE_COUDE
+			end
+		end
+	end
+end)

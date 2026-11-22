@@ -140,12 +140,12 @@ Config.Autocollants = {
 -- Le kart d'un nouveau joueur
 Config.PersoParDefaut = {
 	Kart = "Basique",
-	Carrosserie = "Bleu",
+	Carrosserie = "Noir",
 	Finition = "Brillant",
 	Jantes = "Blanc",
-	Siege = "Noir",
+	Siege = "Bleu",
 	Bandes = "Blanc",
-	BandesActives = true,
+	BandesActives = false,
 	Autocollant = "Étoile",
 	Numero = 7,
 	Neon = "Bleu",
