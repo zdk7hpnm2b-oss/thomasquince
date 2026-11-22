@@ -10,9 +10,12 @@
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local joueur = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local controles = require(joueur:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
 local Partie = remotes:WaitForChild("Partie", 30)
 if not Partie then
@@ -129,6 +132,79 @@ local function montrerCarte(petit: string, grand: string, sous: string, couleur:
 end
 
 ---------------------------------------------------------------------
+-- LA PAGE D'ATTENTE (avant chaque manche) : on ne roule pas, on attend
+-- le tirage au sort pendant que la caméra survole le mall
+---------------------------------------------------------------------
+local page = Instance.new("Frame")
+page.Name = "PageAttente"
+page.Size = UDim2.fromScale(1, 1)
+page.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+page.BackgroundTransparency = 0.35
+page.Visible = false
+page.ZIndex = 0
+page.Parent = gui
+local degradePage = Instance.new("UIGradient")
+degradePage.Rotation = 90
+degradePage.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 0.1) })
+degradePage.Parent = page
+local titrePage = texte(page, UDim2.new(0.8, 0, 0, 70), UDim2.new(0.1, 0, 0.12, 0), Color3.fromRGB(255, 205, 70))
+titrePage.Text = "GOLDEN MALL DRIFT"
+local sousTitrePage = texte(page, UDim2.new(0.8, 0, 0, 40), UDim2.new(0.1, 0, 0.12, 78), Color3.new(1, 1, 1))
+sousTitrePage.Text = "🚓 POLICE  vs  FUGITIFS 🏃"
+local comptePage = texte(page, UDim2.new(0.6, 0, 0, 46), UDim2.new(0.2, 0, 0.72, 0), Color3.fromRGB(255, 215, 80))
+local listePage = texte(page, UDim2.new(0.7, 0, 0, 30), UDim2.new(0.15, 0, 0.8, 0), Color3.fromRGB(220, 220, 230), Enum.Font.GothamBold)
+local aidePage = texte(page, UDim2.new(0.7, 0, 0, 24), UDim2.new(0.15, 0, 0.86, 0), Color3.fromRGB(180, 180, 190), Enum.Font.GothamMedium)
+aidePage.Text = "Le tirage au sort décide de ton équipe. Les fugitifs partent au sud, la police au nord !"
+
+local enSalle = false
+local angleSalle = 0
+local nombreBots = 0
+
+local function majListe()
+	local noms = {}
+	for _, j in ipairs(Players:GetPlayers()) do
+		table.insert(noms, j.DisplayName)
+	end
+	listePage.Text = "Joueurs : " .. table.concat(noms, ", ") .. (if nombreBots > 0 then ("  (+%d bot de test 🤖)"):format(nombreBots) else "")
+end
+
+local function surSalle()
+	local doitEtreEnSalle = joueur:GetAttribute("EnSalle") == true and joueur:GetAttribute("IntroFinie") == true
+	if doitEtreEnSalle == enSalle then
+		return
+	end
+	enSalle = doitEtreEnSalle
+	page.Visible = enSalle
+	if enSalle then
+		controles:Disable()
+		camera.CameraType = Enum.CameraType.Scriptable
+		majListe()
+	else
+		controles:Enable()
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		if not (h and h.SeatPart) then
+			camera.CameraType = Enum.CameraType.Custom -- (au volant, c'est la caméra du kart qui commande)
+		end
+	end
+end
+joueur:GetAttributeChangedSignal("EnSalle"):Connect(surSalle)
+joueur:GetAttributeChangedSignal("IntroFinie"):Connect(surSalle)
+Players.PlayerAdded:Connect(majListe)
+Players.PlayerRemoving:Connect(function()
+	task.defer(majListe)
+end)
+
+-- La caméra survole l'atrium du mall pendant l'attente
+RunService.RenderStepped:Connect(function(dt)
+	if not enSalle then
+		return
+	end
+	angleSalle += dt * 0.15
+	local pos = Vector3.new(math.cos(angleSalle) * 24, 34, math.sin(angleSalle) * 95)
+	camera.CFrame = CFrame.lookAt(pos, Vector3.new(0, 8, 0))
+end)
+
+---------------------------------------------------------------------
 -- Messages du serveur
 ---------------------------------------------------------------------
 Partie.OnClientEvent:Connect(function(info)
@@ -140,6 +216,9 @@ Partie.OnClientEvent:Connect(function(info)
 			texteBarre.Text = ("🎮 MODE LIBRE · En attente de joueurs (%d/%d) pour Police vs Fugitifs"):format(info.joueurs or 1, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
+			nombreBots = info.bots or 0
+			comptePage.Text = ("🎲 Tirage au sort dans %d s"):format(info.temps or 0)
+			majListe()
 			texteBarre.Text = ("🚓 POLICE vs FUGITIFS 🏃 · prochaine manche dans %d s"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)

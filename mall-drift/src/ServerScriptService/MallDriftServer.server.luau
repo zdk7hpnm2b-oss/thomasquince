@@ -1925,15 +1925,15 @@ end
 -- F / « SORTIR MON KART » : le kart apparaît sur la ligne de départ dans le mall,
 -- et le joueur est assis dedans automatiquement
 -- Les places de départ :
---   • joueurs libres et FUGITIFS : la grille de départ (24 places, 3 rangées de 8)
---   • POLICIERS (mode en ligne) : la passerelle du 1er étage
+--   • joueurs libres et FUGITIFS : la grille de départ, au SUD (24 places, face au nord)
+--   • POLICIERS (mode en ligne) : au NORD, à l'opposé (18 places, face au sud)
 local function placesDepart(role: string?): { CFrame }
 	local liste = {}
 	if role == "Police" then
-		for _, z in ipairs({ -5, 5 }) do
-			for _, x in ipairs({ -24, -12, 0, 12, 24 }) do
-				local pos = Vector3.new(x, SOL + ETAGE + 0.6, z)
-				table.insert(liste, CFrame.lookAt(pos, pos + Vector3.new(if x < 0 then -1 else 1, 0, 0)))
+		for _, z in ipairs({ -129, -136, -143 }) do
+			for _, x in ipairs({ -5, 5, -15, 15, -25, 25 }) do
+				local pos = Vector3.new(x, SOL + 0.6, z)
+				table.insert(liste, CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))) -- face au sud
 			end
 		end
 	else
@@ -2022,6 +2022,15 @@ local function placerKart(joueur: Player, avecDepart: boolean): Model?
 		etiquette.Parent = repere
 	end
 	asseoir(joueur, kart)
+	-- Sécurité : on redonne le contrôle du kart au joueur (sinon il ne pourrait pas rouler)
+	task.delay(1, function()
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		if kart.Parent and kart.PrimaryPart and h and h.SeatPart and h.SeatPart:IsDescendantOf(kart) then
+			pcall(function()
+				kart.PrimaryPart:SetNetworkOwner(joueur)
+			end)
+		end
+	end)
 	return kart
 end
 
@@ -2035,8 +2044,8 @@ local function sortirKart(joueur: Player)
 	if ancien and humanoide and humanoide.SeatPart and humanoide.SeatPart:IsDescendantOf(ancien) then
 		return -- déjà au volant
 	end
-	if workspace:GetAttribute("MancheEnCours") and joueur:GetAttribute("Role") == nil then
-		return -- une manche est en cours : on attend la suivante (au garage)
+	if joueur:GetAttribute("EnSalle") or (workspace:GetAttribute("MancheEnCours") and joueur:GetAttribute("Role") == nil) then
+		return -- page d'attente, ou manche en cours : on attend la suivante
 	end
 	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
 	placerKart(joueur, joueur:GetAttribute("Role") == nil)

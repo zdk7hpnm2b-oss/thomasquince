@@ -185,9 +185,9 @@ Config.Securite = {
 ---------------------------------------------------------------------
 Config.Partie = {
 	JoueursMin = 2, -- joueurs nécessaires pour lancer une manche
-	Intermission = 20, -- secondes d'attente entre deux manches
+	Intermission = 12, -- secondes sur la page d'attente avant le tirage au sort
 	DureeManche = 300, -- durée d'une manche (5 minutes)
-	AvanceFugitifs = 8, -- secondes d'avance des fugitifs sur la police
+	AvanceFugitifs = 8, -- secondes d'avance des fugitifs (la police reste bloquée après le vert)
 	DistanceArrestation = 7, -- un policier aussi près d'un fugitif l'arrête
 	XPVictoire = 300, -- XP pour chaque joueur de l'équipe gagnante
 	XPParticipation = 50, -- XP pour tous les participants

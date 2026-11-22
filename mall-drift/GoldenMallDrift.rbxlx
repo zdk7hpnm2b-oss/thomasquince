@@ -538,9 +538,9 @@ Config.Securite = {
 ---------------------------------------------------------------------
 Config.Partie = {
 	JoueursMin = 2, -- joueurs nécessaires pour lancer une manche
-	Intermission = 20, -- secondes d'attente entre deux manches
+	Intermission = 12, -- secondes sur la page d'attente avant le tirage au sort
 	DureeManche = 300, -- durée d'une manche (5 minutes)
-	AvanceFugitifs = 8, -- secondes d'avance des fugitifs sur la police
+	AvanceFugitifs = 8, -- secondes d'avance des fugitifs (la police reste bloquée après le vert)
 	DistanceArrestation = 7, -- un policier aussi près d'un fugitif l'arrête
 	XPVictoire = 300, -- XP pour chaque joueur de l'équipe gagnante
 	XPParticipation = 50, -- XP pour tous les participants
@@ -2570,15 +2570,15 @@ end
 -- F / « SORTIR MON KART » : le kart apparaît sur la ligne de départ dans le mall,
 -- et le joueur est assis dedans automatiquement
 -- Les places de départ :
---   • joueurs libres et FUGITIFS : la grille de départ (24 places, 3 rangées de 8)
---   • POLICIERS (mode en ligne) : la passerelle du 1er étage
+--   • joueurs libres et FUGITIFS : la grille de départ, au SUD (24 places, face au nord)
+--   • POLICIERS (mode en ligne) : au NORD, à l'opposé (18 places, face au sud)
 local function placesDepart(role: string?): { CFrame }
 	local liste = {}
 	if role == "Police" then
-		for _, z in ipairs({ -5, 5 }) do
-			for _, x in ipairs({ -24, -12, 0, 12, 24 }) do
-				local pos = Vector3.new(x, SOL + ETAGE + 0.6, z)
-				table.insert(liste, CFrame.lookAt(pos, pos + Vector3.new(if x < 0 then -1 else 1, 0, 0)))
+		for _, z in ipairs({ -129, -136, -143 }) do
+			for _, x in ipairs({ -5, 5, -15, 15, -25, 25 }) do
+				local pos = Vector3.new(x, SOL + 0.6, z)
+				table.insert(liste, CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))) -- face au sud
 			end
 		end
 	else
@@ -2667,6 +2667,15 @@ local function placerKart(joueur: Player, avecDepart: boolean): Model?
 		etiquette.Parent = repere
 	end
 	asseoir(joueur, kart)
+	-- Sécurité : on redonne le contrôle du kart au joueur (sinon il ne pourrait pas rouler)
+	task.delay(1, function()
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		if kart.Parent and kart.PrimaryPart and h and h.SeatPart and h.SeatPart:IsDescendantOf(kart) then
+			pcall(function()
+				kart.PrimaryPart:SetNetworkOwner(joueur)
+			end)
+		end
+	end)
 	return kart
 end
 
@@ -2680,8 +2689,8 @@ local function sortirKart(joueur: Player)
 	if ancien and humanoide and humanoide.SeatPart and humanoide.SeatPart:IsDescendantOf(ancien) then
 		return -- déjà au volant
 	end
-	if workspace:GetAttribute("MancheEnCours") and joueur:GetAttribute("Role") == nil then
-		return -- une manche est en cours : on attend la suivante (au garage)
+	if joueur:GetAttribute("EnSalle") or (workspace:GetAttribute("MancheEnCours") and joueur:GetAttribute("Role") == nil) then
+		return -- page d'attente, ou manche en cours : on attend la suivante
 	end
 	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
 	placerKart(joueur, joueur:GetAttribute("Role") == nil)
@@ -2819,10 +2828,12 @@ print("[Golden Mall] Le Golden Mall de Dubaï est prêt ! Garage VIP ouvert.")
 	LE MODE EN LIGNE « POLICE CONTRE FUGITIFS »
 	  1. ATTENTE : il faut au moins Config.Partie.JoueursMin participants
 	     (s'il manque du monde, des BOTS DE TEST complètent : Config.Partie.BotsTest)
-	  2. INTERMISSION : compte à rebours avant la manche
+	  2. PAGE D'ATTENTE : les joueurs ne roulent pas, ils attendent sur une page
+	     (caméra qui survole le mall) avec un compte à rebours
 	  3. TIRAGE AU SORT : la moitié des participants devient POLICE, l'autre FUGITIFS
-	  4. MANCHE : l'entrée du mall se ferme. Les fugitifs partent de la ligne de
-	     départ ; la police part du 1er étage quelques secondes plus tard.
+	  4. MANCHE : l'entrée du mall se ferme. Les fugitifs partent au SUD, la police
+	     au NORD (à l'opposé). Feux 3, 2, 1, PARTEZ pour tout le monde, mais la
+	     police reste bloquée quelques secondes de plus (l'avance des fugitifs).
 	     Un policier qui colle un fugitif l'ARRÊTE.
 	  5. FIN : la police gagne si tous les fugitifs sont arrêtés, sinon les
 	     fugitifs gagnent à la fin du temps. XP pour tout le monde, bonus aux gagnants.
@@ -3170,6 +3181,17 @@ local function envoyerATous(info)
 	Partie:FireAllClients(info)
 end
 
+-- La page d'attente : le joueur ne roule pas (le script PartieUI affiche la page)
+local function mettreEnSalle(joueur: Player, enSalle: boolean)
+	if (joueur:GetAttribute("EnSalle") == true) == enSalle then
+		return
+	end
+	joueur:SetAttribute("EnSalle", enSalle)
+	if enSalle then
+		RetirerKart:Invoke(joueur)
+	end
+end
+
 local function remettreAZero(joueur: Player)
 	joueur:SetAttribute("Role", nil)
 	joueur:SetAttribute("Arrete", nil)
@@ -3180,13 +3202,12 @@ end
 local placeBot = 0
 local function departBot(role: string): CFrame
 	placeBot += 1
-	if role == "Police" then
-		local x = ({ -24, 24, -12, 12 })[(placeBot - 1) % 4 + 1]
-		local pos = Vector3.new(x, HAUTEUR_ETAGE + 0.6, 0)
-		return CFrame.lookAt(pos, pos + Vector3.new(if x < 0 then -1 else 1, 0, 0))
-	end
 	local x = ({ -45, 45, -55, 55 })[(placeBot - 1) % 4 + 1]
-	local pos = Vector3.new(x, SOL + 0.6, 135)
+	if role == "Police" then
+		local pos = Vector3.new(x, SOL + 0.6, -135) -- au nord, face au sud
+		return CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+	end
+	local pos = Vector3.new(x, SOL + 0.6, 135) -- au sud, face au nord
 	return CFrame.lookAt(pos, pos + Vector3.new(0, 0, -1))
 end
 
@@ -3218,34 +3239,42 @@ local function jouerManche(participants: { Participant })
 	end
 	task.wait(4) -- le temps de l'animation du tirage
 
-	-- 2) Départ : l'entrée se ferme, les fugitifs partent, puis la police
+	-- 2) Départ : l'entrée se ferme ; fugitifs au sud, police au nord.
+	--    Tout le monde a les feux en même temps (~7 s : survol + 3, 2, 1, PARTEZ),
+	--    mais la police reste bloquée AVANCE secondes de plus.
 	workspace:SetAttribute("MancheEnCours", true)
 	fermerEntree(true)
+	local DUREE_DEPART = 7.5
+	local debloquePolice = workspace:GetServerTimeNow() + DUREE_DEPART + AVANCE
 	local function lancer(p: Participant)
 		if p.joueur and p.joueur.Parent then
+			mettreEnSalle(p.joueur, false)
 			RetirerKart:Invoke(p.joueur)
-			PlacerKart:Invoke(p.joueur, true)
+			local kart = PlacerKart:Invoke(p.joueur, true)
+			if kart and p.role == "Police" then
+				kart:SetAttribute("BloqueJusqua", debloquePolice)
+			end
 		elseif not p.joueur then
 			p.bot = creerBot(p.nom, p.role :: string, departBot(p.role :: string))
 			if p.bot then
-				task.delay(if p.role == "Police" then 3 else 7, function() -- (le temps des feux)
+				task.delay(if p.role == "Police" then DUREE_DEPART + AVANCE else DUREE_DEPART, function()
 					piloterBot(p, participants)
 				end)
 			end
 		end
 	end
-	for _, p in ipairs(fugitifs) do
+	for _, p in ipairs(participants) do
 		lancer(p)
 	end
-	envoyerATous({ type = "info", texte = ("🏃 Les fugitifs ont %d secondes d'avance !"):format(AVANCE) })
-	task.wait(AVANCE)
-	for _, p in ipairs(police) do
-		lancer(p)
-	end
-	envoyerATous({ type = "info", texte = "🚓 La police est lancée !" })
+	task.delay(DUREE_DEPART, function()
+		envoyerATous({ type = "info", texte = ("🏃 Les fugitifs ont %d secondes d'avance !"):format(AVANCE) })
+	end)
+	task.delay(DUREE_DEPART + AVANCE, function()
+		envoyerATous({ type = "info", texte = "🚓 La police est lancée !" })
+	end)
 
 	-- 3) La manche
-	local fin = os.clock() + DUREE + 7
+	local fin = os.clock() + DUREE + DUREE_DEPART
 	local gagnant = nil
 	local prochainEnvoi = 0
 	while not gagnant do
@@ -3328,6 +3357,7 @@ local function jouerManche(participants: { Participant })
 			local j = p.joueur
 			RetirerKart:Invoke(j)
 			remettreAZero(j)
+			j:SetAttribute("EnSalle", nil)
 			task.spawn(function()
 				j:LoadCharacter() -- réapparition au garage
 			end)
@@ -3367,22 +3397,30 @@ task.spawn(function()
 			envoyerATous({ type = "etat", etat = "attente", joueurs = #Players:GetPlayers(), min = JOUEURS_MIN })
 			task.wait(2)
 		end
-		-- Intermission (on peut rouler librement en attendant)
+		-- Page d'attente : plus personne ne roule, compte à rebours avant le tirage
 		local annule = false
 		for t = INTERMISSION, 1, -1 do
 			if not assezDeMonde() then
 				annule = true
 				break
 			end
+			for _, j in ipairs(Players:GetPlayers()) do
+				mettreEnSalle(j, true) -- (y compris ceux qui viennent d'arriver)
+			end
 			envoyerATous({ type = "etat", etat = "intermission", temps = t, bots = botsNecessaires() })
 			task.wait(1)
+		end
+		if annule then
+			for _, j in ipairs(Players:GetPlayers()) do
+				mettreEnSalle(j, false) -- pas assez de monde : retour au mode libre
+			end
 		end
 		if not annule then
 			local participants: { Participant } = {}
 			for _, j in ipairs(Players:GetPlayers()) do
 				if j.Character then
 					table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
-					RetirerKart:Invoke(j) -- tout le monde quitte son kart libre avant le tirage
+					mettreEnSalle(j, true)
 				end
 			end
 			for k = 1, botsNecessaires() do
@@ -3397,6 +3435,7 @@ task.spawn(function()
 					dossierBots:ClearAllChildren()
 					for _, j in ipairs(Players:GetPlayers()) do
 						remettreAZero(j)
+						mettreEnSalle(j, false)
 					end
 				end
 			end
@@ -5726,6 +5765,7 @@ local SURVOLS = {
 type Depart = { debut: number, etape: number, survol: { [string]: any }, finSurvol: CFrame? }
 local depart: Depart? = nil
 local departsJoues: { [Instance]: boolean } = {}
+local dernierRestePolice = -1
 
 -- Les feux à l'écran (3 grosses lumières en haut au centre)
 local blocFeux = Instance.new("Frame")
@@ -6009,8 +6049,8 @@ margeBouton.PaddingBottom = UDim.new(0, 10)
 margeBouton.Parent = boutonConduire
 
 local function demanderKart()
-	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") then
-		return -- pas pendant l'intro ni avec le menu du garage ouvert
+	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") or joueur:GetAttribute("EnSalle") then
+		return -- pas pendant l'intro, le menu du garage ou la page d'attente
 	end
 	boutonConduire.Text = "⏳ ..."
 	remotes.SortirKart:FireServer()
@@ -6040,7 +6080,7 @@ activerToucheConduire(true)
 task.spawn(function()
 	while true do
 		task.wait(1)
-		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") then
+		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") and not joueur:GetAttribute("EnSalle") then
 			controles:Enable()
 			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
 				camera.CameraType = Enum.CameraType.Custom
@@ -6128,11 +6168,13 @@ local function entrerDansKart(siege: Seat)
 
 	hud.Visible = true
 	activerToucheConduire(false)
+	controles:Enable() -- on s'assure que les commandes marchent au volant
 	demarrerCamera()
 	if modele:GetAttribute("DepartHall") and not departsJoues[modele] then
 		departsJoues[modele] = true
 		local survol = SURVOLS[math.random(1, #SURVOLS)]
 		depart = { debut = os.clock(), etape = 0, survol = survol, finSurvol = nil }
+		dernierRestePolice = -1
 		hud.Visible = false
 		afficherBandes(true)
 		allumerFeux(0, false)
@@ -6253,6 +6295,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 			allumerFeux(3, true)
 			afficherChiffre("PARTEZ ! 🏁", VERT_FEU)
 			hud.Visible = true
+			controles:Enable()
 			local fin = depart
 			task.delay(1.2, function()
 				if depart == fin then
@@ -6271,6 +6314,28 @@ RunService.Heartbeat:Connect(function(dt: number)
 			gaz = 0
 			volant = 0
 			driftAppuye = false
+		end
+	end
+	-- Mode en ligne : la police reste bloquée pendant l'avance des fugitifs
+	local bloqueJusqua = kart.modele:GetAttribute("BloqueJusqua")
+	if bloqueJusqua and not (depart and depart.etape < 4) then
+		local reste = bloqueJusqua - workspace:GetServerTimeNow()
+		if reste > 0 then
+			gaz = 0
+			volant = 0
+			driftAppuye = false
+			local secondes = math.ceil(reste)
+			if secondes ~= dernierRestePolice then
+				dernierRestePolice = secondes
+				afficherChiffre(("🚓 DÉPART DANS %d"):format(secondes), Color3.fromRGB(90, 150, 255))
+			end
+		elseif dernierRestePolice ~= 0 then
+			dernierRestePolice = 0
+			afficherChiffre("🚓 GO ! ATTRAPE-LES !", Color3.fromRGB(90, 150, 255))
+			task.delay(1.2, function()
+				TweenService:Create(chiffreDepart, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+				TweenService:Create(contourChiffre, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+			end)
 		end
 	end
 
@@ -6563,9 +6628,12 @@ end)
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local joueur = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local controles = require(joueur:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls()
 local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
 local Partie = remotes:WaitForChild("Partie", 30)
 if not Partie then
@@ -6682,6 +6750,79 @@ local function montrerCarte(petit: string, grand: string, sous: string, couleur:
 end
 
 ---------------------------------------------------------------------
+-- LA PAGE D'ATTENTE (avant chaque manche) : on ne roule pas, on attend
+-- le tirage au sort pendant que la caméra survole le mall
+---------------------------------------------------------------------
+local page = Instance.new("Frame")
+page.Name = "PageAttente"
+page.Size = UDim2.fromScale(1, 1)
+page.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+page.BackgroundTransparency = 0.35
+page.Visible = false
+page.ZIndex = 0
+page.Parent = gui
+local degradePage = Instance.new("UIGradient")
+degradePage.Rotation = 90
+degradePage.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 0.1) })
+degradePage.Parent = page
+local titrePage = texte(page, UDim2.new(0.8, 0, 0, 70), UDim2.new(0.1, 0, 0.12, 0), Color3.fromRGB(255, 205, 70))
+titrePage.Text = "GOLDEN MALL DRIFT"
+local sousTitrePage = texte(page, UDim2.new(0.8, 0, 0, 40), UDim2.new(0.1, 0, 0.12, 78), Color3.new(1, 1, 1))
+sousTitrePage.Text = "🚓 POLICE  vs  FUGITIFS 🏃"
+local comptePage = texte(page, UDim2.new(0.6, 0, 0, 46), UDim2.new(0.2, 0, 0.72, 0), Color3.fromRGB(255, 215, 80))
+local listePage = texte(page, UDim2.new(0.7, 0, 0, 30), UDim2.new(0.15, 0, 0.8, 0), Color3.fromRGB(220, 220, 230), Enum.Font.GothamBold)
+local aidePage = texte(page, UDim2.new(0.7, 0, 0, 24), UDim2.new(0.15, 0, 0.86, 0), Color3.fromRGB(180, 180, 190), Enum.Font.GothamMedium)
+aidePage.Text = "Le tirage au sort décide de ton équipe. Les fugitifs partent au sud, la police au nord !"
+
+local enSalle = false
+local angleSalle = 0
+local nombreBots = 0
+
+local function majListe()
+	local noms = {}
+	for _, j in ipairs(Players:GetPlayers()) do
+		table.insert(noms, j.DisplayName)
+	end
+	listePage.Text = "Joueurs : " .. table.concat(noms, ", ") .. (if nombreBots > 0 then ("  (+%d bot de test 🤖)"):format(nombreBots) else "")
+end
+
+local function surSalle()
+	local doitEtreEnSalle = joueur:GetAttribute("EnSalle") == true and joueur:GetAttribute("IntroFinie") == true
+	if doitEtreEnSalle == enSalle then
+		return
+	end
+	enSalle = doitEtreEnSalle
+	page.Visible = enSalle
+	if enSalle then
+		controles:Disable()
+		camera.CameraType = Enum.CameraType.Scriptable
+		majListe()
+	else
+		controles:Enable()
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		if not (h and h.SeatPart) then
+			camera.CameraType = Enum.CameraType.Custom -- (au volant, c'est la caméra du kart qui commande)
+		end
+	end
+end
+joueur:GetAttributeChangedSignal("EnSalle"):Connect(surSalle)
+joueur:GetAttributeChangedSignal("IntroFinie"):Connect(surSalle)
+Players.PlayerAdded:Connect(majListe)
+Players.PlayerRemoving:Connect(function()
+	task.defer(majListe)
+end)
+
+-- La caméra survole l'atrium du mall pendant l'attente
+RunService.RenderStepped:Connect(function(dt)
+	if not enSalle then
+		return
+	end
+	angleSalle += dt * 0.15
+	local pos = Vector3.new(math.cos(angleSalle) * 24, 34, math.sin(angleSalle) * 95)
+	camera.CFrame = CFrame.lookAt(pos, Vector3.new(0, 8, 0))
+end)
+
+---------------------------------------------------------------------
 -- Messages du serveur
 ---------------------------------------------------------------------
 Partie.OnClientEvent:Connect(function(info)
@@ -6693,6 +6834,9 @@ Partie.OnClientEvent:Connect(function(info)
 			texteBarre.Text = ("🎮 MODE LIBRE · En attente de joueurs (%d/%d) pour Police vs Fugitifs"):format(info.joueurs or 1, info.min or 2)
 			texteBarre.TextColor3 = Color3.fromRGB(220, 220, 230)
 		elseif info.etat == "intermission" then
+			nombreBots = info.bots or 0
+			comptePage.Text = ("🎲 Tirage au sort dans %d s"):format(info.temps or 0)
+			majListe()
 			texteBarre.Text = ("🚓 POLICE vs FUGITIFS 🏃 · prochaine manche dans %d s"):format(info.temps or 0)
 				.. (if (info.bots or 0) > 0 then " · 🤖 + bot de test" else "")
 			texteBarre.TextColor3 = Color3.fromRGB(255, 215, 80)

@@ -5,10 +5,12 @@
 	LE MODE EN LIGNE « POLICE CONTRE FUGITIFS »
 	  1. ATTENTE : il faut au moins Config.Partie.JoueursMin participants
 	     (s'il manque du monde, des BOTS DE TEST complètent : Config.Partie.BotsTest)
-	  2. INTERMISSION : compte à rebours avant la manche
+	  2. PAGE D'ATTENTE : les joueurs ne roulent pas, ils attendent sur une page
+	     (caméra qui survole le mall) avec un compte à rebours
 	  3. TIRAGE AU SORT : la moitié des participants devient POLICE, l'autre FUGITIFS
-	  4. MANCHE : l'entrée du mall se ferme. Les fugitifs partent de la ligne de
-	     départ ; la police part du 1er étage quelques secondes plus tard.
+	  4. MANCHE : l'entrée du mall se ferme. Les fugitifs partent au SUD, la police
+	     au NORD (à l'opposé). Feux 3, 2, 1, PARTEZ pour tout le monde, mais la
+	     police reste bloquée quelques secondes de plus (l'avance des fugitifs).
 	     Un policier qui colle un fugitif l'ARRÊTE.
 	  5. FIN : la police gagne si tous les fugitifs sont arrêtés, sinon les
 	     fugitifs gagnent à la fin du temps. XP pour tout le monde, bonus aux gagnants.
@@ -356,6 +358,17 @@ local function envoyerATous(info)
 	Partie:FireAllClients(info)
 end
 
+-- La page d'attente : le joueur ne roule pas (le script PartieUI affiche la page)
+local function mettreEnSalle(joueur: Player, enSalle: boolean)
+	if (joueur:GetAttribute("EnSalle") == true) == enSalle then
+		return
+	end
+	joueur:SetAttribute("EnSalle", enSalle)
+	if enSalle then
+		RetirerKart:Invoke(joueur)
+	end
+end
+
 local function remettreAZero(joueur: Player)
 	joueur:SetAttribute("Role", nil)
 	joueur:SetAttribute("Arrete", nil)
@@ -366,13 +379,12 @@ end
 local placeBot = 0
 local function departBot(role: string): CFrame
 	placeBot += 1
-	if role == "Police" then
-		local x = ({ -24, 24, -12, 12 })[(placeBot - 1) % 4 + 1]
-		local pos = Vector3.new(x, HAUTEUR_ETAGE + 0.6, 0)
-		return CFrame.lookAt(pos, pos + Vector3.new(if x < 0 then -1 else 1, 0, 0))
-	end
 	local x = ({ -45, 45, -55, 55 })[(placeBot - 1) % 4 + 1]
-	local pos = Vector3.new(x, SOL + 0.6, 135)
+	if role == "Police" then
+		local pos = Vector3.new(x, SOL + 0.6, -135) -- au nord, face au sud
+		return CFrame.lookAt(pos, pos + Vector3.new(0, 0, 1))
+	end
+	local pos = Vector3.new(x, SOL + 0.6, 135) -- au sud, face au nord
 	return CFrame.lookAt(pos, pos + Vector3.new(0, 0, -1))
 end
 
@@ -404,34 +416,42 @@ local function jouerManche(participants: { Participant })
 	end
 	task.wait(4) -- le temps de l'animation du tirage
 
-	-- 2) Départ : l'entrée se ferme, les fugitifs partent, puis la police
+	-- 2) Départ : l'entrée se ferme ; fugitifs au sud, police au nord.
+	--    Tout le monde a les feux en même temps (~7 s : survol + 3, 2, 1, PARTEZ),
+	--    mais la police reste bloquée AVANCE secondes de plus.
 	workspace:SetAttribute("MancheEnCours", true)
 	fermerEntree(true)
+	local DUREE_DEPART = 7.5
+	local debloquePolice = workspace:GetServerTimeNow() + DUREE_DEPART + AVANCE
 	local function lancer(p: Participant)
 		if p.joueur and p.joueur.Parent then
+			mettreEnSalle(p.joueur, false)
 			RetirerKart:Invoke(p.joueur)
-			PlacerKart:Invoke(p.joueur, true)
+			local kart = PlacerKart:Invoke(p.joueur, true)
+			if kart and p.role == "Police" then
+				kart:SetAttribute("BloqueJusqua", debloquePolice)
+			end
 		elseif not p.joueur then
 			p.bot = creerBot(p.nom, p.role :: string, departBot(p.role :: string))
 			if p.bot then
-				task.delay(if p.role == "Police" then 3 else 7, function() -- (le temps des feux)
+				task.delay(if p.role == "Police" then DUREE_DEPART + AVANCE else DUREE_DEPART, function()
 					piloterBot(p, participants)
 				end)
 			end
 		end
 	end
-	for _, p in ipairs(fugitifs) do
+	for _, p in ipairs(participants) do
 		lancer(p)
 	end
-	envoyerATous({ type = "info", texte = ("🏃 Les fugitifs ont %d secondes d'avance !"):format(AVANCE) })
-	task.wait(AVANCE)
-	for _, p in ipairs(police) do
-		lancer(p)
-	end
-	envoyerATous({ type = "info", texte = "🚓 La police est lancée !" })
+	task.delay(DUREE_DEPART, function()
+		envoyerATous({ type = "info", texte = ("🏃 Les fugitifs ont %d secondes d'avance !"):format(AVANCE) })
+	end)
+	task.delay(DUREE_DEPART + AVANCE, function()
+		envoyerATous({ type = "info", texte = "🚓 La police est lancée !" })
+	end)
 
 	-- 3) La manche
-	local fin = os.clock() + DUREE + 7
+	local fin = os.clock() + DUREE + DUREE_DEPART
 	local gagnant = nil
 	local prochainEnvoi = 0
 	while not gagnant do
@@ -514,6 +534,7 @@ local function jouerManche(participants: { Participant })
 			local j = p.joueur
 			RetirerKart:Invoke(j)
 			remettreAZero(j)
+			j:SetAttribute("EnSalle", nil)
 			task.spawn(function()
 				j:LoadCharacter() -- réapparition au garage
 			end)
@@ -553,22 +574,30 @@ task.spawn(function()
 			envoyerATous({ type = "etat", etat = "attente", joueurs = #Players:GetPlayers(), min = JOUEURS_MIN })
 			task.wait(2)
 		end
-		-- Intermission (on peut rouler librement en attendant)
+		-- Page d'attente : plus personne ne roule, compte à rebours avant le tirage
 		local annule = false
 		for t = INTERMISSION, 1, -1 do
 			if not assezDeMonde() then
 				annule = true
 				break
 			end
+			for _, j in ipairs(Players:GetPlayers()) do
+				mettreEnSalle(j, true) -- (y compris ceux qui viennent d'arriver)
+			end
 			envoyerATous({ type = "etat", etat = "intermission", temps = t, bots = botsNecessaires() })
 			task.wait(1)
+		end
+		if annule then
+			for _, j in ipairs(Players:GetPlayers()) do
+				mettreEnSalle(j, false) -- pas assez de monde : retour au mode libre
+			end
 		end
 		if not annule then
 			local participants: { Participant } = {}
 			for _, j in ipairs(Players:GetPlayers()) do
 				if j.Character then
 					table.insert(participants, { nom = j.DisplayName, joueur = j, bot = nil, role = nil, arrete = false })
-					RetirerKart:Invoke(j) -- tout le monde quitte son kart libre avant le tirage
+					mettreEnSalle(j, true)
 				end
 			end
 			for k = 1, botsNecessaires() do
@@ -583,6 +612,7 @@ task.spawn(function()
 					dossierBots:ClearAllChildren()
 					for _, j in ipairs(Players:GetPlayers()) do
 						remettreAZero(j)
+						mettreEnSalle(j, false)
 					end
 				end
 			end

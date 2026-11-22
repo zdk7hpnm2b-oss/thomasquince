@@ -14,13 +14,13 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
-- **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : après 20 s d'attente,
-  **tirage au sort** des équipes (moitié policiers 🚓, moitié fugitifs 🏃). L'entrée du mall se ferme ;
-  les fugitifs partent de la ligne de départ avec 8 s d'avance, les policiers partent du 1er étage
-  dans des **karts de police** (gyrophare). Un policier qui colle un fugitif l'**arrête** (il part au
-  garage). **La police gagne** si tous les fugitifs sont arrêtés, sinon **les fugitifs gagnent** au
-  bout de 5 minutes. XP pour tous, bonus pour les gagnants et pour chaque arrestation. Seul, tu restes
-  en mode libre (avec la police de l'ordinateur)
+- **🎮 Mode en ligne « Police contre Fugitifs »** (dès 2 joueurs, jusqu'à 20) : une **page d'attente**
+  (la caméra survole le mall, personne ne roule), puis le **tirage au sort** des équipes (moitié
+  policiers 🚓, moitié fugitifs 🏃). L'entrée du mall se ferme ; les **fugitifs partent au sud**, la
+  **police au nord** (à l'opposé). Feux 3, 2, 1, PARTEZ pour tous, mais la police reste bloquée
+  8 secondes de plus. Un policier qui colle un fugitif l'**arrête** (il part au garage). **La police
+  gagne** si tous les fugitifs sont arrêtés, sinon **les fugitifs gagnent** au bout de 5 minutes. XP pour
+  tous, bonus pour les gagnants et pour chaque arrestation. Seul, un **bot de test** complète la partie
 - **🏬 Deux étages** : au-dessus du rez-de-chaussée, un **1er étage** avec ses propres boutiques. Au
   centre, un grand **atrium** ouvert sur les deux étages, traversé par une **passerelle**. On change d'étage
   en kart par **deux tapis roulants** au-dessus de la place centrale : celui de gauche **monte**, celui de

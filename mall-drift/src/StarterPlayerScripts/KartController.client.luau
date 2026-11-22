@@ -378,6 +378,7 @@ local SURVOLS = {
 type Depart = { debut: number, etape: number, survol: { [string]: any }, finSurvol: CFrame? }
 local depart: Depart? = nil
 local departsJoues: { [Instance]: boolean } = {}
+local dernierRestePolice = -1
 
 -- Les feux à l'écran (3 grosses lumières en haut au centre)
 local blocFeux = Instance.new("Frame")
@@ -661,8 +662,8 @@ margeBouton.PaddingBottom = UDim.new(0, 10)
 margeBouton.Parent = boutonConduire
 
 local function demanderKart()
-	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") then
-		return -- pas pendant l'intro ni avec le menu du garage ouvert
+	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") or joueur:GetAttribute("EnSalle") then
+		return -- pas pendant l'intro, le menu du garage ou la page d'attente
 	end
 	boutonConduire.Text = "⏳ ..."
 	remotes.SortirKart:FireServer()
@@ -692,7 +693,7 @@ activerToucheConduire(true)
 task.spawn(function()
 	while true do
 		task.wait(1)
-		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") then
+		if joueur:GetAttribute("IntroFinie") and not joueur:GetAttribute("MenuGarage") and not joueur:GetAttribute("EnSalle") then
 			controles:Enable()
 			if not kart and camera.CameraType == Enum.CameraType.Scriptable and not joueur:GetAttribute("CameraGarage") then
 				camera.CameraType = Enum.CameraType.Custom
@@ -780,11 +781,13 @@ local function entrerDansKart(siege: Seat)
 
 	hud.Visible = true
 	activerToucheConduire(false)
+	controles:Enable() -- on s'assure que les commandes marchent au volant
 	demarrerCamera()
 	if modele:GetAttribute("DepartHall") and not departsJoues[modele] then
 		departsJoues[modele] = true
 		local survol = SURVOLS[math.random(1, #SURVOLS)]
 		depart = { debut = os.clock(), etape = 0, survol = survol, finSurvol = nil }
+		dernierRestePolice = -1
 		hud.Visible = false
 		afficherBandes(true)
 		allumerFeux(0, false)
@@ -905,6 +908,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 			allumerFeux(3, true)
 			afficherChiffre("PARTEZ ! 🏁", VERT_FEU)
 			hud.Visible = true
+			controles:Enable()
 			local fin = depart
 			task.delay(1.2, function()
 				if depart == fin then
@@ -923,6 +927,28 @@ RunService.Heartbeat:Connect(function(dt: number)
 			gaz = 0
 			volant = 0
 			driftAppuye = false
+		end
+	end
+	-- Mode en ligne : la police reste bloquée pendant l'avance des fugitifs
+	local bloqueJusqua = kart.modele:GetAttribute("BloqueJusqua")
+	if bloqueJusqua and not (depart and depart.etape < 4) then
+		local reste = bloqueJusqua - workspace:GetServerTimeNow()
+		if reste > 0 then
+			gaz = 0
+			volant = 0
+			driftAppuye = false
+			local secondes = math.ceil(reste)
+			if secondes ~= dernierRestePolice then
+				dernierRestePolice = secondes
+				afficherChiffre(("🚓 DÉPART DANS %d"):format(secondes), Color3.fromRGB(90, 150, 255))
+			end
+		elseif dernierRestePolice ~= 0 then
+			dernierRestePolice = 0
+			afficherChiffre("🚓 GO ! ATTRAPE-LES !", Color3.fromRGB(90, 150, 255))
+			task.delay(1.2, function()
+				TweenService:Create(chiffreDepart, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+				TweenService:Create(contourChiffre, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+			end)
 		end
 	end
 
