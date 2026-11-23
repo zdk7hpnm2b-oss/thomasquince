@@ -66,6 +66,11 @@ function KartBuilder.Nettoyer(perso: any, niveau: number, possessions: any?): { 
 	if type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) and premiumAchetees[perso.Premium] == true then
 		propre.Premium = perso.Premium
 	end
+	-- Traînée (achetée en Robux, ou gagnée à la roue)
+	local traineesAchetees = type(achats.Trainees) == "table" and achats.Trainees or {}
+	if type(perso.Trainee) == "string" and Config.Trainee(perso.Trainee) and (perso.Trainee == "Aucune" or traineesAchetees[perso.Trainee] == true) then
+		propre.Trainee = perso.Trainee
+	end
 	if type(perso.Numero) == "number" and perso.Numero == perso.Numero then
 		propre.Numero = math.clamp(math.floor(perso.Numero), 0, 99)
 	end
@@ -429,6 +434,59 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 		end
 	end
 
+	-- 🌈 TRAÎNÉE achetée : un ruban de couleur derrière le kart + des particules
+	local trainee = (not perso.Police) and Config.Trainee(perso.Trainee or "Aucune") or nil
+	if trainee and trainee.Couleurs and not apercu then
+		local t0 = Instance.new("Attachment")
+		t0.Position = Vector3.new(0, 0.1, 3.1)
+		t0.Parent = chassis
+		local t1 = Instance.new("Attachment")
+		t1.Position = Vector3.new(0, 1.3, 3.1)
+		t1.Parent = chassis
+		local ruban = Instance.new("Trail")
+		ruban.Name = "TraineeAchetee"
+		ruban.Attachment0 = t0
+		ruban.Attachment1 = t1
+		ruban.Color = trainee.Couleurs
+		ruban.LightEmission = 1
+		ruban.LightInfluence = 0
+		ruban.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+		ruban.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
+		ruban.Lifetime = 0.9
+		ruban.MinLength = 0.1
+		ruban.FaceCamera = true
+		ruban.Parent = chassis
+		if trainee.Particules then
+			local emetteur = Instance.new("ParticleEmitter")
+			emetteur.Name = "ParticulesTrainee"
+			emetteur.LightEmission = 1
+			emetteur.LightInfluence = 0
+			emetteur.Color = trainee.Couleurs
+			emetteur.Lifetime = NumberRange.new(0.5, 1)
+			emetteur.Speed = NumberRange.new(1, 4)
+			emetteur.SpreadAngle = Vector2.new(60, 60)
+			emetteur.Rate = 30
+			emetteur.EmissionDirection = Enum.NormalId.Back
+			emetteur.RotSpeed = NumberRange.new(-120, 120)
+			if trainee.Particules == "Feu" then
+				emetteur.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+				emetteur.Acceleration = Vector3.new(0, 6, 0)
+				emetteur.Rate = 60
+			elseif trainee.Particules == "Eclair" then
+				emetteur.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+				emetteur.Speed = NumberRange.new(6, 12)
+				emetteur.Lifetime = NumberRange.new(0.15, 0.3)
+				emetteur.Rate = 80
+			else
+				emetteur.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0) })
+			end
+			local att = Instance.new("Attachment")
+			att.Position = Vector3.new(0, 0.6, 3.2)
+			att.Parent = chassis
+			emetteur.Parent = att
+		end
+	end
+
 	-- Kart de police (mode en ligne) : mât + gyrophare rouge et bleu
 	if perso.Police then
 		piece("MatGyrophare", Vector3.new(0.2, 1.8, 0.2), CFrame.new(0, 1.3, 2.7), Color3.fromRGB(40, 40, 45), nil, Enum.Material.Metal)
@@ -742,12 +800,65 @@ Config.PeinturesPremium = {
 	{ Nom = "Bonbon rose", Couleur = Color3.fromRGB(255, 70, 170), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.45, ProduitId = 0, PrixAffiche = "R$ 39", Exclusive = true },
 }
 
-Config.Boutique = {
-	{ Id = "KartGalaxie", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
-	{ Id = "PackDemarrage", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats", Pieces = 1000, Premium = "Or 24 carats", ProduitId = 0, PrixAffiche = "R$ 45", Promo = true },
-	{ Id = "Pieces1000", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
-	{ Id = "Pieces5000", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
+-- 🌈 TRAÎNÉES : un effet qui suit le kart quand il roule (achat en Robux)
+local function sequence(...): ColorSequence
+	local couleurs = { ... }
+	local points = {}
+	for k, c in ipairs(couleurs) do
+		table.insert(points, ColorSequenceKeypoint.new((k - 1) / math.max(#couleurs - 1, 1), c))
+	end
+	return ColorSequence.new(points)
+end
+Config.Trainees = {
+	{ Nom = "Aucune", Icone = "∅" },
+	{ Nom = "Feu", Icone = "🔥", Couleurs = sequence(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 140, 20), Color3.fromRGB(220, 30, 20)), Particules = "Feu" },
+	{ Nom = "Arc-en-ciel", Icone = "🌈", Couleurs = sequence(Color3.fromRGB(255, 70, 90), Color3.fromRGB(255, 200, 60), Color3.fromRGB(80, 230, 110), Color3.fromRGB(70, 160, 255), Color3.fromRGB(190, 90, 255)) },
+	{ Nom = "Étoiles", Icone = "✨", Couleurs = sequence(Color3.fromRGB(255, 240, 160), Color3.fromRGB(255, 255, 255)), Particules = "Etoiles" },
+	{ Nom = "Éclair", Icone = "⚡", Couleurs = sequence(Color3.fromRGB(220, 250, 255), Color3.fromRGB(60, 200, 255), Color3.fromRGB(40, 90, 255)), Particules = "Eclair" },
+	{ Nom = "Cœurs", Icone = "💖", Couleurs = sequence(Color3.fromRGB(255, 200, 230), Color3.fromRGB(255, 70, 170)), Particules = "Coeurs" },
+	{ Nom = "Galaxie", Icone = "🌌", Couleurs = sequence(Color3.fromRGB(255, 120, 230), Color3.fromRGB(130, 70, 255), Color3.fromRGB(20, 20, 80)), Particules = "Etoiles" },
 }
+
+-- 🛒 LE MAGASIN (Robux). Catégories : Offres, Traînées, Roue, Pièces.
+-- Pour chaque offre : crée un « Produit pour développeurs » et mets son numéro dans ProduitId
+-- (tant que c'est 0, l'achat est gratuit dans Studio pour tester).
+Config.Boutique = {
+	-- ⭐ OFFRES
+	{ Id = "KartGalaxie", Categorie = "Offres", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
+	{ Id = "PassVIP", Categorie = "Offres", Nom = "👑 Pass VIP", Description = "Pièces x2 À VIE + 2 tours de roue gratuits par jour + 👑 VIP", ProduitId = 0, PrixAffiche = "R$ 299", Unique = true },
+	{ Id = "PackLegende", Categorie = "Offres", Nom = "🏆 Méga pack Légende", Description = "10 000 💰 + Chrome miroir + Lave + traînée de Feu + 5 tours de roue", Pieces = 10000, Premiums = { "Chrome miroir", "Lave" }, Trainee = "Feu", Tours = 5, ProduitId = 0, PrixAffiche = "R$ 799", Unique = true },
+	{ Id = "PackDemarrage", Categorie = "Offres", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats + 2 tours de roue", Pieces = 1000, Premium = "Or 24 carats", Tours = 2, ProduitId = 0, PrixAffiche = "R$ 45", Unique = true },
+	-- 🌈 TRAÎNÉES
+	{ Id = "TraineeFeu", Categorie = "Traînées", Nom = "🔥 Traînée de feu", Description = "Des flammes derrière ton kart", Trainee = "Feu", ProduitId = 0, PrixAffiche = "R$ 79", Unique = true },
+	{ Id = "TraineeArcEnCiel", Categorie = "Traînées", Nom = "🌈 Traînée arc-en-ciel", Description = "Un arc-en-ciel qui te suit partout", Trainee = "Arc-en-ciel", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
+	{ Id = "TraineeEtoiles", Categorie = "Traînées", Nom = "✨ Traînée d'étoiles", Description = "Une pluie d'étoiles dorées", Trainee = "Étoiles", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
+	{ Id = "TraineeEclair", Categorie = "Traînées", Nom = "⚡ Traînée éclair", Description = "Des étincelles électriques bleues", Trainee = "Éclair", ProduitId = 0, PrixAffiche = "R$ 69", Unique = true },
+	{ Id = "TraineeCoeurs", Categorie = "Traînées", Nom = "💖 Traînée de cœurs", Description = "Des cœurs roses partout derrière toi", Trainee = "Cœurs", ProduitId = 0, PrixAffiche = "R$ 59", Unique = true },
+	{ Id = "TraineeGalaxie", Categorie = "Traînées", Nom = "🌌 Traînée galaxie", Description = "Le cosmos derrière ton kart", Trainee = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 129", Unique = true },
+	-- 🎡 ROUE
+	{ Id = "Tours3", Categorie = "Roue", Nom = "🎡 3 tours de roue", Description = "3 tours de la roue des cadeaux", Tours = 3, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Tours10", Categorie = "Roue", Nom = "🎡 10 tours de roue", Description = "10 tours : le meilleur prix !", Tours = 10, ProduitId = 0, PrixAffiche = "R$ 129" },
+	-- 💰 PIÈCES
+	{ Id = "Pieces1000", Categorie = "Pièces", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Pieces5000", Categorie = "Pièces", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
+	{ Id = "Pieces15000", Categorie = "Pièces", Nom = "💰 15 000 pièces", Description = "Le coffre géant : tout le garage pour toi", Pieces = 15000, ProduitId = 0, PrixAffiche = "R$ 499" },
+}
+Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
+
+-- 🎡 LA ROUE DU JOUR : 1 tour gratuit par jour (2 avec le Pass VIP) + les tours achetés.
+-- Poids = chances relatives (affichées en % dans le jeu, c'est obligatoire sur Roblox).
+Config.Roue = {
+	{ Nom = "50 💰", Type = "Pieces", Valeur = 50, Poids = 24, Couleur = Color3.fromRGB(60, 130, 230) },
+	{ Nom = "150 💰", Type = "Pieces", Valeur = 150, Poids = 18, Couleur = Color3.fromRGB(230, 60, 70) },
+	{ Nom = "300 XP", Type = "XP", Valeur = 300, Poids = 16, Couleur = Color3.fromRGB(60, 190, 110) },
+	{ Nom = "COULEUR 🎨", Type = "Couleur", Valeur = 200, Poids = 14, Couleur = Color3.fromRGB(240, 150, 30) },
+	{ Nom = "400 💰", Type = "Pieces", Valeur = 400, Poids = 12, Couleur = Color3.fromRGB(150, 70, 220) },
+	{ Nom = "1000 💰", Type = "Pieces", Valeur = 1000, Poids = 7, Couleur = Color3.fromRGB(230, 60, 160) },
+	{ Nom = "TRAÎNÉE ✨", Type = "Trainee", Valeur = 1500, Poids = 3, Couleur = Color3.fromRGB(40, 190, 210) },
+	{ Nom = "🦄 JACKPOT", Type = "Kart", Valeur = 3000, Poids = 1, Couleur = Color3.fromRGB(255, 200, 40) },
+}
+-- (Valeur des cadeaux « objet » : pièces données à la place si on l'a déjà)
+
 
 -- Finition de la peinture (aspect réaliste)
 Config.Finitions = {
@@ -796,6 +907,7 @@ Config.PersoParDefaut = {
 	Autocollant = "Étoile",
 	Numero = 7,
 	Neon = "Bleu",
+	Trainee = "Aucune",
 }
 
 -- Petites fonctions pour retrouver un élément par son nom
@@ -812,6 +924,23 @@ function Config.PeinturePremium(nom: string) return chercher(Config.PeinturesPre
 function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
 function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
 function Config.Neon(nom: string) return chercher(Config.Neons, nom) end
+function Config.Trainee(nom: string) return chercher(Config.Trainees, nom) end
+function Config.OffreBoutique(id: string)
+	for _, offre in ipairs(Config.Boutique) do
+		if offre.Id == id then
+			return offre
+		end
+	end
+	return nil
+end
+function Config.OffreTrainee(nom: string) -- l'offre du magasin qui vend cette traînée seule
+	for _, offre in ipairs(Config.Boutique) do
+		if offre.Categorie == "Traînées" and offre.Trainee == nom then
+			return offre
+		end
+	end
+	return nil
+end
 
 ---------------------------------------------------------------------
 -- PROGRESSION : les drifts donnent de l'XP → le niveau du joueur monte
@@ -870,6 +999,13 @@ Config.Partie = {
 	XPParticipation = 50, -- XP pour tous les participants
 	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
 	XPRoiDuDrift = 150, -- bonus pour le joueur qui a fait le plus de points de drift dans la manche
+	-- ❤️ VIES : chaque joueur (police ET fugitifs) a 3 vies. Quand on en perd une, on choisit :
+	--   • RÉAPPARAÎTRE (gratuit)   • ⚡ VENGEANCE (payant) : celui qui t'a eu perd une vie
+	Vies = 3,
+	DelaiChoix = 12, -- secondes pour choisir (sinon on réapparaît tout seul)
+	ProtectionReapparition = 3, -- secondes où l'on ne peut pas être arrêté après être revenu
+	ProduitVengeance = 0, -- numéro du Produit pour développeurs « Vengeance » (0 = gratuit dans Studio)
+	PrixVengeance = "R$ 25",
 	-- DRIFT BATTLE (défi solo, se lance tout de suite depuis le menu) : pas de police,
 	-- 1 minute pour faire le plus de points de drift. XP = 50 + score / 20.
 	DureeBattle = 60, -- 1 minute (mets 30 pour des parties encore plus courtes)
@@ -1839,6 +1975,7 @@ end
 -- LES TAPIS ROULANTS entre les 2 étages (au-dessus de la place centrale) :
 -- celui de gauche (ouest) MONTE, celui de droite (est) DESCEND. Ils emportent
 -- le kart tout seuls (le script du joueur lit l'attribut « Tapis »).
+do
 ---------------------------------------------------------------------
 local rampes = Instance.new("Folder")
 rampes.Name = "Rampes"
@@ -1915,6 +2052,8 @@ for _, x in ipairs({ -185, -145, -105, -65, 65, 105, 145, 185 }) do
 	facade(Vector3.new(x, 0, DZ), Vector3.new(0, 0, -1), 36, ({ "OPTIQUE LUNE", "CHOCO LOCO", "ÉCLAT BEAUTÉ", "VOYAGES SOLEIL", "PHARMACIE", "PRESSING", "FLEURS DU DÉSERT", "CORDONNERIE" })[(x + 185) // 40 % 8 + 1], Color3.fromRGB(200, 230, 255))
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
+do
 ---------------------------------------------------------------------
 -- LA PLACE CENTRALE : fontaine, lustre, palmiers, kiosques, bancs
 ---------------------------------------------------------------------
@@ -2024,6 +2163,7 @@ end
 posteLibre(Vector3.new(7.8, SOL, -75), Vector3.new(-1, 0, 0), "vendeur", Color3.fromRGB(90, 160, 255))
 posteLibre(Vector3.new(7.8, SOL, 75), Vector3.new(-1, 0, 0), "vendeur", Color3.fromRGB(255, 150, 200))
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- LA LIGNE DE DÉPART : à l'intérieur du mall, juste après l'entrée, au début
 -- de la place centrale. Les karts sont derrière la ligne, face à la fontaine ;
@@ -2054,6 +2194,7 @@ for i, x in ipairs({ -4, 0, 4 }) do
 	deco(feu)
 end
 
+do
 ---------------------------------------------------------------------
 -- L'AQUARIUM GÉANT (mur nord, au bout de la place centrale)
 ---------------------------------------------------------------------
@@ -2090,6 +2231,8 @@ for _ = 1, 16 do
 	TweenService:Create(poisson, info, { CFrame = CFrame.new(random:NextNumber(5, 55), y + random:NextNumber(-3, 3), z) }):Play()
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
+do
 ---------------------------------------------------------------------
 -- FOOD COURT (îlot sud-ouest) : tables + chaises qu'on peut renverser
 -- Les restaurants sont dans la rangée contre le mur ouest, juste en face.
@@ -2120,6 +2263,7 @@ for _, x in ipairs({ -148, -124 }) do
 	end
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- SOL MOUILLÉ + panneaux jaunes « ATTENTION SOL GLISSANT »
 ---------------------------------------------------------------------
@@ -2393,6 +2537,7 @@ panneauJaune(Vector2.new(-99, 46), Vector3.new(0, 0, -1))
 autolaveuse(-150, 150, 137, 30) -- allée sud du 1er étage
 NIVEAU = 0
 
+do
 ---------------------------------------------------------------------
 -- DEHORS : le parking devant l'entrée du mall
 ---------------------------------------------------------------------
@@ -2432,6 +2577,7 @@ for _, x in ipairs({ -150, -75, 75, 150 }) do
 	end
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- LE GARAGE VIP : un grand bâtiment à part, au bout du parking.
 -- On y apparaît, on y personnalise son kart, puis on part vers le mall.
@@ -2520,6 +2666,7 @@ kartExpose("Galaxie", "Rose", "Arc-en-ciel", Vector3.new(62, SOL, G_Z2 - 16))
 -- LA DÉCO DU GARAGE VIP
 --   à gauche (ouest) : le salon VIP   ·   à droite (est) : l'atelier mécanique
 --   au fond : écran géant + karts exposés   ·   devant : tapis rouge + drapeaux
+do
 ---------------------------------------------------------------------
 local decoGarage = Instance.new("Folder")
 decoGarage.Name = "DecoGarage"
@@ -2742,6 +2889,7 @@ apparition.Color = VIOLET
 apparition.Material = Enum.Material.Neon
 apparition.Parent = garage
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- COMMUNICATION CLIENT ↔ SERVEUR
 ---------------------------------------------------------------------
@@ -2824,8 +2972,11 @@ type Profil = {
 	Perso: { [string]: any },
 	Charge: boolean,
 	Pieces: number, -- la monnaie du jeu 💰
-	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean }, Karts: { [string]: boolean } },
+	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean }, Karts: { [string]: boolean }, Trainees: { [string]: boolean } },
 	TutoFait: boolean, -- le tuto du début a déjà été vu
+	ToursRoue: number, -- tours de roue achetés (ou offerts) pas encore joués
+	DernierJourRoue: number, -- dernier jour (UTC) où le tour gratuit a été joué
+	ToursGratuitsJour: number, -- tours gratuits déjà joués ce jour-là
 }
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
@@ -2837,6 +2988,22 @@ dossierKarts.Parent = workspace
 
 local function niveauDe(profil: Profil): number
 	return (Config.NiveauDepuisXP(profil.XP))
+end
+
+-- La roue du jour : 1 tour gratuit par jour (2 avec le Pass VIP)
+local function jourActuel(): number
+	return os.time() // 86400
+end
+local function toursGratuitsRestants(profil: Profil): number
+	local parJour = if profil.Possessions.Produits.PassVIP then 2 else 1
+	if profil.DernierJourRoue ~= jourActuel() then
+		return parJour
+	end
+	return math.max(parJour - profil.ToursGratuitsJour, 0)
+end
+-- Pass VIP : pièces x2
+local function multiplicateurPieces(profil: Profil): number
+	return if profil.Possessions.Produits.PassVIP then 2 else 1
 end
 
 local function versionPublique(profil: Profil)
@@ -2851,6 +3018,10 @@ local function versionPublique(profil: Profil)
 		Pieces = profil.Pieces,
 		Possessions = profil.Possessions,
 		TutoFait = profil.TutoFait,
+		VIP = profil.Possessions.Produits.PassVIP == true,
+		ToursRoue = profil.ToursRoue,
+		ToursGratuitsRestants = toursGratuitsRestants(profil),
+		ProchainTourGratuit = 86400 - os.time() % 86400, -- secondes avant minuit (UTC)
 	}
 end
 
@@ -2881,7 +3052,8 @@ local function sauvegarder(joueur: Player)
 	if not profil or not profil.Charge or not magasin then
 		return
 	end
-	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait }
+	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait,
+		ToursRoue = profil.ToursRoue, DernierJourRoue = profil.DernierJourRoue, ToursGratuitsJour = profil.ToursGratuitsJour }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -2897,8 +3069,11 @@ local function chargerProfil(joueur: Player)
 		Perso = table.clone(Config.PersoParDefaut),
 		Charge = magasin == nil,
 		Pieces = 0,
-		Possessions = { Couleurs = {}, Premium = {}, Produits = {}, Karts = {} },
+		Possessions = { Couleurs = {}, Premium = {}, Produits = {}, Karts = {}, Trainees = {} },
 		TutoFait = false,
+		ToursRoue = 0,
+		DernierJourRoue = 0,
+		ToursGratuitsJour = 0,
 	}
 	if magasin then
 		local ok, donnees = pcall(function()
@@ -2911,8 +3086,11 @@ local function chargerProfil(joueur: Player)
 				profil.Record = type(donnees.Record) == "number" and math.max(0, math.floor(donnees.Record)) or 0
 				profil.Pieces = type(donnees.Pieces) == "number" and math.max(0, math.floor(donnees.Pieces)) or 0
 				profil.TutoFait = donnees.TutoFait == true
+				profil.ToursRoue = type(donnees.ToursRoue) == "number" and math.clamp(math.floor(donnees.ToursRoue), 0, 9999) or 0
+				profil.DernierJourRoue = type(donnees.DernierJourRoue) == "number" and donnees.DernierJourRoue or 0
+				profil.ToursGratuitsJour = type(donnees.ToursGratuitsJour) == "number" and donnees.ToursGratuitsJour or 0
 				if type(donnees.Possessions) == "table" then
-					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts" }) do
+					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts", "Trainees" }) do
 						if type(donnees.Possessions[liste]) == "table" then
 							for nom, possede in pairs(donnees.Possessions[liste]) do
 								if type(nom) == "string" and possede == true then
@@ -3369,7 +3547,7 @@ DriftTermine.OnServerEvent:Connect(function(joueur: Player, points: any)
 
 	local niveauAvant = niveauDe(profil)
 	profil.XP += points
-	profil.Pieces += math.floor(points / ((Config.Monnaie and Config.Monnaie.PointsParPiece) or 20))
+	profil.Pieces += math.floor(points / ((Config.Monnaie and Config.Monnaie.PointsParPiece) or 20)) * multiplicateurPieces(profil)
 	if points > profil.Record then
 		profil.Record = points
 	end
@@ -3385,12 +3563,13 @@ AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
 	end
 	local niveauAvant = niveauDe(profil)
 	profil.XP += math.max(0, math.floor(quantite))
-	profil.Pieces += math.floor(math.max(0, quantite) / ((Config.Monnaie and Config.Monnaie.XPParPiece) or 10))
+	profil.Pieces += math.floor(math.max(0, quantite) / ((Config.Monnaie and Config.Monnaie.XPParPiece) or 10)) * multiplicateurPieces(profil)
 	local niveauApres = niveauDe(profil)
 	majClassement(joueur, profil)
 	ProfilMisAJour:FireClient(joueur, versionPublique(profil), niveauApres > niveauAvant and niveauApres or nil)
 end)
 
+do
 ---------------------------------------------------------------------
 -- LES ACHATS
 --   • couleurs : avec les pièces 💰 gagnées en jouant
@@ -3409,6 +3588,23 @@ local function accorderProduit(joueur: Player, profil: Profil, produit: { [strin
 	end
 	if produit.Premium then
 		profil.Possessions.Premium[produit.Premium] = true
+	end
+	for _, nom in ipairs(produit.Premiums or {}) do
+		profil.Possessions.Premium[nom] = true
+	end
+	if produit.Trainee and Config.Trainee(produit.Trainee) then
+		profil.Possessions.Trainees[produit.Trainee] = true
+	end
+	if produit.Tours then
+		profil.ToursRoue += produit.Tours
+	end
+	if produit.Vengeance then
+		-- ⚡ VENGEANCE (mode Police contre Fugitifs) : géré par ManchesServer
+		local appliquer = game:GetService("ServerStorage"):FindFirstChild("AppliquerVengeance") :: BindableFunction?
+		local ok = appliquer and appliquer:Invoke(joueur)
+		if not ok then
+			profil.Pieces += 250 -- (la manche était finie : on dédommage en pièces)
+		end
 	end
 	if produit.Kart and Config.Karts[produit.Kart] and Config.Karts[produit.Kart].Exclusif then
 		profil.Possessions.Karts[produit.Kart] = true -- kart exclusif débloqué
@@ -3438,6 +3634,10 @@ local function produitDepuisId(produitId: number): { [string]: any }?
 		if k.Exclusif and k.ProduitId ~= 0 and k.ProduitId == produitId then
 			return k
 		end
+	end
+	local vengeance = Config.Partie and Config.Partie.ProduitVengeance or 0
+	if vengeance ~= 0 and vengeance == produitId then
+		return { Vengeance = true, Nom = "Vengeance" }
 	end
 	return nil
 end
@@ -3485,6 +3685,118 @@ Acheter.OnServerInvoke = function(joueur: Player, info: any)
 		return { ok = true, message = "(Test Studio : gratuit) " .. tostring(produit.Nom) .. " débloqué !", profil = versionPublique(profil) }
 	end
 	return { ok = false, message = "Achat inconnu." }
+end
+
+-- 🎡 LA ROUE DU JOUR : c'est le SERVEUR qui tire le cadeau (impossible de tricher)
+local RoueDuJour = Instance.new("RemoteFunction")
+RoueDuJour.Name = "RoueDuJour"
+RoueDuJour.Parent = remotes
+local aleaRoue = Random.new()
+
+local function tirerCase(): number
+	local total = 0
+	for _, case in ipairs(Config.Roue) do
+		total += case.Poids
+	end
+	local tirage = aleaRoue:NextNumber(0, total)
+	for i, case in ipairs(Config.Roue) do
+		tirage -= case.Poids
+		if tirage <= 0 then
+			return i
+		end
+	end
+	return 1
+end
+
+local function auHasard(liste: { string }): string?
+	if #liste == 0 then
+		return nil
+	end
+	return liste[aleaRoue:NextInteger(1, #liste)]
+end
+
+-- Donne le cadeau de la case ; renvoie le texte affiché au joueur
+local function donnerCadeau(joueur: Player, profil: Profil, case: { [string]: any }): string
+	local bonus = multiplicateurPieces(profil)
+	local function pieces(n: number): string
+		profil.Pieces += n * bonus
+		return ("+%d 💰%s"):format(n * bonus, if bonus > 1 then " (VIP x2)" else "")
+	end
+	if case.Type == "Pieces" then
+		return pieces(case.Valeur)
+	elseif case.Type == "XP" then
+		profil.XP += case.Valeur
+		majClassement(joueur, profil)
+		return ("+%d XP"):format(case.Valeur)
+	elseif case.Type == "Couleur" then
+		local possibles = {}
+		for _, c in ipairs(Config.Couleurs) do
+			if (c.Prix or 0) > 0 and not profil.Possessions.Couleurs[c.Nom] then
+				table.insert(possibles, c.Nom)
+			end
+		end
+		local nom = auHasard(possibles)
+		if nom then
+			profil.Possessions.Couleurs[nom] = true
+			return ("Nouvelle couleur : %s 🎨"):format(nom)
+		end
+		return pieces(case.Valeur) .. " (tu as déjà toutes les couleurs)"
+	elseif case.Type == "Trainee" then
+		local possibles = {}
+		for _, t in ipairs(Config.Trainees) do
+			if t.Couleurs and not profil.Possessions.Trainees[t.Nom] then
+				table.insert(possibles, t.Nom)
+			end
+		end
+		local nom = auHasard(possibles)
+		if nom then
+			profil.Possessions.Trainees[nom] = true
+			return ("Traînée %s débloquée ! ✨"):format(nom)
+		end
+		return pieces(case.Valeur) .. " (tu as déjà toutes les traînées)"
+	elseif case.Type == "Kart" then
+		if not profil.Possessions.Karts.Galaxie then
+			profil.Possessions.Karts.Galaxie = true
+			return "🦄 JACKPOT ! Le kart Licorne Galaxie est à toi !"
+		end
+		return "JACKPOT ! " .. pieces(case.Valeur)
+	end
+	return ""
+end
+
+RoueDuJour.OnServerInvoke = function(joueur: Player, action: any)
+	local profil = profils[joueur]
+	if not profil then
+		return { ok = false, message = "Profil pas encore chargé…" }
+	end
+	if action ~= "lancer" then
+		return { ok = true, profil = versionPublique(profil) }
+	end
+	if tropRapide(joueur, "roue", 4) then
+		return { ok = false, message = "La roue tourne encore !" }
+	end
+	-- D'abord le tour gratuit du jour, sinon un tour acheté
+	if toursGratuitsRestants(profil) > 0 then
+		if profil.DernierJourRoue ~= jourActuel() then
+			profil.DernierJourRoue = jourActuel()
+			profil.ToursGratuitsJour = 0
+		end
+		profil.ToursGratuitsJour += 1
+	elseif profil.ToursRoue > 0 then
+		profil.ToursRoue -= 1
+	else
+		return { ok = false, message = "Plus de tour aujourd'hui : reviens demain, ou achète des tours au magasin !" }
+	end
+	local indice = tirerCase()
+	local cadeau = donnerCadeau(joueur, profil, Config.Roue[indice])
+	task.spawn(sauvegarder, joueur)
+	-- (le joueur voit son profil à jour quand la roue s'arrête)
+	task.delay(5.5, function()
+		if profils[joueur] then
+			ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+		end
+	end)
+	return { ok = true, indice = indice, message = cadeau, profil = versionPublique(profil) }
 end
 
 -- Les achats en Robux : Roblox appelle cette fonction quand un paiement a réussi
@@ -3578,7 +3890,8 @@ task.spawn(function()
 end)
 
 print("[Golden Mall] Le Golden Mall de Dubaï est prêt ! Garage VIP ouvert.")
-]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX4"><Properties><string name="Name">ManchesServer</string><ProtectedString name="Source"><![CDATA[--[[
+
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX4"><Properties><string name="Name">ManchesServer</string><ProtectedString name="Source"><![CDATA[--[[
 	ManchesServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : ManchesServer
 
@@ -3703,8 +4016,14 @@ type Participant = {
 	joueur: Player?,
 	bot: { [string]: any }?,
 	role: string?,
-	arrete: boolean,
+	arrete: boolean, -- éliminé (plus de vies)
+	vies: number?,
+	attente: boolean?, -- vient de perdre une vie : choisit RÉAPPARAÎTRE ou VENGEANCE
+	tueur: any?, -- le participant qui lui a fait perdre sa dernière vie
+	protegeJusqua: number?,
 }
+local participantsManche: { Participant } = {} -- (la manche en cours)
+local perdreVie: (Participant, Participant) -> ()
 
 local function present(p: Participant): boolean
 	if p.joueur then
@@ -4027,6 +4346,7 @@ end
 local function remettreAZero(joueur: Player)
 	joueur:SetAttribute("Role", nil)
 	joueur:SetAttribute("Arrete", nil)
+	joueur:SetAttribute("Vies", nil)
 	joueur.Team = EQUIPE_VISITEURS
 end
 
@@ -4044,6 +4364,113 @@ local function departBot(role: string): CFrame
 end
 
 ---------------------------------------------------------------------
+-- ❤️ LES VIES, RÉAPPARAÎTRE ET ⚡ VENGEANCE
+---------------------------------------------------------------------
+local function participantDe(joueur: Player): Participant?
+	for _, p in ipairs(participantsManche) do
+		if p.joueur == joueur then
+			return p
+		end
+	end
+	return nil
+end
+
+-- Revenir en jeu : kart sur sa grille de départ (police au nord, fugitifs au sud)
+local function reapparaitre(p: Participant)
+	if not p.attente or p.arrete or not workspace:GetAttribute("MancheEnCours") then
+		return
+	end
+	p.attente = false
+	p.protegeJusqua = os.clock() + (P.ProtectionReapparition or 3)
+	if p.joueur and p.joueur.Parent then
+		PlacerKart:Invoke(p.joueur, false)
+		Partie:FireClient(p.joueur, { type = "reapparu", vies = p.vies })
+	elseif p.bot and p.bot.modele.Parent then
+		p.bot.modele:PivotTo(departBot(p.role :: string))
+	end
+end
+
+-- Perdre une vie (arrêté par la police, ou victime d'une VENGEANCE)
+perdreVie = function(p: Participant, parQui: Participant)
+	if p.arrete or p.attente then
+		return
+	end
+	p.vies = math.max((p.vies or 1) - 1, 0)
+	p.tueur = parQui
+	local j = p.joueur
+	if j then
+		j:SetAttribute("Vies", p.vies)
+	end
+	if p.vies <= 0 then
+		-- Plus de vies : éliminé jusqu'à la fin de la manche
+		p.arrete = true
+		if j then
+			j:SetAttribute("Arrete", true)
+			RetirerKart:Invoke(j)
+			local cf = apparitionGarage()
+			if cf then
+				task.delay(0.15, function()
+					if j.Character then
+						j.Character:PivotTo(cf)
+					end
+				end)
+			end
+			Partie:FireClient(j, { type = "arrete", par = parQui.nom })
+		elseif p.bot then
+			p.bot.modele:Destroy()
+		end
+		envoyerATous({ type = "info", texte = ("💀 %s n'a plus de vies !"):format(p.nom) })
+		return
+	end
+	-- Il reste des vies : le joueur choisit (réapparaître gratuitement, ou VENGEANCE)
+	p.attente = true
+	if j then
+		RetirerKart:Invoke(j)
+		local cf = apparitionGarage()
+		if cf then
+			task.delay(0.15, function()
+				if j.Character then
+					j.Character:PivotTo(cf)
+				end
+			end)
+		end
+		Partie:FireClient(j, {
+			type = "perdu", par = parQui.nom, vies = p.vies, delai = P.DelaiChoix or 12,
+			prix = P.PrixVengeance or "R$ 25", produit = P.ProduitVengeance or 0,
+		})
+		task.delay(P.DelaiChoix or 12, function()
+			reapparaitre(p) -- (pas de choix à temps : on revient tout seul)
+		end)
+	else
+		-- Un bot revient sur sa grille de départ au bout de 3 secondes
+		task.delay(3, function()
+			reapparaitre(p)
+		end)
+	end
+end
+
+-- ⚡ VENGEANCE : celui qui t'a fait perdre une vie en perd une à son tour, et tu reviens en jeu
+local function vengeance(joueur: Player): boolean
+	local p = participantDe(joueur)
+	if not p or not p.attente or p.arrete then
+		return false
+	end
+	local cible = p.tueur
+	if cible and present(cible) and not cible.arrete and not cible.attente then
+		envoyerATous({ type = "vengeance", par = p.nom, cible = cible.nom })
+		perdreVie(cible, p)
+	end
+	reapparaitre(p)
+	return true
+end
+
+-- Appelé par MallDriftServer quand l'achat Robux « Vengeance » est confirmé
+local AppliquerVengeance = Instance.new("BindableFunction")
+AppliquerVengeance.Name = "AppliquerVengeance"
+AppliquerVengeance.OnInvoke = vengeance
+AppliquerVengeance.Parent = ServerStorage
+
+---------------------------------------------------------------------
 -- Une manche
 ---------------------------------------------------------------------
 local function jouerManche(participants: { Participant })
@@ -4052,15 +4479,21 @@ local function jouerManche(participants: { Participant })
 		local j = math.random(1, i)
 		participants[i], participants[j] = participants[j], participants[i]
 	end
+	participantsManche = participants
 	local nombrePolice = math.max(1, math.floor(#participants / 2))
 	local police, fugitifs = {}, {}
 	for i, p in ipairs(participants) do
 		p.role = if i <= nombrePolice then "Police" else "Fugitif"
 		p.arrete = false
+		p.vies = P.Vies or 3
+		p.attente = false
+		p.tueur = nil
+		p.protegeJusqua = nil
 		table.insert(if p.role == "Police" then police else fugitifs, p)
 		if p.joueur then
 			p.joueur:SetAttribute("Role", p.role)
 			p.joueur:SetAttribute("Arrete", nil)
+			p.joueur:SetAttribute("Vies", p.vies)
 			p.joueur.Team = if p.role == "Police" then EQUIPE_POLICE else EQUIPE_FUGITIFS
 		end
 	end
@@ -4117,32 +4550,17 @@ local function jouerManche(participants: { Participant })
 
 		-- Arrestations : un policier au volant tout près d'un fugitif libre
 		for _, flic in ipairs(police) do
-			local posFlic = present(flic) and auVolant(flic) and positionKart(flic)
+			local posFlic = present(flic) and not flic.arrete and not flic.attente and auVolant(flic) and positionKart(flic)
 			if posFlic then
 				for _, fugitif in ipairs(fugitifs) do
-					local posFugitif = present(fugitif) and not fugitif.arrete and positionKart(fugitif)
+					local protege = fugitif.protegeJusqua and os.clock() < fugitif.protegeJusqua
+					local posFugitif = present(fugitif) and not fugitif.arrete and not fugitif.attente and not protege and auVolant(fugitif) and positionKart(fugitif)
 					if posFugitif and distanceAPlat(posFugitif, posFlic) < DISTANCE_ARRESTATION and math.abs(posFugitif.Y - posFlic.Y) < 6 then
-						fugitif.arrete = true
-						if fugitif.joueur then
-							local j = fugitif.joueur
-							j:SetAttribute("Arrete", true)
-							RetirerKart:Invoke(j)
-							local cf = apparitionGarage()
-							if cf then
-								task.delay(0.15, function()
-									if j.Character then
-										j.Character:PivotTo(cf)
-									end
-								end)
-							end
-							Partie:FireClient(j, { type = "arrete", par = flic.nom })
-						elseif fugitif.bot then
-							fugitif.bot.modele:Destroy()
-						end
 						if flic.joueur then
 							AjouterXP:Fire(flic.joueur, P.XPArrestation or 100)
 						end
 						envoyerATous({ type = "arrestation", policier = flic.nom, fugitif = fugitif.nom })
+						perdreVie(fugitif, flic)
 					end
 				end
 			end
@@ -4155,7 +4573,7 @@ local function jouerManche(participants: { Participant })
 			end
 		end
 		for _, f in ipairs(police) do
-			if present(f) then
+			if present(f) and not f.arrete then
 				policeEnJeu += 1
 			end
 		end
@@ -4171,6 +4589,7 @@ local function jouerManche(participants: { Participant })
 	end
 
 	-- 4) Fin de la manche : résultats et XP
+	participantsManche = {}
 	local classement = classementDrifts()
 	local roi = classement[1]
 	if roi and roi.total > 0 then
@@ -4459,6 +4878,20 @@ end)
 -- (le Drift Battle, lui, se lance tout de suite, en solo)
 ---------------------------------------------------------------------
 Partie.OnServerEvent:Connect(function(joueur: Player, info)
+	-- Pendant la manche : le choix après avoir perdu une vie
+	if type(info) == "table" and info.type == "reapparaitre" then
+		local p = participantDe(joueur)
+		if p then
+			reapparaitre(p)
+		end
+		return
+	elseif type(info) == "table" and info.type == "vengeance" then
+		-- (dans le vrai jeu, ça passe par l'achat Robux ; ici seulement le test gratuit dans Studio)
+		if game:GetService("RunService"):IsStudio() and (P.ProduitVengeance or 0) == 0 then
+			vengeance(joueur)
+		end
+		return
+	end
 	if type(info) ~= "table" or joueur:GetAttribute("Role") ~= nil then
 		return -- (pendant sa manche, le joueur ne peut rien changer)
 	end
@@ -6512,6 +6945,44 @@ noteFinition.LayoutOrder = suivant()
 local pageDeco = page()
 section(pageDeco, "NÉONS SOUS LE KART")
 grilleCouleurs(pageDeco, "Neon", Config.Neons)
+section(pageDeco, "🌈 TRAÎNÉES (derrière ton kart)", VIOLET)
+local grilleTrainees = grille(pageDeco, Vector2.new(58, 58))
+for i, t in ipairs(Config.Trainees or {}) do
+	local b, prix, trait = caseCouleur(grilleTrainees, i, Color3.fromRGB(45, 45, 58))
+	if t.Couleurs then
+		b.BackgroundColor3 = Color3.new(1, 1, 1)
+		local degrade = Instance.new("UIGradient")
+		degrade.Color = t.Couleurs
+		degrade.Rotation = 45
+		degrade.Parent = b
+	end
+	local icone = etiquette(b, t.Icone or "", UDim2.new(0.6, 0, 0.45, 0), UDim2.new(0.2, 0, 0.08, 0), Color3.new(1, 1, 1))
+	icone.TextXAlignment = Enum.TextXAlignment.Center
+	local offre = Config.OffreTrainee(t.Nom)
+	table.insert(miseAJour, function()
+		local achetee = t.Nom == "Aucune" or possede("Trainees", t.Nom)
+		prix.Text = if achetee then (if t.Nom == "Aucune" then "AUCUNE" else "") else (offre and offre.PrixAffiche or "R$")
+		prix.Visible = prix.Text ~= ""
+		trait.Thickness = if (persoEdite.Trainee or "Aucune") == t.Nom then 3 else 0
+	end)
+	b.Activated:Connect(function()
+		if t.Nom == "Aucune" or possede("Trainees", t.Nom) then
+			persoEdite.Trainee = t.Nom
+			afficherStatut("Traînée : " .. t.Nom, Color3.fromRGB(220, 220, 230))
+			rafraichir()
+			return
+		end
+		if not offre then
+			afficherStatut("Gagne-la à la 🎡 ROUE DU JOUR !", VIOLET)
+			return
+		end
+		afficherStatut(("%s %s · %s"):format(t.Icone or "", offre.Nom, offre.PrixAffiche), VIOLET)
+		acheterRobux(offre.ProduitId, offre.Id, function()
+			persoEdite.Trainee = t.Nom
+		end)
+		rafraichir()
+	end)
+end
 section(pageDeco, "AUTOCOLLANT")
 local grilleAutocollant = grille(pageDeco, Vector2.new(58, 58))
 for i, a in ipairs(Config.Autocollants) do
@@ -8841,7 +9312,8 @@ end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
 local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 205, 70))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Pièces, peintures premium et kart exclusif", Color3.fromRGB(255, 205, 70))
+local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 200, 40))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(255, 205, 70))
 local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(150, 200, 255))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
@@ -8937,17 +9409,7 @@ local piecesMenu = texte(fondMenu, UDim2.new(0, 300, 0, 26), UDim2.new(1, -400, 
 piecesMenu.TextXAlignment = Enum.TextXAlignment.Right
 piecesMenu.ZIndex = 22
 piecesMenu.Text = "💰 0 pièces"
-remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(function(profil)
-	if type(profil) == "table" then
-		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
-	end
-end)
-task.spawn(function()
-	local profil = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
-	if type(profil) == "table" then
-		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
-	end
-end)
+
 
 local boutonFermerMenu = Instance.new("TextButton")
 boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
@@ -8963,114 +9425,602 @@ boutonFermerMenu.Parent = fondMenu
 Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
 
 ---------------------------------------------------------------------
--- LE MAGASIN : packs de pièces et Pack de démarrage (Robux)
+-- LE MAGASIN (Robux) : onglets Offres / Traînées / Roue / Pièces
 ---------------------------------------------------------------------
 local MarketplaceService = game:GetService("MarketplaceService")
-local panneauMagasin = Instance.new("Frame")
-panneauMagasin.AnchorPoint = Vector2.new(0.5, 0.5)
-panneauMagasin.Size = UDim2.new(0, 520, 0, 460)
-panneauMagasin.Position = UDim2.fromScale(0.62, 0.5)
-panneauMagasin.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
-panneauMagasin.Visible = false
-panneauMagasin.ZIndex = 30
-panneauMagasin.Parent = fondMenu
-Instance.new("UICorner", panneauMagasin).CornerRadius = UDim.new(0, 16)
-local bordMagasin = Instance.new("UIStroke")
-bordMagasin.Thickness = 3
-bordMagasin.Color = Color3.fromRGB(255, 205, 70)
-bordMagasin.Parent = panneauMagasin
-local titreMagasin = texte(panneauMagasin, UDim2.new(1, -30, 0, 34), UDim2.new(0, 15, 0, 14), Color3.fromRGB(255, 205, 70))
-titreMagasin.Text = "🛒 MAGASIN"
-titreMagasin.ZIndex = 31
-local listeMagasin = Instance.new("Frame")
-listeMagasin.Size = UDim2.new(1, -30, 1, -70)
-listeMagasin.Position = UDim2.new(0, 15, 0, 58)
+local profilMenu: any = nil -- (le profil, pour savoir ce qui est déjà acheté)
+local majMagasin: { () -> () } = {}
+
+local function fenetre(nom: string, titreFenetre: string, largeur: number, hauteur: number, couleurBord: Color3): (Frame, TextLabel)
+	local f = Instance.new("Frame")
+	f.Name = nom
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Size = UDim2.new(0, largeur, 0, hauteur)
+	f.Position = UDim2.fromScale(0.62, 0.5)
+	f.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	f.Visible = false
+	f.ZIndex = 30
+	f.Parent = fondMenu
+	Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 1
+	bord.Color = Color3.fromRGB(60, 60, 70)
+	bord.Parent = f
+	local lisere = Instance.new("Frame")
+	lisere.Size = UDim2.new(1, 0, 0, 5)
+	lisere.BackgroundColor3 = couleurBord
+	lisere.BorderSizePixel = 0
+	lisere.ZIndex = 31
+	lisere.Parent = f
+	local t = texte(f, UDim2.new(1, -90, 0, 36), UDim2.new(0, 20, 0, 18), Color3.new(1, 1, 1))
+	t.Text = titreFenetre
+	t.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	t.TextXAlignment = Enum.TextXAlignment.Left
+	t.ZIndex = 31
+	local fermer = Instance.new("TextButton")
+	fermer.AnchorPoint = Vector2.new(1, 0)
+	fermer.Size = UDim2.new(0, 40, 0, 40)
+	fermer.Position = UDim2.new(1, -14, 0, 16)
+	fermer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+	fermer.TextColor3 = Color3.new(1, 1, 1)
+	fermer.Font = Enum.Font.GothamBlack
+	fermer.TextScaled = true
+	fermer.Text = "X"
+	fermer.ZIndex = 33
+	fermer.Parent = f
+	Instance.new("UICorner", fermer).CornerRadius = UDim.new(0, 6)
+	local marge = Instance.new("UIPadding")
+	marge.PaddingTop = UDim.new(0, 10)
+	marge.PaddingBottom = UDim.new(0, 10)
+	marge.Parent = fermer
+	fermer.Activated:Connect(function()
+		f.Visible = false
+	end)
+	return f, t
+end
+
+local function apparaitre(f: Frame)
+	f.Visible = true
+	local e = f:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	e.Parent = f
+	e.Scale = 0.6
+	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+local panneauMagasin = fenetre("Magasin", "🛒 MAGASIN", 560, 520, Color3.fromRGB(225, 30, 45))
+local soldeMagasin = texte(panneauMagasin, UDim2.new(0, 200, 0, 22), UDim2.new(1, -270, 0, 26), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+soldeMagasin.TextXAlignment = Enum.TextXAlignment.Right
+soldeMagasin.ZIndex = 31
+
+-- Onglets
+local ongletsMagasin = Instance.new("Frame")
+ongletsMagasin.Size = UDim2.new(1, -40, 0, 38)
+ongletsMagasin.Position = UDim2.new(0, 20, 0, 66)
+ongletsMagasin.BackgroundTransparency = 1
+ongletsMagasin.ZIndex = 31
+ongletsMagasin.Parent = panneauMagasin
+local dispoOnglets = Instance.new("UIListLayout")
+dispoOnglets.FillDirection = Enum.FillDirection.Horizontal
+dispoOnglets.Padding = UDim.new(0, 6)
+dispoOnglets.Parent = ongletsMagasin
+
+local listeMagasin = Instance.new("ScrollingFrame")
+listeMagasin.Size = UDim2.new(1, -30, 1, -126)
+listeMagasin.Position = UDim2.new(0, 20, 0, 114)
 listeMagasin.BackgroundTransparency = 1
+listeMagasin.BorderSizePixel = 0
+listeMagasin.ScrollBarThickness = 5
+listeMagasin.ScrollBarImageColor3 = Color3.fromRGB(225, 30, 45)
+listeMagasin.AutomaticCanvasSize = Enum.AutomaticSize.Y
+listeMagasin.CanvasSize = UDim2.new()
 listeMagasin.ZIndex = 31
 listeMagasin.Parent = panneauMagasin
 local dispoMagasin = Instance.new("UIListLayout")
-dispoMagasin.Padding = UDim.new(0, 10)
+dispoMagasin.Padding = UDim.new(0, 8)
+dispoMagasin.SortOrder = Enum.SortOrder.LayoutOrder
 dispoMagasin.Parent = listeMagasin
-for _, offre in ipairs(Config.Boutique or {}) do
+
+local function dejaAchete(offre): boolean
+	local p = profilMenu and profilMenu.Possessions
+	if not p then
+		return false
+	end
+	if offre.Kart then
+		return p.Karts ~= nil and p.Karts[offre.Kart] == true
+	end
+	if offre.Categorie == "Traînées" and offre.Trainee then
+		return p.Trainees ~= nil and p.Trainees[offre.Trainee] == true
+	end
+	return offre.Unique == true and p.Produits ~= nil and p.Produits[offre.Id] == true
+end
+
+local function acheterOffre(offre)
+	if dejaAchete(offre) then
+		ajouterAuFil("✔ Tu l'as déjà !", Color3.fromRGB(140, 255, 160))
+		return
+	end
+	if (offre.ProduitId or 0) ~= 0 then
+		MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
+	else
+		local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
+		if type(resultat) == "table" then
+			if resultat.profil then
+				profilMenu = resultat.profil
+				for _, f in ipairs(majMagasin) do
+					f()
+				end
+			end
+			ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+		end
+	end
+end
+
+local cartesParCategorie: { [string]: { GuiObject } } = {}
+for ordre, offre in ipairs(Config.Boutique or {}) do
+	local grande = offre.Promo == true
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, 0, 0, 80)
-	b.BackgroundColor3 = if offre.Promo then Color3.fromRGB(40, 30, 10) else Color3.fromRGB(28, 28, 36)
+	b.LayoutOrder = ordre
+	b.Size = UDim2.new(1, -8, 0, if grande then 110 else 78)
+	b.BackgroundColor3 = if grande then Color3.fromRGB(40, 22, 50) else Color3.fromRGB(26, 26, 32)
+	b.AutoButtonColor = false
 	b.Text = ""
 	b.ZIndex = 32
 	b.Parent = listeMagasin
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
 	local bord = Instance.new("UIStroke")
-	bord.Thickness = 2
-	bord.Color = if offre.Promo then Color3.fromRGB(255, 205, 40) else Color3.fromRGB(80, 80, 95)
+	bord.Thickness = if grande then 2 else 1
+	bord.Color = if grande then Color3.fromRGB(255, 140, 230) else Color3.fromRGB(60, 60, 72)
 	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bord.Parent = b
-	local n = texte(b, UDim2.new(0.68, 0, 0, 30), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
+	if grande then
+		local degradeBord = Instance.new("UIGradient")
+		degradeBord.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 200)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 200, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 230, 90)),
+		})
+		degradeBord.Parent = bord
+		task.spawn(function()
+			while b.Parent do
+				degradeBord.Rotation = (degradeBord.Rotation + 3) % 360
+				task.wait(0.03)
+			end
+		end)
+	end
+	-- Aperçu de la traînée : un dégradé de ses couleurs
+	local trainee = offre.Trainee and Config.Trainee(offre.Trainee)
+	if offre.Categorie == "Traînées" and trainee and trainee.Couleurs then
+		local apercu = Instance.new("Frame")
+		apercu.Size = UDim2.new(0, 60, 0, 60)
+		apercu.Position = UDim2.new(0, 10, 0.5, -30)
+		apercu.BackgroundColor3 = Color3.new(1, 1, 1)
+		apercu.ZIndex = 33
+		apercu.Parent = b
+		Instance.new("UICorner", apercu).CornerRadius = UDim.new(0, 6)
+		local d = Instance.new("UIGradient")
+		d.Color = trainee.Couleurs
+		d.Rotation = 45
+		d.Parent = apercu
+		local ic = texte(apercu, UDim2.new(1, -16, 1, -16), UDim2.new(0, 8, 0, 8), Color3.new(1, 1, 1))
+		ic.Text = trainee.Icone or ""
+		ic.ZIndex = 34
+	end
+	local gauche = if offre.Categorie == "Traînées" then 82 else 16
+	local n = texte(b, UDim2.new(1, -gauche - 160, 0, if grande then 34 else 26), UDim2.new(0, gauche, 0, if grande then 16 else 12), Color3.new(1, 1, 1))
 	n.Text = offre.Nom
+	n.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
 	n.TextXAlignment = Enum.TextXAlignment.Left
 	n.ZIndex = 33
-	local dsc = texte(b, UDim2.new(0.68, 0, 0, 22), UDim2.new(0, 14, 0, 46), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+	local dsc = texte(b, UDim2.new(1, -gauche - 160, 0, if grande then 40 else 30), UDim2.new(0, gauche, 0, if grande then 56 else 42), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
 	dsc.Text = offre.Description
+	dsc.TextWrapped = true
 	dsc.TextXAlignment = Enum.TextXAlignment.Left
+	dsc.TextYAlignment = Enum.TextYAlignment.Top
 	dsc.ZIndex = 33
 	local prix = Instance.new("TextLabel")
 	prix.AnchorPoint = Vector2.new(1, 0.5)
 	prix.Size = UDim2.new(0, 130, 0, 46)
 	prix.Position = UDim2.new(1, -12, 0.5, 0)
-	prix.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+	prix.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 	prix.TextColor3 = Color3.new(1, 1, 1)
 	prix.Font = Enum.Font.GothamBlack
 	prix.TextScaled = true
 	prix.Text = offre.PrixAffiche
 	prix.ZIndex = 33
 	prix.Parent = b
-	Instance.new("UICorner", prix).CornerRadius = UDim.new(0, 10)
-	-- Le vrai prix Roblox, si le produit est configuré
+	Instance.new("UICorner", prix).CornerRadius = UDim.new(0, 6)
+	local margePrix = Instance.new("UIPadding")
+	margePrix.PaddingTop = UDim.new(0, 10)
+	margePrix.PaddingBottom = UDim.new(0, 10)
+	margePrix.Parent = prix
+	local vraiPrix = offre.PrixAffiche
 	if (offre.ProduitId or 0) ~= 0 then
 		task.spawn(function()
 			local ok, infos = pcall(function()
 				return MarketplaceService:GetProductInfo(offre.ProduitId, Enum.InfoType.Product)
 			end)
 			if ok and infos and infos.PriceInRobux then
-				prix.Text = "R$ " .. tostring(infos.PriceInRobux)
+				vraiPrix = "R$ " .. tostring(infos.PriceInRobux)
+				prix.Text = vraiPrix
 			end
 		end)
 	end
+	table.insert(majMagasin, function()
+		local achete = dejaAchete(offre)
+		prix.Text = if achete then "✔ ACHETÉ" else vraiPrix
+		prix.BackgroundColor3 = if achete then Color3.fromRGB(40, 140, 70) else Color3.fromRGB(225, 30, 45)
+	end)
+	local echelle = Instance.new("UIScale")
+	echelle.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.12), { Scale = 1.02 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.12), { Scale = 1 }):Play()
+	end)
 	b.Activated:Connect(function()
-		if (offre.ProduitId or 0) ~= 0 then
-			MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
-		else
-			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
-			if type(resultat) == "table" then
-				ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
-			end
+		acheterOffre(offre)
+	end)
+	local cat = offre.Categorie or "Offres"
+	cartesParCategorie[cat] = cartesParCategorie[cat] or {}
+	table.insert(cartesParCategorie[cat], b)
+end
+
+local boutonsOnglets: { [string]: TextButton } = {}
+local function montrerCategorie(cat: string)
+	for c, cartes in pairs(cartesParCategorie) do
+		for _, carte in ipairs(cartes) do
+			carte.Visible = c == cat
 		end
+	end
+	for c, bouton in pairs(boutonsOnglets) do
+		bouton.BackgroundColor3 = if c == cat then Color3.fromRGB(225, 30, 45) else Color3.fromRGB(34, 34, 40)
+	end
+	listeMagasin.CanvasPosition = Vector2.zero
+end
+local ICONES_CATEGORIES = { Offres = "⭐ OFFRES", ["Traînées"] = "🌈 TRAÎNÉES", Roue = "🎡 ROUE", ["Pièces"] = "💰 PIÈCES" }
+for i, cat in ipairs(Config.CategoriesBoutique or {}) do
+	local o = Instance.new("TextButton")
+	o.LayoutOrder = i
+	o.Size = UDim2.new(1 / #Config.CategoriesBoutique, -6, 1, 0)
+	o.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+	o.TextColor3 = Color3.new(1, 1, 1)
+	o.Font = Enum.Font.GothamBlack
+	o.TextScaled = true
+	o.Text = ICONES_CATEGORIES[cat] or cat
+	o.ZIndex = 32
+	o.Parent = ongletsMagasin
+	Instance.new("UICorner", o).CornerRadius = UDim.new(0, 5)
+	local marge = Instance.new("UIPadding")
+	marge.PaddingTop = UDim.new(0, 9)
+	marge.PaddingBottom = UDim.new(0, 9)
+	marge.Parent = o
+	boutonsOnglets[cat] = o
+	o.Activated:Connect(function()
+		montrerCategorie(cat)
 	end)
 end
-local fermerMagasin = Instance.new("TextButton")
-fermerMagasin.AnchorPoint = Vector2.new(1, 0)
-fermerMagasin.Size = UDim2.new(0, 40, 0, 40)
-fermerMagasin.Position = UDim2.new(1, -12, 0, 12)
-fermerMagasin.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-fermerMagasin.TextColor3 = Color3.new(1, 1, 1)
-fermerMagasin.Font = Enum.Font.GothamBlack
-fermerMagasin.TextScaled = true
-fermerMagasin.Text = "✕"
-fermerMagasin.ZIndex = 33
-fermerMagasin.Parent = panneauMagasin
-Instance.new("UICorner", fermerMagasin).CornerRadius = UDim.new(0, 10)
-fermerMagasin.Activated:Connect(function()
-	panneauMagasin.Visible = false
-end)
-local function ouvrirMagasin()
-	panneauMagasin.Visible = true
-	local e = panneauMagasin:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-	e.Parent = panneauMagasin
-	e.Scale = 0.6
-	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-end
-carteMagasin.Activated:Connect(ouvrirMagasin)
+montrerCategorie("Offres")
 
-cartePromo.Activated:Connect(ouvrirMagasin)
+local function majProfilMenu(p)
+	if type(p) ~= "table" then
+		return
+	end
+	profilMenu = p
+	soldeMagasin.Text = ("💰 %d"):format(p.Pieces or 0)
+	for _, f in ipairs(majMagasin) do
+		f()
+	end
+end
+
+local function ouvrirMagasin(categorie: string?)
+	montrerCategorie(categorie or "Offres")
+	apparaitre(panneauMagasin)
+end
+
+local ouvrirMenu: (boolean) -> () -- (définie plus bas)
+do
+---------------------------------------------------------------------
+-- 🎡 LA ROUE DU JOUR
+---------------------------------------------------------------------
+local panneauRoue = fenetre("RoueDuJour", "🎡 ROUE DU JOUR", 560, 600, Color3.fromRGB(255, 200, 40))
+do -- (bloc de la roue : ses variables restent ici)
+local TAILLE_ROUE = 360
+local N = #Config.Roue
+local ANGLE = 360 / N
+
+local cadreRoue = Instance.new("Frame") -- l'anneau doré autour
+cadreRoue.AnchorPoint = Vector2.new(0.5, 0)
+cadreRoue.Size = UDim2.fromOffset(TAILLE_ROUE + 24, TAILLE_ROUE + 24)
+cadreRoue.Position = UDim2.new(0.5, 0, 0, 70)
+cadreRoue.BackgroundColor3 = Color3.fromRGB(255, 200, 60)
+cadreRoue.ZIndex = 31
+cadreRoue.Parent = panneauRoue
+Instance.new("UICorner", cadreRoue).CornerRadius = UDim.new(0.5, 0)
+local degradeAnneau = Instance.new("UIGradient")
+degradeAnneau.Color = ColorSequence.new(Color3.fromRGB(255, 235, 150), Color3.fromRGB(200, 130, 20))
+degradeAnneau.Rotation = 45
+degradeAnneau.Parent = cadreRoue
+-- Les petites ampoules qui clignotent autour
+local ampoules = {}
+for i = 1, 24 do
+	local a = math.rad(i * 15)
+	local amp = Instance.new("Frame")
+	amp.AnchorPoint = Vector2.new(0.5, 0.5)
+	amp.Size = UDim2.fromOffset(9, 9)
+	amp.Position = UDim2.new(0.5, math.sin(a) * (TAILLE_ROUE / 2 + 6), 0.5, -math.cos(a) * (TAILLE_ROUE / 2 + 6))
+	amp.BackgroundColor3 = Color3.new(1, 1, 1)
+	amp.ZIndex = 33
+	amp.Parent = cadreRoue
+	Instance.new("UICorner", amp).CornerRadius = UDim.new(0.5, 0)
+	ampoules[i] = amp
+end
+
+-- La roue elle-même (CanvasGroup : découpée en rond, et elle peut tourner)
+local roue = Instance.new("CanvasGroup")
+roue.AnchorPoint = Vector2.new(0.5, 0.5)
+roue.Size = UDim2.fromOffset(TAILLE_ROUE, TAILLE_ROUE)
+roue.Position = UDim2.fromScale(0.5, 0.5)
+roue.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+roue.ZIndex = 32
+roue.Parent = cadreRoue
+Instance.new("UICorner", roue).CornerRadius = UDim.new(0.5, 0)
+local largeurPart = 2 * (TAILLE_ROUE / 2) * math.tan(math.rad(ANGLE / 2)) + 6
+for i, case in ipairs(Config.Roue) do
+	-- Chaque part : un support qui tourne autour du centre de la roue
+	local support = Instance.new("Frame")
+	support.Size = UDim2.fromScale(1, 1)
+	support.BackgroundTransparency = 1
+	support.Rotation = (i - 1) * ANGLE
+	support.ZIndex = 32 + i
+	support.Parent = roue
+	local part = Instance.new("Frame")
+	part.AnchorPoint = Vector2.new(0.5, 0)
+	part.Size = UDim2.new(0, largeurPart, 0.5, 0)
+	part.Position = UDim2.fromScale(0.5, 0)
+	part.BackgroundColor3 = case.Couleur
+	part.BorderSizePixel = 0
+	part.ZIndex = 32 + i
+	part.Parent = support
+	local reflet = Instance.new("UIGradient")
+	reflet.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170))
+	reflet.Rotation = 90
+	reflet.Parent = part
+	local nom = Instance.new("TextLabel")
+	nom.AnchorPoint = Vector2.new(0.5, 0)
+	nom.Size = UDim2.new(0, 96, 0, 22)
+	nom.Position = UDim2.new(0.5, 0, 0, 30)
+	nom.BackgroundTransparency = 1
+	nom.TextColor3 = Color3.new(1, 1, 1)
+	nom.Font = Enum.Font.GothamBlack
+	nom.TextScaled = true
+	nom.Text = case.Nom
+	nom.ZIndex = 50
+	nom.Parent = support
+	local contourNom = Instance.new("UIStroke")
+	contourNom.Thickness = 2
+	contourNom.Color = Color3.fromRGB(20, 20, 26)
+	contourNom.Parent = nom
+	-- Séparation dorée entre deux parts
+	local supportTrait = Instance.new("Frame")
+	supportTrait.Size = UDim2.fromScale(1, 1)
+	supportTrait.BackgroundTransparency = 1
+	supportTrait.Rotation = (i - 1) * ANGLE + ANGLE / 2
+	supportTrait.ZIndex = 45
+	supportTrait.Parent = roue
+	local trait = Instance.new("Frame")
+	trait.AnchorPoint = Vector2.new(0.5, 0)
+	trait.Size = UDim2.new(0, 3, 0.5, 0)
+	trait.Position = UDim2.fromScale(0.5, 0)
+	trait.BackgroundColor3 = Color3.fromRGB(255, 215, 90)
+	trait.BorderSizePixel = 0
+	trait.ZIndex = 45
+	trait.Parent = supportTrait
+end
+-- Le centre (bouton TOURNER)
+local boutonTourner = Instance.new("TextButton")
+boutonTourner.AnchorPoint = Vector2.new(0.5, 0.5)
+boutonTourner.Size = UDim2.fromOffset(110, 110)
+boutonTourner.Position = UDim2.fromScale(0.5, 0.5)
+boutonTourner.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
+boutonTourner.TextColor3 = Color3.new(1, 1, 1)
+boutonTourner.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+boutonTourner.TextScaled = true
+boutonTourner.Text = "TOURNER"
+boutonTourner.ZIndex = 60
+boutonTourner.Parent = cadreRoue
+Instance.new("UICorner", boutonTourner).CornerRadius = UDim.new(0.5, 0)
+local bordCentre = Instance.new("UIStroke")
+bordCentre.Thickness = 5
+bordCentre.Color = Color3.fromRGB(255, 215, 90)
+bordCentre.Parent = boutonTourner
+local margeCentre = Instance.new("UIPadding")
+margeCentre.PaddingTop = UDim.new(0, 38)
+margeCentre.PaddingBottom = UDim.new(0, 38)
+margeCentre.PaddingLeft = UDim.new(0, 10)
+margeCentre.PaddingRight = UDim.new(0, 10)
+margeCentre.Parent = boutonTourner
+local echelleCentre = Instance.new("UIScale")
+echelleCentre.Parent = boutonTourner
+-- La flèche en haut
+local fleche = Instance.new("TextLabel")
+fleche.AnchorPoint = Vector2.new(0.5, 0)
+fleche.Size = UDim2.fromOffset(50, 50)
+fleche.Position = UDim2.new(0.5, 0, 0, 52)
+fleche.BackgroundTransparency = 1
+fleche.TextColor3 = Color3.fromRGB(255, 255, 255)
+fleche.Font = Enum.Font.GothamBlack
+fleche.TextScaled = true
+fleche.Text = "▼"
+fleche.ZIndex = 70
+fleche.Parent = panneauRoue
+local contourFleche = Instance.new("UIStroke")
+contourFleche.Thickness = 3
+contourFleche.Color = Color3.fromRGB(225, 30, 45)
+contourFleche.Parent = fleche
+
+local infoRoue = texte(panneauRoue, UDim2.new(1, -40, 0, 22), UDim2.new(0, 20, 0, 470), Color3.new(1, 1, 1), Enum.Font.GothamBold)
+infoRoue.ZIndex = 31
+local resultatRoue = texte(panneauRoue, UDim2.new(1, -40, 0, 30), UDim2.new(0, 20, 0, 496), Color3.fromRGB(255, 215, 80))
+resultatRoue.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+resultatRoue.ZIndex = 31
+-- Les chances de chaque cadeau (obligatoire sur Roblox pour les tours achetés)
+local totalPoids = 0
+for _, case in ipairs(Config.Roue) do
+	totalPoids += case.Poids
+end
+local morceaux = {}
+for _, case in ipairs(Config.Roue) do
+	table.insert(morceaux, ("%s %s%%"):format(case.Nom, string.format("%.1f", case.Poids / totalPoids * 100):gsub("%.0$", "")))
+end
+local chances = texte(panneauRoue, UDim2.new(1, -40, 0, 30), UDim2.new(0, 20, 0, 532), Color3.fromRGB(150, 150, 160), Enum.Font.GothamMedium)
+chances.Text = "Chances : " .. table.concat(morceaux, " · ")
+chances.TextWrapped = true
+chances.ZIndex = 31
+local boutonAcheterTours = Instance.new("TextButton")
+boutonAcheterTours.AnchorPoint = Vector2.new(0.5, 1)
+boutonAcheterTours.Size = UDim2.new(0, 260, 0, 30)
+boutonAcheterTours.Position = UDim2.new(0.5, 0, 1, -6)
+boutonAcheterTours.BackgroundTransparency = 1
+boutonAcheterTours.TextColor3 = Color3.fromRGB(255, 120, 130)
+boutonAcheterTours.Font = Enum.Font.GothamBold
+boutonAcheterTours.TextScaled = true
+boutonAcheterTours.Text = "🛒 Acheter des tours en plus"
+boutonAcheterTours.ZIndex = 31
+boutonAcheterTours.Parent = panneauRoue
+boutonAcheterTours.Activated:Connect(function()
+	panneauRoue.Visible = false
+	ouvrirMagasin("Roue")
+end)
+
+local function toursDisponibles(): number
+	if not profilMenu then
+		return 0
+	end
+	return (profilMenu.ToursGratuitsRestants or 0) + (profilMenu.ToursRoue or 0)
+end
+
+local enRotation = false
+local function majRoue()
+	local gratuits = profilMenu and profilMenu.ToursGratuitsRestants or 0
+	local achetes = profilMenu and profilMenu.ToursRoue or 0
+	if gratuits > 0 then
+		infoRoue.Text = ("🎁 %d tour%s GRATUIT aujourd'hui%s"):format(gratuits, if gratuits > 1 then "s" else "", if achetes > 0 then (" + %d acheté(s)"):format(achetes) else "")
+	elseif achetes > 0 then
+		infoRoue.Text = ("🎡 %d tour(s) en réserve"):format(achetes)
+	else
+		local reste = profilMenu and profilMenu.ProchainTourGratuit or 0
+		infoRoue.Text = ("⏳ Prochain tour gratuit dans %dh %02dmin"):format(reste // 3600, (reste % 3600) // 60)
+	end
+	boutonTourner.BackgroundColor3 = if toursDisponibles() > 0 and not enRotation then Color3.fromRGB(225, 30, 45) else Color3.fromRGB(70, 70, 78)
+end
+table.insert(majMagasin, majRoue)
+
+local RoueDuJour = remotes:WaitForChild("RoueDuJour")
+boutonTourner.Activated:Connect(function()
+	if enRotation then
+		return
+	end
+	if toursDisponibles() <= 0 then
+		resultatRoue.Text = "Plus de tour : reviens demain ou achète des tours !"
+		return
+	end
+	enRotation = true
+	resultatRoue.Text = ""
+	majRoue()
+	local r = RoueDuJour:InvokeServer("lancer")
+	if type(r) ~= "table" or not r.ok or not r.indice then
+		enRotation = false
+		resultatRoue.Text = (type(r) == "table" and r.message) or "Oups, réessaie !"
+		majRoue()
+		return
+	end
+	-- La roue tourne plusieurs fois puis s'arrête sur la bonne case, sous la flèche
+	local depart = roue.Rotation % 360
+	local arrivee = -((r.indice - 1) * ANGLE) + math.random(-12, 12) * ANGLE / 40
+	local delta = (arrivee - depart) % 360
+	roue.Rotation = depart
+	local tween = TweenService:Create(roue, TweenInfo.new(5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Rotation = depart + 360 * 6 + delta })
+	tween:Play()
+	tween.Completed:Wait()
+	enRotation = false
+	profilMenu = r.profil or profilMenu
+	resultatRoue.Text = "🎉 " .. (r.message or "")
+	local e = Instance.new("UIScale")
+	e.Scale = 0.3
+	e.Parent = resultatRoue
+	TweenService:Create(e, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(0.6, function()
+		e:Destroy()
+	end)
+	majProfilMenu(profilMenu)
+end)
+
+-- Animations : ampoules qui clignotent, bouton qui « respire »
+task.spawn(function()
+	local t = 0
+	while true do
+		t += 1
+		if panneauRoue.Visible then
+			for i, amp in ipairs(ampoules) do
+				local allumee = (i + t) % 2 == 0
+				amp.BackgroundColor3 = if allumee then Color3.new(1, 1, 1) else Color3.fromRGB(255, 120, 60)
+			end
+			if not enRotation and toursDisponibles() > 0 then
+				echelleCentre.Scale = 1
+				TweenService:Create(echelleCentre, TweenInfo.new(0.25), { Scale = 1.08 }):Play()
+			end
+		end
+		task.wait(if enRotation then 0.1 else 0.35)
+	end
+end)
+
+local function ouvrirRoue()
+	panneauMagasin.Visible = false
+	apparaitre(panneauRoue)
+	resultatRoue.Text = ""
+	task.spawn(function()
+		local r = RoueDuJour:InvokeServer("etat")
+		if type(r) == "table" and r.profil then
+			majProfilMenu(r.profil)
+		end
+	end)
+	majRoue()
+end
+
+remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(majProfilMenu)
+task.spawn(function()
+	majProfilMenu(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
+end)
+
+-- Pastille rouge « ! » sur la carte ROUE quand un tour gratuit attend
+local pastilleRoue = Instance.new("TextLabel")
+pastilleRoue.AnchorPoint = Vector2.new(0.5, 0.5)
+pastilleRoue.Size = UDim2.fromOffset(22, 22)
+pastilleRoue.Position = UDim2.new(0, 48, 0, 14)
+pastilleRoue.BackgroundColor3 = Color3.fromRGB(235, 40, 50)
+pastilleRoue.TextColor3 = Color3.new(1, 1, 1)
+pastilleRoue.Font = Enum.Font.GothamBlack
+pastilleRoue.TextScaled = true
+pastilleRoue.Text = "!"
+pastilleRoue.ZIndex = 26
+pastilleRoue.Visible = false
+pastilleRoue.Parent = carteRoue
+Instance.new("UICorner", pastilleRoue).CornerRadius = UDim.new(0.5, 0)
+table.insert(majMagasin, function()
+	pastilleRoue.Visible = profilMenu ~= nil and (profilMenu.ToursGratuitsRestants or 0) > 0
+	piecesMenu.Text = ("%s💰 %d pièces  ·  Niveau %d"):format(if profilMenu and profilMenu.VIP then "👑 VIP  ·  " else "", profilMenu and profilMenu.Pieces or 0, profilMenu and profilMenu.Niveau or 1)
+end)
+carteRoue.Activated:Connect(ouvrirRoue)
+carteMagasin.Activated:Connect(function()
+	panneauRoue.Visible = false
+	ouvrirMagasin("Offres")
+end)
+end -- (fin du bloc de la roue)
+
+cartePromo.Activated:Connect(function()
+	ouvrirMagasin("Offres")
+end)
 
 -- EN FOND DU MENU : la partie EN DIRECT. La caméra suit un kart qui roule
 -- (un autre joueur, un bot ou la police en poursuite) et change de pilote
@@ -9339,10 +10289,11 @@ for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle" }) do
 end
 majMenu()
 
-local function ouvrirMenu(ouvert: boolean)
+ouvrirMenu = function(ouvert: boolean)
 	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
 	panneauMagasin.Visible = false
+	panneauRoue.Visible = false
 	majMenu()
 	local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
 	local auVolant = h and h.SeatPart ~= nil
@@ -9464,6 +10415,7 @@ task.spawn(function()
 	end
 end)
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- LE CLASSEMENT MONDIAL DU DRIFT BATTLE : top 3 + ta place directement
 ---------------------------------------------------------------------
@@ -9555,6 +10507,163 @@ end
 ---------------------------------------------------------------------
 -- Messages du serveur
 ---------------------------------------------------------------------
+do
+---------------------------------------------------------------------
+-- ❤️ LES VIES (Police contre Fugitifs) + le choix RÉAPPARAÎTRE / ⚡ VENGEANCE
+---------------------------------------------------------------------
+local POLICE_GRAS = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local MarketplaceVies = game:GetService("MarketplaceService")
+
+-- Les cœurs en haut de l'écran pendant la manche
+local coeurs = Instance.new("TextLabel")
+coeurs.AnchorPoint = Vector2.new(0.5, 0)
+coeurs.Size = UDim2.new(0, 220, 0, 40)
+coeurs.Position = UDim2.new(0.5, 0, 0, 8)
+coeurs.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+coeurs.BackgroundTransparency = 0.3
+coeurs.TextColor3 = Color3.new(1, 1, 1)
+coeurs.Font = Enum.Font.GothamBlack
+coeurs.TextScaled = true
+coeurs.Visible = false
+coeurs.ZIndex = 6
+coeurs.Parent = gui
+Instance.new("UICorner", coeurs).CornerRadius = UDim.new(0, 8)
+local margeCoeurs = Instance.new("UIPadding")
+margeCoeurs.PaddingTop = UDim.new(0, 6)
+margeCoeurs.PaddingBottom = UDim.new(0, 6)
+margeCoeurs.Parent = coeurs
+local echelleCoeurs = Instance.new("UIScale")
+echelleCoeurs.Parent = coeurs
+local viesAffichees = -1
+local function majCoeurs()
+	local vies = joueur:GetAttribute("Vies")
+	coeurs.Visible = type(vies) == "number" and joueur:GetAttribute("Role") ~= nil
+	if type(vies) ~= "number" then
+		viesAffichees = -1
+		return
+	end
+	local total = (Config.Partie and Config.Partie.Vies) or 3
+	coeurs.Text = string.rep("❤️", vies) .. string.rep("🖤", math.max(total - vies, 0))
+	if viesAffichees ~= -1 and vies < viesAffichees then
+		echelleCoeurs.Scale = 1.5 -- une vie en moins : les cœurs « tremblent »
+		TweenService:Create(echelleCoeurs, TweenInfo.new(0.5, Enum.EasingStyle.Elastic), { Scale = 1 }):Play()
+	end
+	viesAffichees = vies
+end
+joueur:GetAttributeChangedSignal("Vies"):Connect(majCoeurs)
+joueur:GetAttributeChangedSignal("Role"):Connect(majCoeurs)
+
+-- L'écran du choix
+local ecranChoix = Instance.new("Frame")
+ecranChoix.Size = UDim2.fromScale(1, 1)
+ecranChoix.BackgroundColor3 = Color3.fromRGB(40, 0, 5)
+ecranChoix.BackgroundTransparency = 0.35
+ecranChoix.Visible = false
+ecranChoix.ZIndex = 45
+ecranChoix.Parent = gui
+local titreChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 64), UDim2.new(0.1, 0, 0.18, 0), Color3.new(1, 1, 1))
+titreChoix.FontFace = POLICE_GRAS
+titreChoix.ZIndex = 46
+local sousChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.18, 72), Color3.fromRGB(255, 200, 200), Enum.Font.GothamBold)
+sousChoix.ZIndex = 46
+local coeursChoix = texte(ecranChoix, UDim2.new(0.4, 0, 0, 44), UDim2.new(0.3, 0, 0.18, 112), Color3.new(1, 1, 1))
+coeursChoix.ZIndex = 46
+
+local function grosBouton(icone: string, titre: string, sous: string, couleur: Color3, x: number): (TextButton, TextLabel)
+	local b = Instance.new("TextButton")
+	b.AnchorPoint = Vector2.new(0.5, 0)
+	b.Size = UDim2.new(0, 300, 0, 170)
+	b.Position = UDim2.new(0.5, x, 0.45, 0)
+	b.BackgroundColor3 = couleur
+	b.Text = ""
+	b.AutoButtonColor = false
+	b.ZIndex = 46
+	b.Parent = ecranChoix
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 3
+	bord.Color = Color3.new(1, 1, 1)
+	bord.Transparency = 0.4
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	local i = texte(b, UDim2.new(1, 0, 0, 62), UDim2.new(0, 0, 0, 12), Color3.new(1, 1, 1))
+	i.Text = icone
+	i.ZIndex = 47
+	local t = texte(b, UDim2.new(1, -20, 0, 36), UDim2.new(0, 10, 0, 80), Color3.new(1, 1, 1))
+	t.Text = titre
+	t.FontFace = POLICE_GRAS
+	t.ZIndex = 47
+	local s = texte(b, UDim2.new(1, -20, 0, 34), UDim2.new(0, 10, 0, 122), Color3.fromRGB(240, 240, 245), Enum.Font.GothamBold)
+	s.Text = sous
+	s.TextWrapped = true
+	s.ZIndex = 47
+	local e = Instance.new("UIScale")
+	e.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1.06 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1 }):Play()
+	end)
+	return b, s
+end
+local boutonReapparaitre, sousReapparaitre = grosBouton("🔄", "RÉAPPARAÎTRE", "Gratuit", Color3.fromRGB(40, 150, 80), -170)
+local boutonVengeance, sousVengeance = grosBouton("⚡", "VENGEANCE", "", Color3.fromRGB(200, 20, 40), 170)
+-- L'éclair de la vengeance « pulse » pour attirer l'œil
+local degradeVengeance = Instance.new("UIGradient")
+degradeVengeance.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 60)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 120)),
+})
+degradeVengeance.Rotation = 30
+degradeVengeance.Parent = boutonVengeance
+
+local choixEnCours = 0
+local produitVengeance = 0
+local function fermerChoix()
+	choixEnCours += 1
+	ecranChoix.Visible = false
+end
+local function montrerChoix(info)
+	choixEnCours += 1
+	local numero = choixEnCours
+	produitVengeance = info.produit or 0
+	local total = (Config.Partie and Config.Partie.Vies) or 3
+	titreChoix.Text = "💥 " .. string.upper(info.par or "?") .. " T'A EU !"
+	coeursChoix.Text = string.rep("❤️", info.vies or 0) .. string.rep("🖤", math.max(total - (info.vies or 0), 0))
+	sousVengeance.Text = ("%s · %s perd une vie !"):format(info.prix or "R$", info.par or "?")
+	ecranChoix.Visible = true
+	ecranChoix.BackgroundTransparency = 1
+	TweenService:Create(ecranChoix, TweenInfo.new(0.3), { BackgroundTransparency = 0.35 }):Play()
+	task.spawn(function()
+		local reste = info.delai or 12
+		while reste > 0 and numero == choixEnCours do
+			sousChoix.Text = ("Il te reste %d vie%s · choisis (%d s)"):format(info.vies or 0, if (info.vies or 0) > 1 then "s" else "", reste)
+			sousReapparaitre.Text = ("Gratuit · retour en piste")
+			degradeVengeance.Offset = Vector2.new(if reste % 2 == 0 then -0.3 else 0.3, 0)
+			task.wait(1)
+			reste -= 1
+		end
+		if numero == choixEnCours then
+			fermerChoix() -- (le serveur nous fait revenir tout seul)
+		end
+	end)
+end
+boutonReapparaitre.Activated:Connect(function()
+	fermerChoix()
+	Partie:FireServer({ type = "reapparaitre" })
+end)
+boutonVengeance.Activated:Connect(function()
+	if produitVengeance ~= 0 then
+		MarketplaceVies:PromptProductPurchase(joueur, produitVengeance) -- le serveur applique la vengeance après le paiement
+	else
+		fermerChoix()
+		Partie:FireServer({ type = "vengeance" }) -- (test gratuit dans Studio)
+	end
+end)
+-- Si l'achat de la vengeance est confirmé, l'écran se ferme quand on revient en piste
+
 Partie.OnClientEvent:Connect(function(info)
 	if type(info) ~= "table" then
 		return
@@ -9627,8 +10736,15 @@ Partie.OnClientEvent:Connect(function(info)
 		ajouterAuFil(info.texte or "", Color3.fromRGB(255, 215, 80))
 	elseif info.type == "arrestation" then
 		ajouterAuFil(("🚔 %s a arrêté %s !"):format(info.policier or "?", info.fugitif or "?"), BLEU)
+	elseif info.type == "perdu" then
+		montrerChoix(info)
+	elseif info.type == "reapparu" then
+		fermerChoix()
+	elseif info.type == "vengeance" then
+		ajouterAuFil(("⚡ VENGEANCE ! %s se venge de %s !"):format(info.par or "?", info.cible or "?"), Color3.fromRGB(255, 90, 90))
 	elseif info.type == "arrete" then
-		montrerCarte("🚨 ARRÊTÉ PAR " .. string.upper(info.par or "LA POLICE") .. " 🚨", "TU ES ARRÊTÉ !",
+		fermerChoix()
+		montrerCarte("💀 ÉLIMINÉ PAR " .. string.upper(info.par or "LA POLICE"), "PLUS DE VIES !",
 			"Tu regardes la fin de la manche depuis le garage. Courage à ton équipe !", Color3.fromRGB(255, 70, 70), 4)
 	elseif info.type == "fin" then
 		local police = info.gagnant == "Police"
@@ -9651,7 +10767,8 @@ carteTuto.Activated:Connect(function()
 	ouvrirMenu(false)
 	joueur:SetAttribute("RevoirTuto", true) -- le script Tutoriel s'en occupe
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
+
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
 	SecuriteUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : SecuriteUI
 

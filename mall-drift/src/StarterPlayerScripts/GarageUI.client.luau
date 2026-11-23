@@ -692,6 +692,44 @@ noteFinition.LayoutOrder = suivant()
 local pageDeco = page()
 section(pageDeco, "NÉONS SOUS LE KART")
 grilleCouleurs(pageDeco, "Neon", Config.Neons)
+section(pageDeco, "🌈 TRAÎNÉES (derrière ton kart)", VIOLET)
+local grilleTrainees = grille(pageDeco, Vector2.new(58, 58))
+for i, t in ipairs(Config.Trainees or {}) do
+	local b, prix, trait = caseCouleur(grilleTrainees, i, Color3.fromRGB(45, 45, 58))
+	if t.Couleurs then
+		b.BackgroundColor3 = Color3.new(1, 1, 1)
+		local degrade = Instance.new("UIGradient")
+		degrade.Color = t.Couleurs
+		degrade.Rotation = 45
+		degrade.Parent = b
+	end
+	local icone = etiquette(b, t.Icone or "", UDim2.new(0.6, 0, 0.45, 0), UDim2.new(0.2, 0, 0.08, 0), Color3.new(1, 1, 1))
+	icone.TextXAlignment = Enum.TextXAlignment.Center
+	local offre = Config.OffreTrainee(t.Nom)
+	table.insert(miseAJour, function()
+		local achetee = t.Nom == "Aucune" or possede("Trainees", t.Nom)
+		prix.Text = if achetee then (if t.Nom == "Aucune" then "AUCUNE" else "") else (offre and offre.PrixAffiche or "R$")
+		prix.Visible = prix.Text ~= ""
+		trait.Thickness = if (persoEdite.Trainee or "Aucune") == t.Nom then 3 else 0
+	end)
+	b.Activated:Connect(function()
+		if t.Nom == "Aucune" or possede("Trainees", t.Nom) then
+			persoEdite.Trainee = t.Nom
+			afficherStatut("Traînée : " .. t.Nom, Color3.fromRGB(220, 220, 230))
+			rafraichir()
+			return
+		end
+		if not offre then
+			afficherStatut("Gagne-la à la 🎡 ROUE DU JOUR !", VIOLET)
+			return
+		end
+		afficherStatut(("%s %s · %s"):format(t.Icone or "", offre.Nom, offre.PrixAffiche), VIOLET)
+		acheterRobux(offre.ProduitId, offre.Id, function()
+			persoEdite.Trainee = t.Nom
+		end)
+		rafraichir()
+	end)
+end
 section(pageDeco, "AUTOCOLLANT")
 local grilleAutocollant = grille(pageDeco, Vector2.new(58, 58))
 for i, a in ipairs(Config.Autocollants) do

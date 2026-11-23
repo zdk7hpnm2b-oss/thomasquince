@@ -17,6 +17,15 @@ Ce prototype contient :
 - **Arrivée dans le jeu** : le MENU s'ouvre directement (options à gauche, partie en direct en fond).
 - **📖 Tuto sur la piste** (bouton TUTO du menu) : un kart (3, 2, 1) et une carte en haut de l'écran en
   **3 étapes** : accélère et tourne → drifte jusqu'à ⭐ → lâche le drift pour le BOOST
+- **🎡 Roue du jour** (menu) : 1 tour GRATUIT par jour (2 avec le Pass VIP) + tours achetables. Cadeaux :
+  pièces, XP, couleur, traînée, et le JACKPOT (kart Licorne Galaxie). Tirage fait par le serveur, chances
+  affichées sous la roue (obligatoire sur Roblox pour un tirage au sort payant). Réglages : `Config.Roue`
+- **🛒 Magasin à onglets** : ⭐ Offres (kart exclusif, 👑 Pass VIP pièces x2, Méga pack Légende, Pack de
+  démarrage) · 🌈 Traînées (Feu, Arc-en-ciel, Étoiles, Éclair, Cœurs, Galaxie — aussi au garage, onglet DÉCO)
+  · 🎡 Roue (3 ou 10 tours) · 💰 Pièces (1 000 à 15 000). Tout est dans `Config.Boutique`
+- **❤️ 3 vies en Police contre Fugitifs** (police ET fugitifs). Quand on perd une vie : 🔄 RÉAPPARAÎTRE
+  (gratuit) ou ⚡ VENGEANCE (payant, `Config.Partie.ProduitVengeance`) : celui qui t'a eu perd une vie.
+  À 0 vie, on est éliminé. 3 s de protection en revenant. Cœurs affichés en haut de l'écran
 - **🦄 Kart exclusif « Licorne Galaxie »** : uniquement en Robux (`Config.Karts.Galaxie.ProduitId`, ou l'offre
   `KartGalaxie` du magasin) : carrosserie arc-en-ciel animée, ailes néon, corne dorée, aileron lumineux,
   paillettes d'étoiles et traînée arc-en-ciel. Exposé dans le garage sur un socle lumineux

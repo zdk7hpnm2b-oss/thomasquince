@@ -799,6 +799,7 @@ end
 -- LES TAPIS ROULANTS entre les 2 étages (au-dessus de la place centrale) :
 -- celui de gauche (ouest) MONTE, celui de droite (est) DESCEND. Ils emportent
 -- le kart tout seuls (le script du joueur lit l'attribut « Tapis »).
+do
 ---------------------------------------------------------------------
 local rampes = Instance.new("Folder")
 rampes.Name = "Rampes"
@@ -875,6 +876,8 @@ for _, x in ipairs({ -185, -145, -105, -65, 65, 105, 145, 185 }) do
 	facade(Vector3.new(x, 0, DZ), Vector3.new(0, 0, -1), 36, ({ "OPTIQUE LUNE", "CHOCO LOCO", "ÉCLAT BEAUTÉ", "VOYAGES SOLEIL", "PHARMACIE", "PRESSING", "FLEURS DU DÉSERT", "CORDONNERIE" })[(x + 185) // 40 % 8 + 1], Color3.fromRGB(200, 230, 255))
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
+do
 ---------------------------------------------------------------------
 -- LA PLACE CENTRALE : fontaine, lustre, palmiers, kiosques, bancs
 ---------------------------------------------------------------------
@@ -984,6 +987,7 @@ end
 posteLibre(Vector3.new(7.8, SOL, -75), Vector3.new(-1, 0, 0), "vendeur", Color3.fromRGB(90, 160, 255))
 posteLibre(Vector3.new(7.8, SOL, 75), Vector3.new(-1, 0, 0), "vendeur", Color3.fromRGB(255, 150, 200))
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- LA LIGNE DE DÉPART : à l'intérieur du mall, juste après l'entrée, au début
 -- de la place centrale. Les karts sont derrière la ligne, face à la fontaine ;
@@ -1014,6 +1018,7 @@ for i, x in ipairs({ -4, 0, 4 }) do
 	deco(feu)
 end
 
+do
 ---------------------------------------------------------------------
 -- L'AQUARIUM GÉANT (mur nord, au bout de la place centrale)
 ---------------------------------------------------------------------
@@ -1050,6 +1055,8 @@ for _ = 1, 16 do
 	TweenService:Create(poisson, info, { CFrame = CFrame.new(random:NextNumber(5, 55), y + random:NextNumber(-3, 3), z) }):Play()
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
+do
 ---------------------------------------------------------------------
 -- FOOD COURT (îlot sud-ouest) : tables + chaises qu'on peut renverser
 -- Les restaurants sont dans la rangée contre le mur ouest, juste en face.
@@ -1080,6 +1087,7 @@ for _, x in ipairs({ -148, -124 }) do
 	end
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- SOL MOUILLÉ + panneaux jaunes « ATTENTION SOL GLISSANT »
 ---------------------------------------------------------------------
@@ -1353,6 +1361,7 @@ panneauJaune(Vector2.new(-99, 46), Vector3.new(0, 0, -1))
 autolaveuse(-150, 150, 137, 30) -- allée sud du 1er étage
 NIVEAU = 0
 
+do
 ---------------------------------------------------------------------
 -- DEHORS : le parking devant l'entrée du mall
 ---------------------------------------------------------------------
@@ -1392,6 +1401,7 @@ for _, x in ipairs({ -150, -75, 75, 150 }) do
 	end
 end
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- LE GARAGE VIP : un grand bâtiment à part, au bout du parking.
 -- On y apparaît, on y personnalise son kart, puis on part vers le mall.
@@ -1480,6 +1490,7 @@ kartExpose("Galaxie", "Rose", "Arc-en-ciel", Vector3.new(62, SOL, G_Z2 - 16))
 -- LA DÉCO DU GARAGE VIP
 --   à gauche (ouest) : le salon VIP   ·   à droite (est) : l'atelier mécanique
 --   au fond : écran géant + karts exposés   ·   devant : tapis rouge + drapeaux
+do
 ---------------------------------------------------------------------
 local decoGarage = Instance.new("Folder")
 decoGarage.Name = "DecoGarage"
@@ -1702,6 +1713,7 @@ apparition.Color = VIOLET
 apparition.Material = Enum.Material.Neon
 apparition.Parent = garage
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- COMMUNICATION CLIENT ↔ SERVEUR
 ---------------------------------------------------------------------
@@ -1784,8 +1796,11 @@ type Profil = {
 	Perso: { [string]: any },
 	Charge: boolean,
 	Pieces: number, -- la monnaie du jeu 💰
-	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean }, Karts: { [string]: boolean } },
+	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean }, Karts: { [string]: boolean }, Trainees: { [string]: boolean } },
 	TutoFait: boolean, -- le tuto du début a déjà été vu
+	ToursRoue: number, -- tours de roue achetés (ou offerts) pas encore joués
+	DernierJourRoue: number, -- dernier jour (UTC) où le tour gratuit a été joué
+	ToursGratuitsJour: number, -- tours gratuits déjà joués ce jour-là
 }
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
@@ -1797,6 +1812,22 @@ dossierKarts.Parent = workspace
 
 local function niveauDe(profil: Profil): number
 	return (Config.NiveauDepuisXP(profil.XP))
+end
+
+-- La roue du jour : 1 tour gratuit par jour (2 avec le Pass VIP)
+local function jourActuel(): number
+	return os.time() // 86400
+end
+local function toursGratuitsRestants(profil: Profil): number
+	local parJour = if profil.Possessions.Produits.PassVIP then 2 else 1
+	if profil.DernierJourRoue ~= jourActuel() then
+		return parJour
+	end
+	return math.max(parJour - profil.ToursGratuitsJour, 0)
+end
+-- Pass VIP : pièces x2
+local function multiplicateurPieces(profil: Profil): number
+	return if profil.Possessions.Produits.PassVIP then 2 else 1
 end
 
 local function versionPublique(profil: Profil)
@@ -1811,6 +1842,10 @@ local function versionPublique(profil: Profil)
 		Pieces = profil.Pieces,
 		Possessions = profil.Possessions,
 		TutoFait = profil.TutoFait,
+		VIP = profil.Possessions.Produits.PassVIP == true,
+		ToursRoue = profil.ToursRoue,
+		ToursGratuitsRestants = toursGratuitsRestants(profil),
+		ProchainTourGratuit = 86400 - os.time() % 86400, -- secondes avant minuit (UTC)
 	}
 end
 
@@ -1841,7 +1876,8 @@ local function sauvegarder(joueur: Player)
 	if not profil or not profil.Charge or not magasin then
 		return
 	end
-	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait }
+	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait,
+		ToursRoue = profil.ToursRoue, DernierJourRoue = profil.DernierJourRoue, ToursGratuitsJour = profil.ToursGratuitsJour }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -1857,8 +1893,11 @@ local function chargerProfil(joueur: Player)
 		Perso = table.clone(Config.PersoParDefaut),
 		Charge = magasin == nil,
 		Pieces = 0,
-		Possessions = { Couleurs = {}, Premium = {}, Produits = {}, Karts = {} },
+		Possessions = { Couleurs = {}, Premium = {}, Produits = {}, Karts = {}, Trainees = {} },
 		TutoFait = false,
+		ToursRoue = 0,
+		DernierJourRoue = 0,
+		ToursGratuitsJour = 0,
 	}
 	if magasin then
 		local ok, donnees = pcall(function()
@@ -1871,8 +1910,11 @@ local function chargerProfil(joueur: Player)
 				profil.Record = type(donnees.Record) == "number" and math.max(0, math.floor(donnees.Record)) or 0
 				profil.Pieces = type(donnees.Pieces) == "number" and math.max(0, math.floor(donnees.Pieces)) or 0
 				profil.TutoFait = donnees.TutoFait == true
+				profil.ToursRoue = type(donnees.ToursRoue) == "number" and math.clamp(math.floor(donnees.ToursRoue), 0, 9999) or 0
+				profil.DernierJourRoue = type(donnees.DernierJourRoue) == "number" and donnees.DernierJourRoue or 0
+				profil.ToursGratuitsJour = type(donnees.ToursGratuitsJour) == "number" and donnees.ToursGratuitsJour or 0
 				if type(donnees.Possessions) == "table" then
-					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts" }) do
+					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts", "Trainees" }) do
 						if type(donnees.Possessions[liste]) == "table" then
 							for nom, possede in pairs(donnees.Possessions[liste]) do
 								if type(nom) == "string" and possede == true then
@@ -2329,7 +2371,7 @@ DriftTermine.OnServerEvent:Connect(function(joueur: Player, points: any)
 
 	local niveauAvant = niveauDe(profil)
 	profil.XP += points
-	profil.Pieces += math.floor(points / ((Config.Monnaie and Config.Monnaie.PointsParPiece) or 20))
+	profil.Pieces += math.floor(points / ((Config.Monnaie and Config.Monnaie.PointsParPiece) or 20)) * multiplicateurPieces(profil)
 	if points > profil.Record then
 		profil.Record = points
 	end
@@ -2345,12 +2387,13 @@ AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
 	end
 	local niveauAvant = niveauDe(profil)
 	profil.XP += math.max(0, math.floor(quantite))
-	profil.Pieces += math.floor(math.max(0, quantite) / ((Config.Monnaie and Config.Monnaie.XPParPiece) or 10))
+	profil.Pieces += math.floor(math.max(0, quantite) / ((Config.Monnaie and Config.Monnaie.XPParPiece) or 10)) * multiplicateurPieces(profil)
 	local niveauApres = niveauDe(profil)
 	majClassement(joueur, profil)
 	ProfilMisAJour:FireClient(joueur, versionPublique(profil), niveauApres > niveauAvant and niveauApres or nil)
 end)
 
+do
 ---------------------------------------------------------------------
 -- LES ACHATS
 --   • couleurs : avec les pièces 💰 gagnées en jouant
@@ -2369,6 +2412,23 @@ local function accorderProduit(joueur: Player, profil: Profil, produit: { [strin
 	end
 	if produit.Premium then
 		profil.Possessions.Premium[produit.Premium] = true
+	end
+	for _, nom in ipairs(produit.Premiums or {}) do
+		profil.Possessions.Premium[nom] = true
+	end
+	if produit.Trainee and Config.Trainee(produit.Trainee) then
+		profil.Possessions.Trainees[produit.Trainee] = true
+	end
+	if produit.Tours then
+		profil.ToursRoue += produit.Tours
+	end
+	if produit.Vengeance then
+		-- ⚡ VENGEANCE (mode Police contre Fugitifs) : géré par ManchesServer
+		local appliquer = game:GetService("ServerStorage"):FindFirstChild("AppliquerVengeance") :: BindableFunction?
+		local ok = appliquer and appliquer:Invoke(joueur)
+		if not ok then
+			profil.Pieces += 250 -- (la manche était finie : on dédommage en pièces)
+		end
 	end
 	if produit.Kart and Config.Karts[produit.Kart] and Config.Karts[produit.Kart].Exclusif then
 		profil.Possessions.Karts[produit.Kart] = true -- kart exclusif débloqué
@@ -2398,6 +2458,10 @@ local function produitDepuisId(produitId: number): { [string]: any }?
 		if k.Exclusif and k.ProduitId ~= 0 and k.ProduitId == produitId then
 			return k
 		end
+	end
+	local vengeance = Config.Partie and Config.Partie.ProduitVengeance or 0
+	if vengeance ~= 0 and vengeance == produitId then
+		return { Vengeance = true, Nom = "Vengeance" }
 	end
 	return nil
 end
@@ -2445,6 +2509,118 @@ Acheter.OnServerInvoke = function(joueur: Player, info: any)
 		return { ok = true, message = "(Test Studio : gratuit) " .. tostring(produit.Nom) .. " débloqué !", profil = versionPublique(profil) }
 	end
 	return { ok = false, message = "Achat inconnu." }
+end
+
+-- 🎡 LA ROUE DU JOUR : c'est le SERVEUR qui tire le cadeau (impossible de tricher)
+local RoueDuJour = Instance.new("RemoteFunction")
+RoueDuJour.Name = "RoueDuJour"
+RoueDuJour.Parent = remotes
+local aleaRoue = Random.new()
+
+local function tirerCase(): number
+	local total = 0
+	for _, case in ipairs(Config.Roue) do
+		total += case.Poids
+	end
+	local tirage = aleaRoue:NextNumber(0, total)
+	for i, case in ipairs(Config.Roue) do
+		tirage -= case.Poids
+		if tirage <= 0 then
+			return i
+		end
+	end
+	return 1
+end
+
+local function auHasard(liste: { string }): string?
+	if #liste == 0 then
+		return nil
+	end
+	return liste[aleaRoue:NextInteger(1, #liste)]
+end
+
+-- Donne le cadeau de la case ; renvoie le texte affiché au joueur
+local function donnerCadeau(joueur: Player, profil: Profil, case: { [string]: any }): string
+	local bonus = multiplicateurPieces(profil)
+	local function pieces(n: number): string
+		profil.Pieces += n * bonus
+		return ("+%d 💰%s"):format(n * bonus, if bonus > 1 then " (VIP x2)" else "")
+	end
+	if case.Type == "Pieces" then
+		return pieces(case.Valeur)
+	elseif case.Type == "XP" then
+		profil.XP += case.Valeur
+		majClassement(joueur, profil)
+		return ("+%d XP"):format(case.Valeur)
+	elseif case.Type == "Couleur" then
+		local possibles = {}
+		for _, c in ipairs(Config.Couleurs) do
+			if (c.Prix or 0) > 0 and not profil.Possessions.Couleurs[c.Nom] then
+				table.insert(possibles, c.Nom)
+			end
+		end
+		local nom = auHasard(possibles)
+		if nom then
+			profil.Possessions.Couleurs[nom] = true
+			return ("Nouvelle couleur : %s 🎨"):format(nom)
+		end
+		return pieces(case.Valeur) .. " (tu as déjà toutes les couleurs)"
+	elseif case.Type == "Trainee" then
+		local possibles = {}
+		for _, t in ipairs(Config.Trainees) do
+			if t.Couleurs and not profil.Possessions.Trainees[t.Nom] then
+				table.insert(possibles, t.Nom)
+			end
+		end
+		local nom = auHasard(possibles)
+		if nom then
+			profil.Possessions.Trainees[nom] = true
+			return ("Traînée %s débloquée ! ✨"):format(nom)
+		end
+		return pieces(case.Valeur) .. " (tu as déjà toutes les traînées)"
+	elseif case.Type == "Kart" then
+		if not profil.Possessions.Karts.Galaxie then
+			profil.Possessions.Karts.Galaxie = true
+			return "🦄 JACKPOT ! Le kart Licorne Galaxie est à toi !"
+		end
+		return "JACKPOT ! " .. pieces(case.Valeur)
+	end
+	return ""
+end
+
+RoueDuJour.OnServerInvoke = function(joueur: Player, action: any)
+	local profil = profils[joueur]
+	if not profil then
+		return { ok = false, message = "Profil pas encore chargé…" }
+	end
+	if action ~= "lancer" then
+		return { ok = true, profil = versionPublique(profil) }
+	end
+	if tropRapide(joueur, "roue", 4) then
+		return { ok = false, message = "La roue tourne encore !" }
+	end
+	-- D'abord le tour gratuit du jour, sinon un tour acheté
+	if toursGratuitsRestants(profil) > 0 then
+		if profil.DernierJourRoue ~= jourActuel() then
+			profil.DernierJourRoue = jourActuel()
+			profil.ToursGratuitsJour = 0
+		end
+		profil.ToursGratuitsJour += 1
+	elseif profil.ToursRoue > 0 then
+		profil.ToursRoue -= 1
+	else
+		return { ok = false, message = "Plus de tour aujourd'hui : reviens demain, ou achète des tours au magasin !" }
+	end
+	local indice = tirerCase()
+	local cadeau = donnerCadeau(joueur, profil, Config.Roue[indice])
+	task.spawn(sauvegarder, joueur)
+	-- (le joueur voit son profil à jour quand la roue s'arrête)
+	task.delay(5.5, function()
+		if profils[joueur] then
+			ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+		end
+	end)
+	return { ok = true, indice = indice, message = cadeau, profil = versionPublique(profil) }
 end
 
 -- Les achats en Robux : Roblox appelle cette fonction quand un paiement a réussi
@@ -2538,3 +2714,5 @@ task.spawn(function()
 end)
 
 print("[Golden Mall] Le Golden Mall de Dubaï est prêt ! Garage VIP ouvert.")
+
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)

@@ -66,6 +66,11 @@ function KartBuilder.Nettoyer(perso: any, niveau: number, possessions: any?): { 
 	if type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) and premiumAchetees[perso.Premium] == true then
 		propre.Premium = perso.Premium
 	end
+	-- Traînée (achetée en Robux, ou gagnée à la roue)
+	local traineesAchetees = type(achats.Trainees) == "table" and achats.Trainees or {}
+	if type(perso.Trainee) == "string" and Config.Trainee(perso.Trainee) and (perso.Trainee == "Aucune" or traineesAchetees[perso.Trainee] == true) then
+		propre.Trainee = perso.Trainee
+	end
 	if type(perso.Numero) == "number" and perso.Numero == perso.Numero then
 		propre.Numero = math.clamp(math.floor(perso.Numero), 0, 99)
 	end
@@ -426,6 +431,59 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 			trainee.MinLength = 0.2
 			trainee.FaceCamera = true
 			trainee.Parent = chassis
+		end
+	end
+
+	-- 🌈 TRAÎNÉE achetée : un ruban de couleur derrière le kart + des particules
+	local trainee = (not perso.Police) and Config.Trainee(perso.Trainee or "Aucune") or nil
+	if trainee and trainee.Couleurs and not apercu then
+		local t0 = Instance.new("Attachment")
+		t0.Position = Vector3.new(0, 0.1, 3.1)
+		t0.Parent = chassis
+		local t1 = Instance.new("Attachment")
+		t1.Position = Vector3.new(0, 1.3, 3.1)
+		t1.Parent = chassis
+		local ruban = Instance.new("Trail")
+		ruban.Name = "TraineeAchetee"
+		ruban.Attachment0 = t0
+		ruban.Attachment1 = t1
+		ruban.Color = trainee.Couleurs
+		ruban.LightEmission = 1
+		ruban.LightInfluence = 0
+		ruban.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+		ruban.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
+		ruban.Lifetime = 0.9
+		ruban.MinLength = 0.1
+		ruban.FaceCamera = true
+		ruban.Parent = chassis
+		if trainee.Particules then
+			local emetteur = Instance.new("ParticleEmitter")
+			emetteur.Name = "ParticulesTrainee"
+			emetteur.LightEmission = 1
+			emetteur.LightInfluence = 0
+			emetteur.Color = trainee.Couleurs
+			emetteur.Lifetime = NumberRange.new(0.5, 1)
+			emetteur.Speed = NumberRange.new(1, 4)
+			emetteur.SpreadAngle = Vector2.new(60, 60)
+			emetteur.Rate = 30
+			emetteur.EmissionDirection = Enum.NormalId.Back
+			emetteur.RotSpeed = NumberRange.new(-120, 120)
+			if trainee.Particules == "Feu" then
+				emetteur.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+				emetteur.Acceleration = Vector3.new(0, 6, 0)
+				emetteur.Rate = 60
+			elseif trainee.Particules == "Eclair" then
+				emetteur.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+				emetteur.Speed = NumberRange.new(6, 12)
+				emetteur.Lifetime = NumberRange.new(0.15, 0.3)
+				emetteur.Rate = 80
+			else
+				emetteur.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0) })
+			end
+			local att = Instance.new("Attachment")
+			att.Position = Vector3.new(0, 0.6, 3.2)
+			att.Parent = chassis
+			emetteur.Parent = att
 		end
 	end
 

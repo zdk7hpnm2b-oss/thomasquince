@@ -147,12 +147,65 @@ Config.PeinturesPremium = {
 	{ Nom = "Bonbon rose", Couleur = Color3.fromRGB(255, 70, 170), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.45, ProduitId = 0, PrixAffiche = "R$ 39", Exclusive = true },
 }
 
-Config.Boutique = {
-	{ Id = "KartGalaxie", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
-	{ Id = "PackDemarrage", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats", Pieces = 1000, Premium = "Or 24 carats", ProduitId = 0, PrixAffiche = "R$ 45", Promo = true },
-	{ Id = "Pieces1000", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
-	{ Id = "Pieces5000", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
+-- 🌈 TRAÎNÉES : un effet qui suit le kart quand il roule (achat en Robux)
+local function sequence(...): ColorSequence
+	local couleurs = { ... }
+	local points = {}
+	for k, c in ipairs(couleurs) do
+		table.insert(points, ColorSequenceKeypoint.new((k - 1) / math.max(#couleurs - 1, 1), c))
+	end
+	return ColorSequence.new(points)
+end
+Config.Trainees = {
+	{ Nom = "Aucune", Icone = "∅" },
+	{ Nom = "Feu", Icone = "🔥", Couleurs = sequence(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 140, 20), Color3.fromRGB(220, 30, 20)), Particules = "Feu" },
+	{ Nom = "Arc-en-ciel", Icone = "🌈", Couleurs = sequence(Color3.fromRGB(255, 70, 90), Color3.fromRGB(255, 200, 60), Color3.fromRGB(80, 230, 110), Color3.fromRGB(70, 160, 255), Color3.fromRGB(190, 90, 255)) },
+	{ Nom = "Étoiles", Icone = "✨", Couleurs = sequence(Color3.fromRGB(255, 240, 160), Color3.fromRGB(255, 255, 255)), Particules = "Etoiles" },
+	{ Nom = "Éclair", Icone = "⚡", Couleurs = sequence(Color3.fromRGB(220, 250, 255), Color3.fromRGB(60, 200, 255), Color3.fromRGB(40, 90, 255)), Particules = "Eclair" },
+	{ Nom = "Cœurs", Icone = "💖", Couleurs = sequence(Color3.fromRGB(255, 200, 230), Color3.fromRGB(255, 70, 170)), Particules = "Coeurs" },
+	{ Nom = "Galaxie", Icone = "🌌", Couleurs = sequence(Color3.fromRGB(255, 120, 230), Color3.fromRGB(130, 70, 255), Color3.fromRGB(20, 20, 80)), Particules = "Etoiles" },
 }
+
+-- 🛒 LE MAGASIN (Robux). Catégories : Offres, Traînées, Roue, Pièces.
+-- Pour chaque offre : crée un « Produit pour développeurs » et mets son numéro dans ProduitId
+-- (tant que c'est 0, l'achat est gratuit dans Studio pour tester).
+Config.Boutique = {
+	-- ⭐ OFFRES
+	{ Id = "KartGalaxie", Categorie = "Offres", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
+	{ Id = "PassVIP", Categorie = "Offres", Nom = "👑 Pass VIP", Description = "Pièces x2 À VIE + 2 tours de roue gratuits par jour + 👑 VIP", ProduitId = 0, PrixAffiche = "R$ 299", Unique = true },
+	{ Id = "PackLegende", Categorie = "Offres", Nom = "🏆 Méga pack Légende", Description = "10 000 💰 + Chrome miroir + Lave + traînée de Feu + 5 tours de roue", Pieces = 10000, Premiums = { "Chrome miroir", "Lave" }, Trainee = "Feu", Tours = 5, ProduitId = 0, PrixAffiche = "R$ 799", Unique = true },
+	{ Id = "PackDemarrage", Categorie = "Offres", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats + 2 tours de roue", Pieces = 1000, Premium = "Or 24 carats", Tours = 2, ProduitId = 0, PrixAffiche = "R$ 45", Unique = true },
+	-- 🌈 TRAÎNÉES
+	{ Id = "TraineeFeu", Categorie = "Traînées", Nom = "🔥 Traînée de feu", Description = "Des flammes derrière ton kart", Trainee = "Feu", ProduitId = 0, PrixAffiche = "R$ 79", Unique = true },
+	{ Id = "TraineeArcEnCiel", Categorie = "Traînées", Nom = "🌈 Traînée arc-en-ciel", Description = "Un arc-en-ciel qui te suit partout", Trainee = "Arc-en-ciel", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
+	{ Id = "TraineeEtoiles", Categorie = "Traînées", Nom = "✨ Traînée d'étoiles", Description = "Une pluie d'étoiles dorées", Trainee = "Étoiles", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
+	{ Id = "TraineeEclair", Categorie = "Traînées", Nom = "⚡ Traînée éclair", Description = "Des étincelles électriques bleues", Trainee = "Éclair", ProduitId = 0, PrixAffiche = "R$ 69", Unique = true },
+	{ Id = "TraineeCoeurs", Categorie = "Traînées", Nom = "💖 Traînée de cœurs", Description = "Des cœurs roses partout derrière toi", Trainee = "Cœurs", ProduitId = 0, PrixAffiche = "R$ 59", Unique = true },
+	{ Id = "TraineeGalaxie", Categorie = "Traînées", Nom = "🌌 Traînée galaxie", Description = "Le cosmos derrière ton kart", Trainee = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 129", Unique = true },
+	-- 🎡 ROUE
+	{ Id = "Tours3", Categorie = "Roue", Nom = "🎡 3 tours de roue", Description = "3 tours de la roue des cadeaux", Tours = 3, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Tours10", Categorie = "Roue", Nom = "🎡 10 tours de roue", Description = "10 tours : le meilleur prix !", Tours = 10, ProduitId = 0, PrixAffiche = "R$ 129" },
+	-- 💰 PIÈCES
+	{ Id = "Pieces1000", Categorie = "Pièces", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Pieces5000", Categorie = "Pièces", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
+	{ Id = "Pieces15000", Categorie = "Pièces", Nom = "💰 15 000 pièces", Description = "Le coffre géant : tout le garage pour toi", Pieces = 15000, ProduitId = 0, PrixAffiche = "R$ 499" },
+}
+Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
+
+-- 🎡 LA ROUE DU JOUR : 1 tour gratuit par jour (2 avec le Pass VIP) + les tours achetés.
+-- Poids = chances relatives (affichées en % dans le jeu, c'est obligatoire sur Roblox).
+Config.Roue = {
+	{ Nom = "50 💰", Type = "Pieces", Valeur = 50, Poids = 24, Couleur = Color3.fromRGB(60, 130, 230) },
+	{ Nom = "150 💰", Type = "Pieces", Valeur = 150, Poids = 18, Couleur = Color3.fromRGB(230, 60, 70) },
+	{ Nom = "300 XP", Type = "XP", Valeur = 300, Poids = 16, Couleur = Color3.fromRGB(60, 190, 110) },
+	{ Nom = "COULEUR 🎨", Type = "Couleur", Valeur = 200, Poids = 14, Couleur = Color3.fromRGB(240, 150, 30) },
+	{ Nom = "400 💰", Type = "Pieces", Valeur = 400, Poids = 12, Couleur = Color3.fromRGB(150, 70, 220) },
+	{ Nom = "1000 💰", Type = "Pieces", Valeur = 1000, Poids = 7, Couleur = Color3.fromRGB(230, 60, 160) },
+	{ Nom = "TRAÎNÉE ✨", Type = "Trainee", Valeur = 1500, Poids = 3, Couleur = Color3.fromRGB(40, 190, 210) },
+	{ Nom = "🦄 JACKPOT", Type = "Kart", Valeur = 3000, Poids = 1, Couleur = Color3.fromRGB(255, 200, 40) },
+}
+-- (Valeur des cadeaux « objet » : pièces données à la place si on l'a déjà)
+
 
 -- Finition de la peinture (aspect réaliste)
 Config.Finitions = {
@@ -201,6 +254,7 @@ Config.PersoParDefaut = {
 	Autocollant = "Étoile",
 	Numero = 7,
 	Neon = "Bleu",
+	Trainee = "Aucune",
 }
 
 -- Petites fonctions pour retrouver un élément par son nom
@@ -217,6 +271,23 @@ function Config.PeinturePremium(nom: string) return chercher(Config.PeinturesPre
 function Config.Finition(nom: string) return chercher(Config.Finitions, nom) end
 function Config.Autocollant(nom: string) return chercher(Config.Autocollants, nom) end
 function Config.Neon(nom: string) return chercher(Config.Neons, nom) end
+function Config.Trainee(nom: string) return chercher(Config.Trainees, nom) end
+function Config.OffreBoutique(id: string)
+	for _, offre in ipairs(Config.Boutique) do
+		if offre.Id == id then
+			return offre
+		end
+	end
+	return nil
+end
+function Config.OffreTrainee(nom: string) -- l'offre du magasin qui vend cette traînée seule
+	for _, offre in ipairs(Config.Boutique) do
+		if offre.Categorie == "Traînées" and offre.Trainee == nom then
+			return offre
+		end
+	end
+	return nil
+end
 
 ---------------------------------------------------------------------
 -- PROGRESSION : les drifts donnent de l'XP → le niveau du joueur monte
@@ -275,6 +346,13 @@ Config.Partie = {
 	XPParticipation = 50, -- XP pour tous les participants
 	XPArrestation = 100, -- XP pour le policier qui arrête un fugitif
 	XPRoiDuDrift = 150, -- bonus pour le joueur qui a fait le plus de points de drift dans la manche
+	-- ❤️ VIES : chaque joueur (police ET fugitifs) a 3 vies. Quand on en perd une, on choisit :
+	--   • RÉAPPARAÎTRE (gratuit)   • ⚡ VENGEANCE (payant) : celui qui t'a eu perd une vie
+	Vies = 3,
+	DelaiChoix = 12, -- secondes pour choisir (sinon on réapparaît tout seul)
+	ProtectionReapparition = 3, -- secondes où l'on ne peut pas être arrêté après être revenu
+	ProduitVengeance = 0, -- numéro du Produit pour développeurs « Vengeance » (0 = gratuit dans Studio)
+	PrixVengeance = "R$ 25",
 	-- DRIFT BATTLE (défi solo, se lance tout de suite depuis le menu) : pas de police,
 	-- 1 minute pour faire le plus de points de drift. XP = 50 + score / 20.
 	DureeBattle = 60, -- 1 minute (mets 30 pour des parties encore plus courtes)

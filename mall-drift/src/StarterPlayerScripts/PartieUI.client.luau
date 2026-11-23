@@ -527,7 +527,8 @@ end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
 local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 205, 70))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Pièces, peintures premium et kart exclusif", Color3.fromRGB(255, 205, 70))
+local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 200, 40))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(255, 205, 70))
 local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(150, 200, 255))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
@@ -623,17 +624,7 @@ local piecesMenu = texte(fondMenu, UDim2.new(0, 300, 0, 26), UDim2.new(1, -400, 
 piecesMenu.TextXAlignment = Enum.TextXAlignment.Right
 piecesMenu.ZIndex = 22
 piecesMenu.Text = "💰 0 pièces"
-remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(function(profil)
-	if type(profil) == "table" then
-		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
-	end
-end)
-task.spawn(function()
-	local profil = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
-	if type(profil) == "table" then
-		piecesMenu.Text = ("💰 %d pièces  ·  Niveau %d"):format(profil.Pieces or 0, profil.Niveau or 1)
-	end
-end)
+
 
 local boutonFermerMenu = Instance.new("TextButton")
 boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
@@ -649,114 +640,602 @@ boutonFermerMenu.Parent = fondMenu
 Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
 
 ---------------------------------------------------------------------
--- LE MAGASIN : packs de pièces et Pack de démarrage (Robux)
+-- LE MAGASIN (Robux) : onglets Offres / Traînées / Roue / Pièces
 ---------------------------------------------------------------------
 local MarketplaceService = game:GetService("MarketplaceService")
-local panneauMagasin = Instance.new("Frame")
-panneauMagasin.AnchorPoint = Vector2.new(0.5, 0.5)
-panneauMagasin.Size = UDim2.new(0, 520, 0, 460)
-panneauMagasin.Position = UDim2.fromScale(0.62, 0.5)
-panneauMagasin.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
-panneauMagasin.Visible = false
-panneauMagasin.ZIndex = 30
-panneauMagasin.Parent = fondMenu
-Instance.new("UICorner", panneauMagasin).CornerRadius = UDim.new(0, 16)
-local bordMagasin = Instance.new("UIStroke")
-bordMagasin.Thickness = 3
-bordMagasin.Color = Color3.fromRGB(255, 205, 70)
-bordMagasin.Parent = panneauMagasin
-local titreMagasin = texte(panneauMagasin, UDim2.new(1, -30, 0, 34), UDim2.new(0, 15, 0, 14), Color3.fromRGB(255, 205, 70))
-titreMagasin.Text = "🛒 MAGASIN"
-titreMagasin.ZIndex = 31
-local listeMagasin = Instance.new("Frame")
-listeMagasin.Size = UDim2.new(1, -30, 1, -70)
-listeMagasin.Position = UDim2.new(0, 15, 0, 58)
+local profilMenu: any = nil -- (le profil, pour savoir ce qui est déjà acheté)
+local majMagasin: { () -> () } = {}
+
+local function fenetre(nom: string, titreFenetre: string, largeur: number, hauteur: number, couleurBord: Color3): (Frame, TextLabel)
+	local f = Instance.new("Frame")
+	f.Name = nom
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Size = UDim2.new(0, largeur, 0, hauteur)
+	f.Position = UDim2.fromScale(0.62, 0.5)
+	f.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	f.Visible = false
+	f.ZIndex = 30
+	f.Parent = fondMenu
+	Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 1
+	bord.Color = Color3.fromRGB(60, 60, 70)
+	bord.Parent = f
+	local lisere = Instance.new("Frame")
+	lisere.Size = UDim2.new(1, 0, 0, 5)
+	lisere.BackgroundColor3 = couleurBord
+	lisere.BorderSizePixel = 0
+	lisere.ZIndex = 31
+	lisere.Parent = f
+	local t = texte(f, UDim2.new(1, -90, 0, 36), UDim2.new(0, 20, 0, 18), Color3.new(1, 1, 1))
+	t.Text = titreFenetre
+	t.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	t.TextXAlignment = Enum.TextXAlignment.Left
+	t.ZIndex = 31
+	local fermer = Instance.new("TextButton")
+	fermer.AnchorPoint = Vector2.new(1, 0)
+	fermer.Size = UDim2.new(0, 40, 0, 40)
+	fermer.Position = UDim2.new(1, -14, 0, 16)
+	fermer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+	fermer.TextColor3 = Color3.new(1, 1, 1)
+	fermer.Font = Enum.Font.GothamBlack
+	fermer.TextScaled = true
+	fermer.Text = "X"
+	fermer.ZIndex = 33
+	fermer.Parent = f
+	Instance.new("UICorner", fermer).CornerRadius = UDim.new(0, 6)
+	local marge = Instance.new("UIPadding")
+	marge.PaddingTop = UDim.new(0, 10)
+	marge.PaddingBottom = UDim.new(0, 10)
+	marge.Parent = fermer
+	fermer.Activated:Connect(function()
+		f.Visible = false
+	end)
+	return f, t
+end
+
+local function apparaitre(f: Frame)
+	f.Visible = true
+	local e = f:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	e.Parent = f
+	e.Scale = 0.6
+	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+local panneauMagasin = fenetre("Magasin", "🛒 MAGASIN", 560, 520, Color3.fromRGB(225, 30, 45))
+local soldeMagasin = texte(panneauMagasin, UDim2.new(0, 200, 0, 22), UDim2.new(1, -270, 0, 26), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+soldeMagasin.TextXAlignment = Enum.TextXAlignment.Right
+soldeMagasin.ZIndex = 31
+
+-- Onglets
+local ongletsMagasin = Instance.new("Frame")
+ongletsMagasin.Size = UDim2.new(1, -40, 0, 38)
+ongletsMagasin.Position = UDim2.new(0, 20, 0, 66)
+ongletsMagasin.BackgroundTransparency = 1
+ongletsMagasin.ZIndex = 31
+ongletsMagasin.Parent = panneauMagasin
+local dispoOnglets = Instance.new("UIListLayout")
+dispoOnglets.FillDirection = Enum.FillDirection.Horizontal
+dispoOnglets.Padding = UDim.new(0, 6)
+dispoOnglets.Parent = ongletsMagasin
+
+local listeMagasin = Instance.new("ScrollingFrame")
+listeMagasin.Size = UDim2.new(1, -30, 1, -126)
+listeMagasin.Position = UDim2.new(0, 20, 0, 114)
 listeMagasin.BackgroundTransparency = 1
+listeMagasin.BorderSizePixel = 0
+listeMagasin.ScrollBarThickness = 5
+listeMagasin.ScrollBarImageColor3 = Color3.fromRGB(225, 30, 45)
+listeMagasin.AutomaticCanvasSize = Enum.AutomaticSize.Y
+listeMagasin.CanvasSize = UDim2.new()
 listeMagasin.ZIndex = 31
 listeMagasin.Parent = panneauMagasin
 local dispoMagasin = Instance.new("UIListLayout")
-dispoMagasin.Padding = UDim.new(0, 10)
+dispoMagasin.Padding = UDim.new(0, 8)
+dispoMagasin.SortOrder = Enum.SortOrder.LayoutOrder
 dispoMagasin.Parent = listeMagasin
-for _, offre in ipairs(Config.Boutique or {}) do
+
+local function dejaAchete(offre): boolean
+	local p = profilMenu and profilMenu.Possessions
+	if not p then
+		return false
+	end
+	if offre.Kart then
+		return p.Karts ~= nil and p.Karts[offre.Kart] == true
+	end
+	if offre.Categorie == "Traînées" and offre.Trainee then
+		return p.Trainees ~= nil and p.Trainees[offre.Trainee] == true
+	end
+	return offre.Unique == true and p.Produits ~= nil and p.Produits[offre.Id] == true
+end
+
+local function acheterOffre(offre)
+	if dejaAchete(offre) then
+		ajouterAuFil("✔ Tu l'as déjà !", Color3.fromRGB(140, 255, 160))
+		return
+	end
+	if (offre.ProduitId or 0) ~= 0 then
+		MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
+	else
+		local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
+		if type(resultat) == "table" then
+			if resultat.profil then
+				profilMenu = resultat.profil
+				for _, f in ipairs(majMagasin) do
+					f()
+				end
+			end
+			ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+		end
+	end
+end
+
+local cartesParCategorie: { [string]: { GuiObject } } = {}
+for ordre, offre in ipairs(Config.Boutique or {}) do
+	local grande = offre.Promo == true
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, 0, 0, 80)
-	b.BackgroundColor3 = if offre.Promo then Color3.fromRGB(40, 30, 10) else Color3.fromRGB(28, 28, 36)
+	b.LayoutOrder = ordre
+	b.Size = UDim2.new(1, -8, 0, if grande then 110 else 78)
+	b.BackgroundColor3 = if grande then Color3.fromRGB(40, 22, 50) else Color3.fromRGB(26, 26, 32)
+	b.AutoButtonColor = false
 	b.Text = ""
 	b.ZIndex = 32
 	b.Parent = listeMagasin
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 12)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
 	local bord = Instance.new("UIStroke")
-	bord.Thickness = 2
-	bord.Color = if offre.Promo then Color3.fromRGB(255, 205, 40) else Color3.fromRGB(80, 80, 95)
+	bord.Thickness = if grande then 2 else 1
+	bord.Color = if grande then Color3.fromRGB(255, 140, 230) else Color3.fromRGB(60, 60, 72)
 	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bord.Parent = b
-	local n = texte(b, UDim2.new(0.68, 0, 0, 30), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
+	if grande then
+		local degradeBord = Instance.new("UIGradient")
+		degradeBord.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 200)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 200, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 230, 90)),
+		})
+		degradeBord.Parent = bord
+		task.spawn(function()
+			while b.Parent do
+				degradeBord.Rotation = (degradeBord.Rotation + 3) % 360
+				task.wait(0.03)
+			end
+		end)
+	end
+	-- Aperçu de la traînée : un dégradé de ses couleurs
+	local trainee = offre.Trainee and Config.Trainee(offre.Trainee)
+	if offre.Categorie == "Traînées" and trainee and trainee.Couleurs then
+		local apercu = Instance.new("Frame")
+		apercu.Size = UDim2.new(0, 60, 0, 60)
+		apercu.Position = UDim2.new(0, 10, 0.5, -30)
+		apercu.BackgroundColor3 = Color3.new(1, 1, 1)
+		apercu.ZIndex = 33
+		apercu.Parent = b
+		Instance.new("UICorner", apercu).CornerRadius = UDim.new(0, 6)
+		local d = Instance.new("UIGradient")
+		d.Color = trainee.Couleurs
+		d.Rotation = 45
+		d.Parent = apercu
+		local ic = texte(apercu, UDim2.new(1, -16, 1, -16), UDim2.new(0, 8, 0, 8), Color3.new(1, 1, 1))
+		ic.Text = trainee.Icone or ""
+		ic.ZIndex = 34
+	end
+	local gauche = if offre.Categorie == "Traînées" then 82 else 16
+	local n = texte(b, UDim2.new(1, -gauche - 160, 0, if grande then 34 else 26), UDim2.new(0, gauche, 0, if grande then 16 else 12), Color3.new(1, 1, 1))
 	n.Text = offre.Nom
+	n.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
 	n.TextXAlignment = Enum.TextXAlignment.Left
 	n.ZIndex = 33
-	local dsc = texte(b, UDim2.new(0.68, 0, 0, 22), UDim2.new(0, 14, 0, 46), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+	local dsc = texte(b, UDim2.new(1, -gauche - 160, 0, if grande then 40 else 30), UDim2.new(0, gauche, 0, if grande then 56 else 42), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
 	dsc.Text = offre.Description
+	dsc.TextWrapped = true
 	dsc.TextXAlignment = Enum.TextXAlignment.Left
+	dsc.TextYAlignment = Enum.TextYAlignment.Top
 	dsc.ZIndex = 33
 	local prix = Instance.new("TextLabel")
 	prix.AnchorPoint = Vector2.new(1, 0.5)
 	prix.Size = UDim2.new(0, 130, 0, 46)
 	prix.Position = UDim2.new(1, -12, 0.5, 0)
-	prix.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+	prix.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 	prix.TextColor3 = Color3.new(1, 1, 1)
 	prix.Font = Enum.Font.GothamBlack
 	prix.TextScaled = true
 	prix.Text = offre.PrixAffiche
 	prix.ZIndex = 33
 	prix.Parent = b
-	Instance.new("UICorner", prix).CornerRadius = UDim.new(0, 10)
-	-- Le vrai prix Roblox, si le produit est configuré
+	Instance.new("UICorner", prix).CornerRadius = UDim.new(0, 6)
+	local margePrix = Instance.new("UIPadding")
+	margePrix.PaddingTop = UDim.new(0, 10)
+	margePrix.PaddingBottom = UDim.new(0, 10)
+	margePrix.Parent = prix
+	local vraiPrix = offre.PrixAffiche
 	if (offre.ProduitId or 0) ~= 0 then
 		task.spawn(function()
 			local ok, infos = pcall(function()
 				return MarketplaceService:GetProductInfo(offre.ProduitId, Enum.InfoType.Product)
 			end)
 			if ok and infos and infos.PriceInRobux then
-				prix.Text = "R$ " .. tostring(infos.PriceInRobux)
+				vraiPrix = "R$ " .. tostring(infos.PriceInRobux)
+				prix.Text = vraiPrix
 			end
 		end)
 	end
+	table.insert(majMagasin, function()
+		local achete = dejaAchete(offre)
+		prix.Text = if achete then "✔ ACHETÉ" else vraiPrix
+		prix.BackgroundColor3 = if achete then Color3.fromRGB(40, 140, 70) else Color3.fromRGB(225, 30, 45)
+	end)
+	local echelle = Instance.new("UIScale")
+	echelle.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.12), { Scale = 1.02 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.12), { Scale = 1 }):Play()
+	end)
 	b.Activated:Connect(function()
-		if (offre.ProduitId or 0) ~= 0 then
-			MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
-		else
-			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
-			if type(resultat) == "table" then
-				ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
-			end
+		acheterOffre(offre)
+	end)
+	local cat = offre.Categorie or "Offres"
+	cartesParCategorie[cat] = cartesParCategorie[cat] or {}
+	table.insert(cartesParCategorie[cat], b)
+end
+
+local boutonsOnglets: { [string]: TextButton } = {}
+local function montrerCategorie(cat: string)
+	for c, cartes in pairs(cartesParCategorie) do
+		for _, carte in ipairs(cartes) do
+			carte.Visible = c == cat
 		end
+	end
+	for c, bouton in pairs(boutonsOnglets) do
+		bouton.BackgroundColor3 = if c == cat then Color3.fromRGB(225, 30, 45) else Color3.fromRGB(34, 34, 40)
+	end
+	listeMagasin.CanvasPosition = Vector2.zero
+end
+local ICONES_CATEGORIES = { Offres = "⭐ OFFRES", ["Traînées"] = "🌈 TRAÎNÉES", Roue = "🎡 ROUE", ["Pièces"] = "💰 PIÈCES" }
+for i, cat in ipairs(Config.CategoriesBoutique or {}) do
+	local o = Instance.new("TextButton")
+	o.LayoutOrder = i
+	o.Size = UDim2.new(1 / #Config.CategoriesBoutique, -6, 1, 0)
+	o.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+	o.TextColor3 = Color3.new(1, 1, 1)
+	o.Font = Enum.Font.GothamBlack
+	o.TextScaled = true
+	o.Text = ICONES_CATEGORIES[cat] or cat
+	o.ZIndex = 32
+	o.Parent = ongletsMagasin
+	Instance.new("UICorner", o).CornerRadius = UDim.new(0, 5)
+	local marge = Instance.new("UIPadding")
+	marge.PaddingTop = UDim.new(0, 9)
+	marge.PaddingBottom = UDim.new(0, 9)
+	marge.Parent = o
+	boutonsOnglets[cat] = o
+	o.Activated:Connect(function()
+		montrerCategorie(cat)
 	end)
 end
-local fermerMagasin = Instance.new("TextButton")
-fermerMagasin.AnchorPoint = Vector2.new(1, 0)
-fermerMagasin.Size = UDim2.new(0, 40, 0, 40)
-fermerMagasin.Position = UDim2.new(1, -12, 0, 12)
-fermerMagasin.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-fermerMagasin.TextColor3 = Color3.new(1, 1, 1)
-fermerMagasin.Font = Enum.Font.GothamBlack
-fermerMagasin.TextScaled = true
-fermerMagasin.Text = "✕"
-fermerMagasin.ZIndex = 33
-fermerMagasin.Parent = panneauMagasin
-Instance.new("UICorner", fermerMagasin).CornerRadius = UDim.new(0, 10)
-fermerMagasin.Activated:Connect(function()
-	panneauMagasin.Visible = false
-end)
-local function ouvrirMagasin()
-	panneauMagasin.Visible = true
-	local e = panneauMagasin:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-	e.Parent = panneauMagasin
-	e.Scale = 0.6
-	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-end
-carteMagasin.Activated:Connect(ouvrirMagasin)
+montrerCategorie("Offres")
 
-cartePromo.Activated:Connect(ouvrirMagasin)
+local function majProfilMenu(p)
+	if type(p) ~= "table" then
+		return
+	end
+	profilMenu = p
+	soldeMagasin.Text = ("💰 %d"):format(p.Pieces or 0)
+	for _, f in ipairs(majMagasin) do
+		f()
+	end
+end
+
+local function ouvrirMagasin(categorie: string?)
+	montrerCategorie(categorie or "Offres")
+	apparaitre(panneauMagasin)
+end
+
+local ouvrirMenu: (boolean) -> () -- (définie plus bas)
+do
+---------------------------------------------------------------------
+-- 🎡 LA ROUE DU JOUR
+---------------------------------------------------------------------
+local panneauRoue = fenetre("RoueDuJour", "🎡 ROUE DU JOUR", 560, 600, Color3.fromRGB(255, 200, 40))
+do -- (bloc de la roue : ses variables restent ici)
+local TAILLE_ROUE = 360
+local N = #Config.Roue
+local ANGLE = 360 / N
+
+local cadreRoue = Instance.new("Frame") -- l'anneau doré autour
+cadreRoue.AnchorPoint = Vector2.new(0.5, 0)
+cadreRoue.Size = UDim2.fromOffset(TAILLE_ROUE + 24, TAILLE_ROUE + 24)
+cadreRoue.Position = UDim2.new(0.5, 0, 0, 70)
+cadreRoue.BackgroundColor3 = Color3.fromRGB(255, 200, 60)
+cadreRoue.ZIndex = 31
+cadreRoue.Parent = panneauRoue
+Instance.new("UICorner", cadreRoue).CornerRadius = UDim.new(0.5, 0)
+local degradeAnneau = Instance.new("UIGradient")
+degradeAnneau.Color = ColorSequence.new(Color3.fromRGB(255, 235, 150), Color3.fromRGB(200, 130, 20))
+degradeAnneau.Rotation = 45
+degradeAnneau.Parent = cadreRoue
+-- Les petites ampoules qui clignotent autour
+local ampoules = {}
+for i = 1, 24 do
+	local a = math.rad(i * 15)
+	local amp = Instance.new("Frame")
+	amp.AnchorPoint = Vector2.new(0.5, 0.5)
+	amp.Size = UDim2.fromOffset(9, 9)
+	amp.Position = UDim2.new(0.5, math.sin(a) * (TAILLE_ROUE / 2 + 6), 0.5, -math.cos(a) * (TAILLE_ROUE / 2 + 6))
+	amp.BackgroundColor3 = Color3.new(1, 1, 1)
+	amp.ZIndex = 33
+	amp.Parent = cadreRoue
+	Instance.new("UICorner", amp).CornerRadius = UDim.new(0.5, 0)
+	ampoules[i] = amp
+end
+
+-- La roue elle-même (CanvasGroup : découpée en rond, et elle peut tourner)
+local roue = Instance.new("CanvasGroup")
+roue.AnchorPoint = Vector2.new(0.5, 0.5)
+roue.Size = UDim2.fromOffset(TAILLE_ROUE, TAILLE_ROUE)
+roue.Position = UDim2.fromScale(0.5, 0.5)
+roue.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+roue.ZIndex = 32
+roue.Parent = cadreRoue
+Instance.new("UICorner", roue).CornerRadius = UDim.new(0.5, 0)
+local largeurPart = 2 * (TAILLE_ROUE / 2) * math.tan(math.rad(ANGLE / 2)) + 6
+for i, case in ipairs(Config.Roue) do
+	-- Chaque part : un support qui tourne autour du centre de la roue
+	local support = Instance.new("Frame")
+	support.Size = UDim2.fromScale(1, 1)
+	support.BackgroundTransparency = 1
+	support.Rotation = (i - 1) * ANGLE
+	support.ZIndex = 32 + i
+	support.Parent = roue
+	local part = Instance.new("Frame")
+	part.AnchorPoint = Vector2.new(0.5, 0)
+	part.Size = UDim2.new(0, largeurPart, 0.5, 0)
+	part.Position = UDim2.fromScale(0.5, 0)
+	part.BackgroundColor3 = case.Couleur
+	part.BorderSizePixel = 0
+	part.ZIndex = 32 + i
+	part.Parent = support
+	local reflet = Instance.new("UIGradient")
+	reflet.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170))
+	reflet.Rotation = 90
+	reflet.Parent = part
+	local nom = Instance.new("TextLabel")
+	nom.AnchorPoint = Vector2.new(0.5, 0)
+	nom.Size = UDim2.new(0, 96, 0, 22)
+	nom.Position = UDim2.new(0.5, 0, 0, 30)
+	nom.BackgroundTransparency = 1
+	nom.TextColor3 = Color3.new(1, 1, 1)
+	nom.Font = Enum.Font.GothamBlack
+	nom.TextScaled = true
+	nom.Text = case.Nom
+	nom.ZIndex = 50
+	nom.Parent = support
+	local contourNom = Instance.new("UIStroke")
+	contourNom.Thickness = 2
+	contourNom.Color = Color3.fromRGB(20, 20, 26)
+	contourNom.Parent = nom
+	-- Séparation dorée entre deux parts
+	local supportTrait = Instance.new("Frame")
+	supportTrait.Size = UDim2.fromScale(1, 1)
+	supportTrait.BackgroundTransparency = 1
+	supportTrait.Rotation = (i - 1) * ANGLE + ANGLE / 2
+	supportTrait.ZIndex = 45
+	supportTrait.Parent = roue
+	local trait = Instance.new("Frame")
+	trait.AnchorPoint = Vector2.new(0.5, 0)
+	trait.Size = UDim2.new(0, 3, 0.5, 0)
+	trait.Position = UDim2.fromScale(0.5, 0)
+	trait.BackgroundColor3 = Color3.fromRGB(255, 215, 90)
+	trait.BorderSizePixel = 0
+	trait.ZIndex = 45
+	trait.Parent = supportTrait
+end
+-- Le centre (bouton TOURNER)
+local boutonTourner = Instance.new("TextButton")
+boutonTourner.AnchorPoint = Vector2.new(0.5, 0.5)
+boutonTourner.Size = UDim2.fromOffset(110, 110)
+boutonTourner.Position = UDim2.fromScale(0.5, 0.5)
+boutonTourner.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
+boutonTourner.TextColor3 = Color3.new(1, 1, 1)
+boutonTourner.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+boutonTourner.TextScaled = true
+boutonTourner.Text = "TOURNER"
+boutonTourner.ZIndex = 60
+boutonTourner.Parent = cadreRoue
+Instance.new("UICorner", boutonTourner).CornerRadius = UDim.new(0.5, 0)
+local bordCentre = Instance.new("UIStroke")
+bordCentre.Thickness = 5
+bordCentre.Color = Color3.fromRGB(255, 215, 90)
+bordCentre.Parent = boutonTourner
+local margeCentre = Instance.new("UIPadding")
+margeCentre.PaddingTop = UDim.new(0, 38)
+margeCentre.PaddingBottom = UDim.new(0, 38)
+margeCentre.PaddingLeft = UDim.new(0, 10)
+margeCentre.PaddingRight = UDim.new(0, 10)
+margeCentre.Parent = boutonTourner
+local echelleCentre = Instance.new("UIScale")
+echelleCentre.Parent = boutonTourner
+-- La flèche en haut
+local fleche = Instance.new("TextLabel")
+fleche.AnchorPoint = Vector2.new(0.5, 0)
+fleche.Size = UDim2.fromOffset(50, 50)
+fleche.Position = UDim2.new(0.5, 0, 0, 52)
+fleche.BackgroundTransparency = 1
+fleche.TextColor3 = Color3.fromRGB(255, 255, 255)
+fleche.Font = Enum.Font.GothamBlack
+fleche.TextScaled = true
+fleche.Text = "▼"
+fleche.ZIndex = 70
+fleche.Parent = panneauRoue
+local contourFleche = Instance.new("UIStroke")
+contourFleche.Thickness = 3
+contourFleche.Color = Color3.fromRGB(225, 30, 45)
+contourFleche.Parent = fleche
+
+local infoRoue = texte(panneauRoue, UDim2.new(1, -40, 0, 22), UDim2.new(0, 20, 0, 470), Color3.new(1, 1, 1), Enum.Font.GothamBold)
+infoRoue.ZIndex = 31
+local resultatRoue = texte(panneauRoue, UDim2.new(1, -40, 0, 30), UDim2.new(0, 20, 0, 496), Color3.fromRGB(255, 215, 80))
+resultatRoue.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+resultatRoue.ZIndex = 31
+-- Les chances de chaque cadeau (obligatoire sur Roblox pour les tours achetés)
+local totalPoids = 0
+for _, case in ipairs(Config.Roue) do
+	totalPoids += case.Poids
+end
+local morceaux = {}
+for _, case in ipairs(Config.Roue) do
+	table.insert(morceaux, ("%s %s%%"):format(case.Nom, string.format("%.1f", case.Poids / totalPoids * 100):gsub("%.0$", "")))
+end
+local chances = texte(panneauRoue, UDim2.new(1, -40, 0, 30), UDim2.new(0, 20, 0, 532), Color3.fromRGB(150, 150, 160), Enum.Font.GothamMedium)
+chances.Text = "Chances : " .. table.concat(morceaux, " · ")
+chances.TextWrapped = true
+chances.ZIndex = 31
+local boutonAcheterTours = Instance.new("TextButton")
+boutonAcheterTours.AnchorPoint = Vector2.new(0.5, 1)
+boutonAcheterTours.Size = UDim2.new(0, 260, 0, 30)
+boutonAcheterTours.Position = UDim2.new(0.5, 0, 1, -6)
+boutonAcheterTours.BackgroundTransparency = 1
+boutonAcheterTours.TextColor3 = Color3.fromRGB(255, 120, 130)
+boutonAcheterTours.Font = Enum.Font.GothamBold
+boutonAcheterTours.TextScaled = true
+boutonAcheterTours.Text = "🛒 Acheter des tours en plus"
+boutonAcheterTours.ZIndex = 31
+boutonAcheterTours.Parent = panneauRoue
+boutonAcheterTours.Activated:Connect(function()
+	panneauRoue.Visible = false
+	ouvrirMagasin("Roue")
+end)
+
+local function toursDisponibles(): number
+	if not profilMenu then
+		return 0
+	end
+	return (profilMenu.ToursGratuitsRestants or 0) + (profilMenu.ToursRoue or 0)
+end
+
+local enRotation = false
+local function majRoue()
+	local gratuits = profilMenu and profilMenu.ToursGratuitsRestants or 0
+	local achetes = profilMenu and profilMenu.ToursRoue or 0
+	if gratuits > 0 then
+		infoRoue.Text = ("🎁 %d tour%s GRATUIT aujourd'hui%s"):format(gratuits, if gratuits > 1 then "s" else "", if achetes > 0 then (" + %d acheté(s)"):format(achetes) else "")
+	elseif achetes > 0 then
+		infoRoue.Text = ("🎡 %d tour(s) en réserve"):format(achetes)
+	else
+		local reste = profilMenu and profilMenu.ProchainTourGratuit or 0
+		infoRoue.Text = ("⏳ Prochain tour gratuit dans %dh %02dmin"):format(reste // 3600, (reste % 3600) // 60)
+	end
+	boutonTourner.BackgroundColor3 = if toursDisponibles() > 0 and not enRotation then Color3.fromRGB(225, 30, 45) else Color3.fromRGB(70, 70, 78)
+end
+table.insert(majMagasin, majRoue)
+
+local RoueDuJour = remotes:WaitForChild("RoueDuJour")
+boutonTourner.Activated:Connect(function()
+	if enRotation then
+		return
+	end
+	if toursDisponibles() <= 0 then
+		resultatRoue.Text = "Plus de tour : reviens demain ou achète des tours !"
+		return
+	end
+	enRotation = true
+	resultatRoue.Text = ""
+	majRoue()
+	local r = RoueDuJour:InvokeServer("lancer")
+	if type(r) ~= "table" or not r.ok or not r.indice then
+		enRotation = false
+		resultatRoue.Text = (type(r) == "table" and r.message) or "Oups, réessaie !"
+		majRoue()
+		return
+	end
+	-- La roue tourne plusieurs fois puis s'arrête sur la bonne case, sous la flèche
+	local depart = roue.Rotation % 360
+	local arrivee = -((r.indice - 1) * ANGLE) + math.random(-12, 12) * ANGLE / 40
+	local delta = (arrivee - depart) % 360
+	roue.Rotation = depart
+	local tween = TweenService:Create(roue, TweenInfo.new(5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Rotation = depart + 360 * 6 + delta })
+	tween:Play()
+	tween.Completed:Wait()
+	enRotation = false
+	profilMenu = r.profil or profilMenu
+	resultatRoue.Text = "🎉 " .. (r.message or "")
+	local e = Instance.new("UIScale")
+	e.Scale = 0.3
+	e.Parent = resultatRoue
+	TweenService:Create(e, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(0.6, function()
+		e:Destroy()
+	end)
+	majProfilMenu(profilMenu)
+end)
+
+-- Animations : ampoules qui clignotent, bouton qui « respire »
+task.spawn(function()
+	local t = 0
+	while true do
+		t += 1
+		if panneauRoue.Visible then
+			for i, amp in ipairs(ampoules) do
+				local allumee = (i + t) % 2 == 0
+				amp.BackgroundColor3 = if allumee then Color3.new(1, 1, 1) else Color3.fromRGB(255, 120, 60)
+			end
+			if not enRotation and toursDisponibles() > 0 then
+				echelleCentre.Scale = 1
+				TweenService:Create(echelleCentre, TweenInfo.new(0.25), { Scale = 1.08 }):Play()
+			end
+		end
+		task.wait(if enRotation then 0.1 else 0.35)
+	end
+end)
+
+local function ouvrirRoue()
+	panneauMagasin.Visible = false
+	apparaitre(panneauRoue)
+	resultatRoue.Text = ""
+	task.spawn(function()
+		local r = RoueDuJour:InvokeServer("etat")
+		if type(r) == "table" and r.profil then
+			majProfilMenu(r.profil)
+		end
+	end)
+	majRoue()
+end
+
+remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(majProfilMenu)
+task.spawn(function()
+	majProfilMenu(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
+end)
+
+-- Pastille rouge « ! » sur la carte ROUE quand un tour gratuit attend
+local pastilleRoue = Instance.new("TextLabel")
+pastilleRoue.AnchorPoint = Vector2.new(0.5, 0.5)
+pastilleRoue.Size = UDim2.fromOffset(22, 22)
+pastilleRoue.Position = UDim2.new(0, 48, 0, 14)
+pastilleRoue.BackgroundColor3 = Color3.fromRGB(235, 40, 50)
+pastilleRoue.TextColor3 = Color3.new(1, 1, 1)
+pastilleRoue.Font = Enum.Font.GothamBlack
+pastilleRoue.TextScaled = true
+pastilleRoue.Text = "!"
+pastilleRoue.ZIndex = 26
+pastilleRoue.Visible = false
+pastilleRoue.Parent = carteRoue
+Instance.new("UICorner", pastilleRoue).CornerRadius = UDim.new(0.5, 0)
+table.insert(majMagasin, function()
+	pastilleRoue.Visible = profilMenu ~= nil and (profilMenu.ToursGratuitsRestants or 0) > 0
+	piecesMenu.Text = ("%s💰 %d pièces  ·  Niveau %d"):format(if profilMenu and profilMenu.VIP then "👑 VIP  ·  " else "", profilMenu and profilMenu.Pieces or 0, profilMenu and profilMenu.Niveau or 1)
+end)
+carteRoue.Activated:Connect(ouvrirRoue)
+carteMagasin.Activated:Connect(function()
+	panneauRoue.Visible = false
+	ouvrirMagasin("Offres")
+end)
+end -- (fin du bloc de la roue)
+
+cartePromo.Activated:Connect(function()
+	ouvrirMagasin("Offres")
+end)
 
 -- EN FOND DU MENU : la partie EN DIRECT. La caméra suit un kart qui roule
 -- (un autre joueur, un bot ou la police en poursuite) et change de pilote
@@ -1025,10 +1504,11 @@ for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle" }) do
 end
 majMenu()
 
-local function ouvrirMenu(ouvert: boolean)
+ouvrirMenu = function(ouvert: boolean)
 	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
 	panneauMagasin.Visible = false
+	panneauRoue.Visible = false
 	majMenu()
 	local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
 	local auVolant = h and h.SeatPart ~= nil
@@ -1150,6 +1630,7 @@ task.spawn(function()
 	end
 end)
 
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
 ---------------------------------------------------------------------
 -- LE CLASSEMENT MONDIAL DU DRIFT BATTLE : top 3 + ta place directement
 ---------------------------------------------------------------------
@@ -1241,6 +1722,163 @@ end
 ---------------------------------------------------------------------
 -- Messages du serveur
 ---------------------------------------------------------------------
+do
+---------------------------------------------------------------------
+-- ❤️ LES VIES (Police contre Fugitifs) + le choix RÉAPPARAÎTRE / ⚡ VENGEANCE
+---------------------------------------------------------------------
+local POLICE_GRAS = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local MarketplaceVies = game:GetService("MarketplaceService")
+
+-- Les cœurs en haut de l'écran pendant la manche
+local coeurs = Instance.new("TextLabel")
+coeurs.AnchorPoint = Vector2.new(0.5, 0)
+coeurs.Size = UDim2.new(0, 220, 0, 40)
+coeurs.Position = UDim2.new(0.5, 0, 0, 8)
+coeurs.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+coeurs.BackgroundTransparency = 0.3
+coeurs.TextColor3 = Color3.new(1, 1, 1)
+coeurs.Font = Enum.Font.GothamBlack
+coeurs.TextScaled = true
+coeurs.Visible = false
+coeurs.ZIndex = 6
+coeurs.Parent = gui
+Instance.new("UICorner", coeurs).CornerRadius = UDim.new(0, 8)
+local margeCoeurs = Instance.new("UIPadding")
+margeCoeurs.PaddingTop = UDim.new(0, 6)
+margeCoeurs.PaddingBottom = UDim.new(0, 6)
+margeCoeurs.Parent = coeurs
+local echelleCoeurs = Instance.new("UIScale")
+echelleCoeurs.Parent = coeurs
+local viesAffichees = -1
+local function majCoeurs()
+	local vies = joueur:GetAttribute("Vies")
+	coeurs.Visible = type(vies) == "number" and joueur:GetAttribute("Role") ~= nil
+	if type(vies) ~= "number" then
+		viesAffichees = -1
+		return
+	end
+	local total = (Config.Partie and Config.Partie.Vies) or 3
+	coeurs.Text = string.rep("❤️", vies) .. string.rep("🖤", math.max(total - vies, 0))
+	if viesAffichees ~= -1 and vies < viesAffichees then
+		echelleCoeurs.Scale = 1.5 -- une vie en moins : les cœurs « tremblent »
+		TweenService:Create(echelleCoeurs, TweenInfo.new(0.5, Enum.EasingStyle.Elastic), { Scale = 1 }):Play()
+	end
+	viesAffichees = vies
+end
+joueur:GetAttributeChangedSignal("Vies"):Connect(majCoeurs)
+joueur:GetAttributeChangedSignal("Role"):Connect(majCoeurs)
+
+-- L'écran du choix
+local ecranChoix = Instance.new("Frame")
+ecranChoix.Size = UDim2.fromScale(1, 1)
+ecranChoix.BackgroundColor3 = Color3.fromRGB(40, 0, 5)
+ecranChoix.BackgroundTransparency = 0.35
+ecranChoix.Visible = false
+ecranChoix.ZIndex = 45
+ecranChoix.Parent = gui
+local titreChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 64), UDim2.new(0.1, 0, 0.18, 0), Color3.new(1, 1, 1))
+titreChoix.FontFace = POLICE_GRAS
+titreChoix.ZIndex = 46
+local sousChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.18, 72), Color3.fromRGB(255, 200, 200), Enum.Font.GothamBold)
+sousChoix.ZIndex = 46
+local coeursChoix = texte(ecranChoix, UDim2.new(0.4, 0, 0, 44), UDim2.new(0.3, 0, 0.18, 112), Color3.new(1, 1, 1))
+coeursChoix.ZIndex = 46
+
+local function grosBouton(icone: string, titre: string, sous: string, couleur: Color3, x: number): (TextButton, TextLabel)
+	local b = Instance.new("TextButton")
+	b.AnchorPoint = Vector2.new(0.5, 0)
+	b.Size = UDim2.new(0, 300, 0, 170)
+	b.Position = UDim2.new(0.5, x, 0.45, 0)
+	b.BackgroundColor3 = couleur
+	b.Text = ""
+	b.AutoButtonColor = false
+	b.ZIndex = 46
+	b.Parent = ecranChoix
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+	local bord = Instance.new("UIStroke")
+	bord.Thickness = 3
+	bord.Color = Color3.new(1, 1, 1)
+	bord.Transparency = 0.4
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	local i = texte(b, UDim2.new(1, 0, 0, 62), UDim2.new(0, 0, 0, 12), Color3.new(1, 1, 1))
+	i.Text = icone
+	i.ZIndex = 47
+	local t = texte(b, UDim2.new(1, -20, 0, 36), UDim2.new(0, 10, 0, 80), Color3.new(1, 1, 1))
+	t.Text = titre
+	t.FontFace = POLICE_GRAS
+	t.ZIndex = 47
+	local s = texte(b, UDim2.new(1, -20, 0, 34), UDim2.new(0, 10, 0, 122), Color3.fromRGB(240, 240, 245), Enum.Font.GothamBold)
+	s.Text = sous
+	s.TextWrapped = true
+	s.ZIndex = 47
+	local e = Instance.new("UIScale")
+	e.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1.06 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1 }):Play()
+	end)
+	return b, s
+end
+local boutonReapparaitre, sousReapparaitre = grosBouton("🔄", "RÉAPPARAÎTRE", "Gratuit", Color3.fromRGB(40, 150, 80), -170)
+local boutonVengeance, sousVengeance = grosBouton("⚡", "VENGEANCE", "", Color3.fromRGB(200, 20, 40), 170)
+-- L'éclair de la vengeance « pulse » pour attirer l'œil
+local degradeVengeance = Instance.new("UIGradient")
+degradeVengeance.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 60)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 120)),
+})
+degradeVengeance.Rotation = 30
+degradeVengeance.Parent = boutonVengeance
+
+local choixEnCours = 0
+local produitVengeance = 0
+local function fermerChoix()
+	choixEnCours += 1
+	ecranChoix.Visible = false
+end
+local function montrerChoix(info)
+	choixEnCours += 1
+	local numero = choixEnCours
+	produitVengeance = info.produit or 0
+	local total = (Config.Partie and Config.Partie.Vies) or 3
+	titreChoix.Text = "💥 " .. string.upper(info.par or "?") .. " T'A EU !"
+	coeursChoix.Text = string.rep("❤️", info.vies or 0) .. string.rep("🖤", math.max(total - (info.vies or 0), 0))
+	sousVengeance.Text = ("%s · %s perd une vie !"):format(info.prix or "R$", info.par or "?")
+	ecranChoix.Visible = true
+	ecranChoix.BackgroundTransparency = 1
+	TweenService:Create(ecranChoix, TweenInfo.new(0.3), { BackgroundTransparency = 0.35 }):Play()
+	task.spawn(function()
+		local reste = info.delai or 12
+		while reste > 0 and numero == choixEnCours do
+			sousChoix.Text = ("Il te reste %d vie%s · choisis (%d s)"):format(info.vies or 0, if (info.vies or 0) > 1 then "s" else "", reste)
+			sousReapparaitre.Text = ("Gratuit · retour en piste")
+			degradeVengeance.Offset = Vector2.new(if reste % 2 == 0 then -0.3 else 0.3, 0)
+			task.wait(1)
+			reste -= 1
+		end
+		if numero == choixEnCours then
+			fermerChoix() -- (le serveur nous fait revenir tout seul)
+		end
+	end)
+end
+boutonReapparaitre.Activated:Connect(function()
+	fermerChoix()
+	Partie:FireServer({ type = "reapparaitre" })
+end)
+boutonVengeance.Activated:Connect(function()
+	if produitVengeance ~= 0 then
+		MarketplaceVies:PromptProductPurchase(joueur, produitVengeance) -- le serveur applique la vengeance après le paiement
+	else
+		fermerChoix()
+		Partie:FireServer({ type = "vengeance" }) -- (test gratuit dans Studio)
+	end
+end)
+-- Si l'achat de la vengeance est confirmé, l'écran se ferme quand on revient en piste
+
 Partie.OnClientEvent:Connect(function(info)
 	if type(info) ~= "table" then
 		return
@@ -1313,8 +1951,15 @@ Partie.OnClientEvent:Connect(function(info)
 		ajouterAuFil(info.texte or "", Color3.fromRGB(255, 215, 80))
 	elseif info.type == "arrestation" then
 		ajouterAuFil(("🚔 %s a arrêté %s !"):format(info.policier or "?", info.fugitif or "?"), BLEU)
+	elseif info.type == "perdu" then
+		montrerChoix(info)
+	elseif info.type == "reapparu" then
+		fermerChoix()
+	elseif info.type == "vengeance" then
+		ajouterAuFil(("⚡ VENGEANCE ! %s se venge de %s !"):format(info.par or "?", info.cible or "?"), Color3.fromRGB(255, 90, 90))
 	elseif info.type == "arrete" then
-		montrerCarte("🚨 ARRÊTÉ PAR " .. string.upper(info.par or "LA POLICE") .. " 🚨", "TU ES ARRÊTÉ !",
+		fermerChoix()
+		montrerCarte("💀 ÉLIMINÉ PAR " .. string.upper(info.par or "LA POLICE"), "PLUS DE VIES !",
 			"Tu regardes la fin de la manche depuis le garage. Courage à ton équipe !", Color3.fromRGB(255, 70, 70), 4)
 	elseif info.type == "fin" then
 		local police = info.gagnant == "Police"
@@ -1337,3 +1982,5 @@ carteTuto.Activated:Connect(function()
 	ouvrirMenu(false)
 	joueur:SetAttribute("RevoirTuto", true) -- le script Tutoriel s'en occupe
 end)
+
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)

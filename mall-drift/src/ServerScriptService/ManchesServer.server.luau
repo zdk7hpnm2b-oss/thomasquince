@@ -123,8 +123,14 @@ type Participant = {
 	joueur: Player?,
 	bot: { [string]: any }?,
 	role: string?,
-	arrete: boolean,
+	arrete: boolean, -- éliminé (plus de vies)
+	vies: number?,
+	attente: boolean?, -- vient de perdre une vie : choisit RÉAPPARAÎTRE ou VENGEANCE
+	tueur: any?, -- le participant qui lui a fait perdre sa dernière vie
+	protegeJusqua: number?,
 }
+local participantsManche: { Participant } = {} -- (la manche en cours)
+local perdreVie: (Participant, Participant) -> ()
 
 local function present(p: Participant): boolean
 	if p.joueur then
@@ -447,6 +453,7 @@ end
 local function remettreAZero(joueur: Player)
 	joueur:SetAttribute("Role", nil)
 	joueur:SetAttribute("Arrete", nil)
+	joueur:SetAttribute("Vies", nil)
 	joueur.Team = EQUIPE_VISITEURS
 end
 
@@ -464,6 +471,113 @@ local function departBot(role: string): CFrame
 end
 
 ---------------------------------------------------------------------
+-- ❤️ LES VIES, RÉAPPARAÎTRE ET ⚡ VENGEANCE
+---------------------------------------------------------------------
+local function participantDe(joueur: Player): Participant?
+	for _, p in ipairs(participantsManche) do
+		if p.joueur == joueur then
+			return p
+		end
+	end
+	return nil
+end
+
+-- Revenir en jeu : kart sur sa grille de départ (police au nord, fugitifs au sud)
+local function reapparaitre(p: Participant)
+	if not p.attente or p.arrete or not workspace:GetAttribute("MancheEnCours") then
+		return
+	end
+	p.attente = false
+	p.protegeJusqua = os.clock() + (P.ProtectionReapparition or 3)
+	if p.joueur and p.joueur.Parent then
+		PlacerKart:Invoke(p.joueur, false)
+		Partie:FireClient(p.joueur, { type = "reapparu", vies = p.vies })
+	elseif p.bot and p.bot.modele.Parent then
+		p.bot.modele:PivotTo(departBot(p.role :: string))
+	end
+end
+
+-- Perdre une vie (arrêté par la police, ou victime d'une VENGEANCE)
+perdreVie = function(p: Participant, parQui: Participant)
+	if p.arrete or p.attente then
+		return
+	end
+	p.vies = math.max((p.vies or 1) - 1, 0)
+	p.tueur = parQui
+	local j = p.joueur
+	if j then
+		j:SetAttribute("Vies", p.vies)
+	end
+	if p.vies <= 0 then
+		-- Plus de vies : éliminé jusqu'à la fin de la manche
+		p.arrete = true
+		if j then
+			j:SetAttribute("Arrete", true)
+			RetirerKart:Invoke(j)
+			local cf = apparitionGarage()
+			if cf then
+				task.delay(0.15, function()
+					if j.Character then
+						j.Character:PivotTo(cf)
+					end
+				end)
+			end
+			Partie:FireClient(j, { type = "arrete", par = parQui.nom })
+		elseif p.bot then
+			p.bot.modele:Destroy()
+		end
+		envoyerATous({ type = "info", texte = ("💀 %s n'a plus de vies !"):format(p.nom) })
+		return
+	end
+	-- Il reste des vies : le joueur choisit (réapparaître gratuitement, ou VENGEANCE)
+	p.attente = true
+	if j then
+		RetirerKart:Invoke(j)
+		local cf = apparitionGarage()
+		if cf then
+			task.delay(0.15, function()
+				if j.Character then
+					j.Character:PivotTo(cf)
+				end
+			end)
+		end
+		Partie:FireClient(j, {
+			type = "perdu", par = parQui.nom, vies = p.vies, delai = P.DelaiChoix or 12,
+			prix = P.PrixVengeance or "R$ 25", produit = P.ProduitVengeance or 0,
+		})
+		task.delay(P.DelaiChoix or 12, function()
+			reapparaitre(p) -- (pas de choix à temps : on revient tout seul)
+		end)
+	else
+		-- Un bot revient sur sa grille de départ au bout de 3 secondes
+		task.delay(3, function()
+			reapparaitre(p)
+		end)
+	end
+end
+
+-- ⚡ VENGEANCE : celui qui t'a fait perdre une vie en perd une à son tour, et tu reviens en jeu
+local function vengeance(joueur: Player): boolean
+	local p = participantDe(joueur)
+	if not p or not p.attente or p.arrete then
+		return false
+	end
+	local cible = p.tueur
+	if cible and present(cible) and not cible.arrete and not cible.attente then
+		envoyerATous({ type = "vengeance", par = p.nom, cible = cible.nom })
+		perdreVie(cible, p)
+	end
+	reapparaitre(p)
+	return true
+end
+
+-- Appelé par MallDriftServer quand l'achat Robux « Vengeance » est confirmé
+local AppliquerVengeance = Instance.new("BindableFunction")
+AppliquerVengeance.Name = "AppliquerVengeance"
+AppliquerVengeance.OnInvoke = vengeance
+AppliquerVengeance.Parent = ServerStorage
+
+---------------------------------------------------------------------
 -- Une manche
 ---------------------------------------------------------------------
 local function jouerManche(participants: { Participant })
@@ -472,15 +586,21 @@ local function jouerManche(participants: { Participant })
 		local j = math.random(1, i)
 		participants[i], participants[j] = participants[j], participants[i]
 	end
+	participantsManche = participants
 	local nombrePolice = math.max(1, math.floor(#participants / 2))
 	local police, fugitifs = {}, {}
 	for i, p in ipairs(participants) do
 		p.role = if i <= nombrePolice then "Police" else "Fugitif"
 		p.arrete = false
+		p.vies = P.Vies or 3
+		p.attente = false
+		p.tueur = nil
+		p.protegeJusqua = nil
 		table.insert(if p.role == "Police" then police else fugitifs, p)
 		if p.joueur then
 			p.joueur:SetAttribute("Role", p.role)
 			p.joueur:SetAttribute("Arrete", nil)
+			p.joueur:SetAttribute("Vies", p.vies)
 			p.joueur.Team = if p.role == "Police" then EQUIPE_POLICE else EQUIPE_FUGITIFS
 		end
 	end
@@ -537,32 +657,17 @@ local function jouerManche(participants: { Participant })
 
 		-- Arrestations : un policier au volant tout près d'un fugitif libre
 		for _, flic in ipairs(police) do
-			local posFlic = present(flic) and auVolant(flic) and positionKart(flic)
+			local posFlic = present(flic) and not flic.arrete and not flic.attente and auVolant(flic) and positionKart(flic)
 			if posFlic then
 				for _, fugitif in ipairs(fugitifs) do
-					local posFugitif = present(fugitif) and not fugitif.arrete and positionKart(fugitif)
+					local protege = fugitif.protegeJusqua and os.clock() < fugitif.protegeJusqua
+					local posFugitif = present(fugitif) and not fugitif.arrete and not fugitif.attente and not protege and auVolant(fugitif) and positionKart(fugitif)
 					if posFugitif and distanceAPlat(posFugitif, posFlic) < DISTANCE_ARRESTATION and math.abs(posFugitif.Y - posFlic.Y) < 6 then
-						fugitif.arrete = true
-						if fugitif.joueur then
-							local j = fugitif.joueur
-							j:SetAttribute("Arrete", true)
-							RetirerKart:Invoke(j)
-							local cf = apparitionGarage()
-							if cf then
-								task.delay(0.15, function()
-									if j.Character then
-										j.Character:PivotTo(cf)
-									end
-								end)
-							end
-							Partie:FireClient(j, { type = "arrete", par = flic.nom })
-						elseif fugitif.bot then
-							fugitif.bot.modele:Destroy()
-						end
 						if flic.joueur then
 							AjouterXP:Fire(flic.joueur, P.XPArrestation or 100)
 						end
 						envoyerATous({ type = "arrestation", policier = flic.nom, fugitif = fugitif.nom })
+						perdreVie(fugitif, flic)
 					end
 				end
 			end
@@ -575,7 +680,7 @@ local function jouerManche(participants: { Participant })
 			end
 		end
 		for _, f in ipairs(police) do
-			if present(f) then
+			if present(f) and not f.arrete then
 				policeEnJeu += 1
 			end
 		end
@@ -591,6 +696,7 @@ local function jouerManche(participants: { Participant })
 	end
 
 	-- 4) Fin de la manche : résultats et XP
+	participantsManche = {}
 	local classement = classementDrifts()
 	local roi = classement[1]
 	if roi and roi.total > 0 then
@@ -879,6 +985,20 @@ end)
 -- (le Drift Battle, lui, se lance tout de suite, en solo)
 ---------------------------------------------------------------------
 Partie.OnServerEvent:Connect(function(joueur: Player, info)
+	-- Pendant la manche : le choix après avoir perdu une vie
+	if type(info) == "table" and info.type == "reapparaitre" then
+		local p = participantDe(joueur)
+		if p then
+			reapparaitre(p)
+		end
+		return
+	elseif type(info) == "table" and info.type == "vengeance" then
+		-- (dans le vrai jeu, ça passe par l'achat Robux ; ici seulement le test gratuit dans Studio)
+		if game:GetService("RunService"):IsStudio() and (P.ProduitVengeance or 0) == 0 then
+			vengeance(joueur)
+		end
+		return
+	end
 	if type(info) ~= "table" or joueur:GetAttribute("Role") ~= nil then
 		return -- (pendant sa manche, le joueur ne peut rien changer)
 	end
