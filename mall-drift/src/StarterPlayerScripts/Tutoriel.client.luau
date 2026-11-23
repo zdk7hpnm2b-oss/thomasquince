@@ -177,6 +177,33 @@ boutonPasser.TextXAlignment = Enum.TextXAlignment.Right
 boutonPasser.Text = "Passer le tuto ✕"
 boutonPasser.Parent = carte
 
+-- Écran de transition : on ne voit pas le garage, on arrive directement sur la piste
+local transition = Instance.new("Frame")
+transition.Size = UDim2.fromScale(1, 1)
+transition.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
+transition.Visible = false
+transition.ZIndex = 50
+transition.Parent = gui
+local texteTransition = Instance.new("TextLabel")
+texteTransition.AnchorPoint = Vector2.new(0.5, 0.5)
+texteTransition.Size = UDim2.new(0.6, 0, 0, 60)
+texteTransition.Position = UDim2.fromScale(0.5, 0.48)
+texteTransition.BackgroundTransparency = 1
+texteTransition.FontFace = POLICE_TITRE
+texteTransition.TextScaled = true
+texteTransition.TextColor3 = Color3.new(1, 1, 1)
+texteTransition.Text = "📖 TUTO · EN PISTE !"
+texteTransition.ZIndex = 51
+texteTransition.Parent = transition
+local barreTransition = Instance.new("Frame")
+barreTransition.AnchorPoint = Vector2.new(0.5, 0)
+barreTransition.Size = UDim2.new(0, 0, 0, 5)
+barreTransition.Position = UDim2.new(0.5, 0, 0.48, 40)
+barreTransition.BackgroundColor3 = ROUGE
+barreTransition.BorderSizePixel = 0
+barreTransition.ZIndex = 51
+barreTransition.Parent = transition
+
 -- Grand message au centre (✔ BIEN JOUÉ, TU ES PRÊT…)
 local grandMessage = Instance.new("TextLabel")
 grandMessage.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -427,25 +454,41 @@ local function lancer()
 	dernierePosition = nil
 	joueur:SetAttribute("TutoDriftPoints", 0)
 	joueur:SetAttribute("TutoBoost", 0)
-	remotes:WaitForChild("DebutTuto"):FireServer() -- le serveur donne un kart sur la ligne de départ
+	-- Écran de transition tout de suite (on ne voit pas le garage)
+	gui.Enabled = true
+	carte.Visible = false
+	transition.Visible = true
+	transition.BackgroundTransparency = 0
+	texteTransition.TextTransparency = 0
+	barreTransition.Size = UDim2.new(0, 0, 0, 5)
+	TweenService:Create(barreTransition, TweenInfo.new(0.8, Enum.EasingStyle.Quint), { Size = UDim2.new(0, 260, 0, 5) }):Play()
+	remotes:WaitForChild("DebutTuto"):FireServer() -- le serveur pose un kart directement sur la piste
 	local debut = os.clock()
 	while enCours and not chassisDuKart() and os.clock() - debut < 8 do
-		task.wait(0.2)
+		task.wait(0.1)
 	end
 	if not enCours then
+		transition.Visible = false
 		return
 	end
 	if not chassisDuKart() then
 		warn("[Tutoriel] pas de kart reçu : tuto annulé")
 		enCours = false
+		transition.Visible = false
+		gui.Enabled = false
 		remotes:WaitForChild("TutoTermine"):FireServer()
 		return
 	end
-	task.wait(3.6) -- on laisse le 3, 2, 1 se faire
+	task.wait(0.4) -- (le temps que la caméra se place derrière le kart)
+	TweenService:Create(transition, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+	TweenService:Create(texteTransition, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+	task.delay(0.45, function()
+		transition.Visible = false
+	end)
 	if not enCours then
 		return
 	end
-	gui.Enabled = true
+	carte.Visible = true
 	echelleCarte.Scale = 0.3
 	carte.Position = UDim2.new(0.5, 0, 0, 30)
 	TweenService:Create(echelleCarte, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()

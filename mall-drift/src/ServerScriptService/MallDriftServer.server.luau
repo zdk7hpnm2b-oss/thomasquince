@@ -2798,7 +2798,7 @@ DebutTuto.OnServerEvent:Connect(function(joueur: Player)
 		return
 	end
 	joueur:SetAttribute("EnTuto", true)
-	placerKart(joueur, true, true)
+	placerKart(joueur, false) -- directement sur la piste, sans décompte
 end)
 
 TutoTermine.OnServerEvent:Connect(function(joueur: Player)
