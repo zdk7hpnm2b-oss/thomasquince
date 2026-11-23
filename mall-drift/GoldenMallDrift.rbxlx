@@ -6476,26 +6476,19 @@ end
 ---------------------------------------------------------------------
 -- Les cartes à droite du menu
 ---------------------------------------------------------------------
+-- (rangées dans la colonne de droite du menu, entre « EN DIRECT » et l'offre exclusive)
 local colonne = Instance.new("Frame")
-colonne.AnchorPoint = Vector2.new(1, 0.5)
-colonne.Size = UDim2.new(0, 270, 0, 0)
+colonne.Name = "Cadeaux"
+colonne.LayoutOrder = 3
+colonne.Size = UDim2.new(1, 0, 0, 0)
 colonne.AutomaticSize = Enum.AutomaticSize.Y
-colonne.Position = UDim2.new(1, -40, 0.42, 0)
 colonne.BackgroundTransparency = 1
 colonne.ZIndex = 22
-colonne.Parent = menu
+colonne.Parent = menu:WaitForChild("ColonneDroite")
 local dispo = Instance.new("UIListLayout")
 dispo.Padding = UDim.new(0, 8)
 dispo.SortOrder = Enum.SortOrder.LayoutOrder
 dispo.Parent = colonne
-local echelle = Instance.new("UIScale")
-echelle.Parent = colonne
-local camera = workspace.CurrentCamera
-local function ajuster()
-	echelle.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.62, 1)
-end
-camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajuster)
-ajuster()
 
 local function carte(ordre: number, icone: string, titre: string): (TextButton, TextLabel, Frame)
 	local b = Instance.new("TextButton")
@@ -9812,7 +9805,7 @@ colonne.Parent = fondMenu
 local echelleColonne = Instance.new("UIScale")
 echelleColonne.Parent = colonne
 local function ajusterColonne()
-	echelleColonne.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.62, 1)
+	echelleColonne.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.5, 1)
 end
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterColonne)
 ajusterColonne()
@@ -10083,6 +10076,58 @@ boutonFermerMenu.Text = "✕"
 boutonFermerMenu.ZIndex = 22
 boutonFermerMenu.Parent = fondMenu
 Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
+
+-- LA COLONNE DE DROITE : tout est rangé dedans, l'un sous l'autre (rien ne se chevauche) :
+--   [💰 pièces · niveau] [✕]   puis 🔴 EN DIRECT, les cadeaux (script Cadeaux), l'offre exclusive
+local colonneDroite = Instance.new("Frame")
+colonneDroite.Name = "ColonneDroite"
+colonneDroite.AnchorPoint = Vector2.new(1, 0)
+colonneDroite.Size = UDim2.new(0, 300, 0, 0)
+colonneDroite.AutomaticSize = Enum.AutomaticSize.Y
+colonneDroite.Position = UDim2.new(1, -30, 0, 50)
+colonneDroite.BackgroundTransparency = 1
+colonneDroite.ZIndex = 21
+colonneDroite.Parent = fondMenu
+local dispoDroite = Instance.new("UIListLayout")
+dispoDroite.Padding = UDim.new(0, 10)
+dispoDroite.SortOrder = Enum.SortOrder.LayoutOrder
+dispoDroite.HorizontalAlignment = Enum.HorizontalAlignment.Right
+dispoDroite.Parent = colonneDroite
+local echelleDroite = Instance.new("UIScale")
+echelleDroite.Parent = colonneDroite
+local function ajusterDroite()
+	-- (même taille que la colonne de gauche ; plus petit sur téléphone)
+	echelleDroite.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.5, 1)
+	echelleColonne.Scale = echelleDroite.Scale
+end
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterDroite)
+ajusterDroite()
+-- Ligne du haut : pièces + bouton fermer
+local ligneHaut = Instance.new("Frame")
+ligneHaut.LayoutOrder = 1
+ligneHaut.Size = UDim2.new(1, 0, 0, 50)
+ligneHaut.BackgroundTransparency = 1
+ligneHaut.ZIndex = 21
+ligneHaut.Parent = colonneDroite
+piecesMenu.Parent = ligneHaut
+piecesMenu.AnchorPoint = Vector2.new(0, 0.5)
+piecesMenu.Size = UDim2.new(1, -64, 0, 24)
+piecesMenu.Position = UDim2.new(0, 0, 0.5, 0)
+boutonFermerMenu.Parent = ligneHaut
+boutonFermerMenu.AnchorPoint = Vector2.new(1, 0)
+boutonFermerMenu.Size = UDim2.new(0, 50, 0, 50)
+boutonFermerMenu.Position = UDim2.new(1, 0, 0, 0)
+-- L'offre exclusive, tout en bas de la colonne
+cartePromo.Parent = colonneDroite
+cartePromo.LayoutOrder = 4
+cartePromo.AnchorPoint = Vector2.new(0, 0)
+cartePromo.Size = UDim2.new(1, 0, 0, 150)
+textePromo.Size = UDim2.new(1, -34, 0, 28)
+prixPromo.Size = UDim2.new(1, -34, 0, 22)
+prixPromo.Position = UDim2.new(0, 22, 0, 76)
+boutonVoirPromo.AnchorPoint = Vector2.new(1, 1)
+boutonVoirPromo.Size = UDim2.new(0, 130, 0, 42)
+boutonVoirPromo.Position = UDim2.new(1, -12, 1, -12)
 
 ---------------------------------------------------------------------
 -- LE MAGASIN (Robux) : onglets Offres / Traînées / Roue / Pièces
@@ -10786,9 +10831,8 @@ local prochainChangement = 0
 local cfCamera: CFrame? = nil
 
 local badgeDirect = Instance.new("TextLabel")
-badgeDirect.AnchorPoint = Vector2.new(1, 0)
-badgeDirect.Size = UDim2.new(0, 320, 0, 36)
-badgeDirect.Position = UDim2.new(1, -96, 0, 110)
+badgeDirect.LayoutOrder = 2 -- (dans la colonne de droite, sous les pièces)
+badgeDirect.Size = UDim2.new(1, 0, 0, 36)
 badgeDirect.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 badgeDirect.BackgroundTransparency = 0.2
 badgeDirect.TextColor3 = Color3.new(1, 1, 1)
@@ -10796,7 +10840,7 @@ badgeDirect.Font = Enum.Font.GothamBlack
 badgeDirect.TextScaled = true
 badgeDirect.Visible = false
 badgeDirect.ZIndex = 22
-badgeDirect.Parent = fondMenu
+badgeDirect.Parent = colonneDroite
 Instance.new("UICorner", badgeDirect).CornerRadius = UDim.new(0, 10)
 local margeBadge = Instance.new("UIPadding")
 margeBadge.PaddingTop = UDim.new(0, 6)
@@ -11026,7 +11070,7 @@ local function majMenu()
 	local enManche = joueur:GetAttribute("Role") ~= nil
 	local prete = joueur:GetAttribute("Pret") == true
 	local preteBattle = false
-	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true) and not joueur:GetAttribute("MenuGarage")
+	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true) and not joueur:GetAttribute("MenuGarage") and not fondMenu.Visible
 	if enManche then
 		fondMenu.Visible = false
 	end
@@ -11045,6 +11089,7 @@ majMenu()
 ouvrirMenu = function(ouvert: boolean)
 	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
+	barre.Visible = not ouvert -- (la barre d'état du haut passerait par-dessus le menu)
 	panneauMagasin.Visible = false
 	panneauRoue.Visible = false
 	majMenu()
@@ -12120,6 +12165,12 @@ local function terminer(vu: boolean)
 	task.wait(0.3)
 	gui.Enabled = false
 	remotes:WaitForChild("TutoTermine"):FireServer()
+	-- Au lobby, on retrouve le menu après le tuto
+	local typePlace = Config.TypeDePlace()
+	if typePlace == "Lobby" or typePlace == "ToutEnUn" then
+		task.wait(1.5) -- (le temps de réapparaître au garage)
+		joueur:SetAttribute("RetourMenu", true)
+	end
 end
 
 local function etapeReussie()

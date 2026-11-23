@@ -51,26 +51,19 @@ end
 ---------------------------------------------------------------------
 -- Les cartes à droite du menu
 ---------------------------------------------------------------------
+-- (rangées dans la colonne de droite du menu, entre « EN DIRECT » et l'offre exclusive)
 local colonne = Instance.new("Frame")
-colonne.AnchorPoint = Vector2.new(1, 0.5)
-colonne.Size = UDim2.new(0, 270, 0, 0)
+colonne.Name = "Cadeaux"
+colonne.LayoutOrder = 3
+colonne.Size = UDim2.new(1, 0, 0, 0)
 colonne.AutomaticSize = Enum.AutomaticSize.Y
-colonne.Position = UDim2.new(1, -40, 0.42, 0)
 colonne.BackgroundTransparency = 1
 colonne.ZIndex = 22
-colonne.Parent = menu
+colonne.Parent = menu:WaitForChild("ColonneDroite")
 local dispo = Instance.new("UIListLayout")
 dispo.Padding = UDim.new(0, 8)
 dispo.SortOrder = Enum.SortOrder.LayoutOrder
 dispo.Parent = colonne
-local echelle = Instance.new("UIScale")
-echelle.Parent = colonne
-local camera = workspace.CurrentCamera
-local function ajuster()
-	echelle.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.62, 1)
-end
-camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajuster)
-ajuster()
 
 local function carte(ordre: number, icone: string, titre: string): (TextButton, TextLabel, Frame)
 	local b = Instance.new("TextButton")

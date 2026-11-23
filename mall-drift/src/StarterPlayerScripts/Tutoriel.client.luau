@@ -415,6 +415,12 @@ local function terminer(vu: boolean)
 	task.wait(0.3)
 	gui.Enabled = false
 	remotes:WaitForChild("TutoTermine"):FireServer()
+	-- Au lobby, on retrouve le menu après le tuto
+	local typePlace = Config.TypeDePlace()
+	if typePlace == "Lobby" or typePlace == "ToutEnUn" then
+		task.wait(1.5) -- (le temps de réapparaître au garage)
+		joueur:SetAttribute("RetourMenu", true)
+	end
 end
 
 local function etapeReussie()
