@@ -1136,14 +1136,16 @@ if Voyage then
 	end)
 end
 
--- Retour au lobby après une partie : le menu s'ouvre directement
+-- Dès qu'on arrive dans le jeu (et au retour d'une partie) : le menu s'ouvre
+-- directement, avec la partie qui se joue en fond
 task.spawn(function()
-	local donnees = TeleportService:GetLocalPlayerTeleportData()
-	if EN_LOBBY and type(donnees) == "table" and donnees.ouvrirMenu then
+	if EN_LOBBY or TYPE == "ToutEnUn" then
 		while not joueur:GetAttribute("IntroFinie") do
-			task.wait(0.3)
+			task.wait(0.2)
 		end
-		task.wait(0.5)
+		local perso = joueur.Character or joueur.CharacterAdded:Wait()
+		perso:WaitForChild("HumanoidRootPart", 10)
+		task.wait(0.3)
 		ouvrirMenu(true)
 	end
 end)

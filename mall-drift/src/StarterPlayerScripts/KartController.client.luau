@@ -335,19 +335,8 @@ local function afficherProfil(profil, niveauGagne: number?)
 end
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
 task.spawn(function()
-	local profilDepart = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
-	afficherProfil(profilDepart)
-	-- (à la toute 1re partie, c'est le tuto sur la piste qui explique tout)
-	local tutoAFaire = type(profilDepart) == "table" and not profilDepart.TutoFait
-	local debut = os.clock()
-	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 300 do
-		task.wait(0.2)
-	end
-	if (TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn") and not tutoAFaire and not joueur:GetAttribute("EnTuto") then
-		message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
-		task.wait(3.8)
-		message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
-	end
+	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
+	-- (au lobby, c'est le menu qui accueille le joueur : pas de conseils en plus)
 end)
 
 local function vers(valeur: number, cible: number, pas: number): number

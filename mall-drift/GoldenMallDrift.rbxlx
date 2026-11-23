@@ -7135,19 +7135,8 @@ local function afficherProfil(profil, niveauGagne: number?)
 end
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
 task.spawn(function()
-	local profilDepart = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
-	afficherProfil(profilDepart)
-	-- (à la toute 1re partie, c'est le tuto sur la piste qui explique tout)
-	local tutoAFaire = type(profilDepart) == "table" and not profilDepart.TutoFait
-	local debut = os.clock()
-	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 300 do
-		task.wait(0.2)
-	end
-	if (TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn") and not tutoAFaire and not joueur:GetAttribute("EnTuto") then
-		message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
-		task.wait(3.8)
-		message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
-	end
+	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
+	-- (au lobby, c'est le menu qui accueille le joueur : pas de conseils en plus)
 end)
 
 local function vers(valeur: number, cible: number, pas: number): number
@@ -9461,14 +9450,16 @@ if Voyage then
 	end)
 end
 
--- Retour au lobby après une partie : le menu s'ouvre directement
+-- Dès qu'on arrive dans le jeu (et au retour d'une partie) : le menu s'ouvre
+-- directement, avec la partie qui se joue en fond
 task.spawn(function()
-	local donnees = TeleportService:GetLocalPlayerTeleportData()
-	if EN_LOBBY and type(donnees) == "table" and donnees.ouvrirMenu then
+	if EN_LOBBY or TYPE == "ToutEnUn" then
 		while not joueur:GetAttribute("IntroFinie") do
-			task.wait(0.3)
+			task.wait(0.2)
 		end
-		task.wait(0.5)
+		local perso = joueur.Character or joueur.CharacterAdded:Wait()
+		perso:WaitForChild("HumanoidRootPart", 10)
+		task.wait(0.3)
 		ouvrirMenu(true)
 	end
 end)
@@ -9829,11 +9820,10 @@ end)
 	  1. ACCÉLÈRE ET TOURNE   (rouler un peu)
 	  2. DRIFTE !             (un drift qui atteint ⭐)
 	  3. BOOST !              (relâche le drift : les étoiles donnent un boost)
-	À la toute première partie, le serveur donne un kart sur la ligne de départ
+	Il se lance depuis le bouton « 📖 TUTO » du menu : le serveur donne un kart sur la ligne de départ
 	(3, 2, 1) et une petite carte en haut de l'écran guide le joueur : les touches
 	s'allument quand on appuie, la barre se remplit, ✔ et confettis à chaque étape.
-	Le serveur retient que le tuto a été vu. Bouton « 📖 TUTO » du menu pour le
-	refaire. Au lobby, on revient au garage à la fin.
+	Au lobby, on revient au garage à la fin.
 ]]
 
 local Players = game:GetService("Players")
@@ -10305,34 +10295,10 @@ local function lancer()
 end
 
 ---------------------------------------------------------------------
--- Au démarrage : tuto à la toute première partie (lobby ou « tout en un »)
+-- Au démarrage : pas de tuto automatique, c'est le MENU qui s'ouvre.
+-- Le tuto se lance seulement avec le bouton « 📖 TUTO » du menu.
 ---------------------------------------------------------------------
-task.spawn(function()
-	-- Plus de cinématique d'ouverture : les autres scripts peuvent démarrer
-	joueur:SetAttribute("IntroFinie", true)
-	local TYPE = Config.TypeDePlace()
-	local donneesVoyage = game:GetService("TeleportService"):GetLocalPlayerTeleportData()
-	local retour = type(donneesVoyage) == "table" and donneesVoyage.ouvrirMenu == true
-	if (TYPE ~= "Lobby" and TYPE ~= "ToutEnUn") or retour then
-		return
-	end
-	local ok, profil = pcall(function()
-		return remotes:WaitForChild("ObtenirProfil"):InvokeServer()
-	end)
-	if ok and type(profil) == "table" and profil.TutoFait then
-		return
-	end
-	local perso = joueur.Character or joueur.CharacterAdded:Wait()
-	perso:WaitForChild("HumanoidRootPart", 10)
-	workspace:WaitForChild("GoldenMall", 15)
-	task.wait(1)
-	local okLancer, erreur = pcall(lancer)
-	if not okLancer then
-		warn("[Tutoriel] " .. tostring(erreur))
-		enCours = false
-		gui.Enabled = false
-	end
-end)
+joueur:SetAttribute("IntroFinie", true) -- (les autres scripts attendent ce signal)
 
 -- Refaire le tuto depuis le menu (bouton « 📖 TUTO »)
 joueur:GetAttributeChangedSignal("RevoirTuto"):Connect(function()

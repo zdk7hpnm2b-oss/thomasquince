@@ -14,10 +14,9 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
-- **📖 Tuto sur la piste** (à la toute première partie) : le joueur reçoit directement un kart (3, 2, 1)
-  et une carte en haut de l'écran le guide en **3 étapes** : accélère et tourne → drifte jusqu'à ⭐ →
-  lâche le drift pour le BOOST. Touches qui s'allument, barre, ✔ et confettis. Le serveur retient qu'il
-  a été vu ; bouton **📖 TUTO** du menu pour le refaire (au lobby, retour au garage à la fin)
+- **Arrivée dans le jeu** : le MENU s'ouvre directement (options à gauche, partie en direct en fond).
+- **📖 Tuto sur la piste** (bouton TUTO du menu) : un kart (3, 2, 1) et une carte en haut de l'écran en
+  **3 étapes** : accélère et tourne → drifte jusqu'à ⭐ → lâche le drift pour le BOOST
 - **🦄 Kart exclusif « Licorne Galaxie »** : uniquement en Robux (`Config.Karts.Galaxie.ProduitId`, ou l'offre
   `KartGalaxie` du magasin) : carrosserie arc-en-ciel animée, ailes néon, corne dorée, aileron lumineux,
   paillettes d'étoiles et traînée arc-en-ciel. Exposé dans le garage sur un socle lumineux
