@@ -1728,6 +1728,9 @@ Alerte.Parent = remotes
 local TutoTermine = Instance.new("RemoteEvent") -- le joueur a fini (ou passé) le tuto du début
 TutoTermine.Name = "TutoTermine"
 TutoTermine.Parent = remotes
+local DebutTuto = Instance.new("RemoteEvent") -- le tuto commence : on donne un kart, même au lobby
+DebutTuto.Name = "DebutTuto"
+DebutTuto.Parent = remotes
 
 -- Les autres scripts serveur (la sécurité) peuvent donner de l'XP avec cet événement
 local AjouterXP = Instance.new("BindableEvent")
@@ -2207,8 +2210,8 @@ local function sortirKart(joueur: Player)
 	if joueur:GetAttribute("EnSalle") then
 		return -- page d'attente : la manche va commencer
 	end
-	if TYPE == "Lobby" then
-		return -- dans le lobby, on ne roule pas : on choisit son mode dans le menu
+	if TYPE == "Lobby" and not joueur:GetAttribute("EnTuto") then
+		return -- dans le lobby, on ne roule pas (sauf pendant le tuto) : on choisit son mode dans le menu
 	end
 	-- Mode libre : départ avec le survol et les feux ; en manche : on repart tout de suite
 	placerKart(joueur, joueur:GetAttribute("Role") == nil)
@@ -2471,11 +2474,35 @@ ObtenirProfil.OnServerInvoke = function(joueur: Player)
 	return profil and versionPublique(profil) or nil
 end
 
+-- TUTO SUR LA PISTE : le joueur reçoit un kart sur la ligne de départ (3, 2, 1)
+DebutTuto.OnServerEvent:Connect(function(joueur: Player)
+	if not profils[joueur] or tropRapide(joueur, "tuto", 3) or joueur:GetAttribute("EnSalle") then
+		return
+	end
+	joueur:SetAttribute("EnTuto", true)
+	placerKart(joueur, true, true)
+end)
+
 TutoTermine.OnServerEvent:Connect(function(joueur: Player)
 	local profil = profils[joueur]
 	if profil and not profil.TutoFait then
 		profil.TutoFait = true
 		task.spawn(sauvegarder, joueur)
+	end
+	if joueur:GetAttribute("EnTuto") then
+		joueur:SetAttribute("EnTuto", nil)
+		if TYPE == "Lobby" then
+			-- Au lobby, on ne garde pas le kart : retour au garage pour choisir son mode
+			local kart = kartsJoueurs[joueur]
+			if kart then
+				kart:Destroy()
+				kartsJoueurs[joueur] = nil
+			end
+			task.wait(0.2)
+			if joueur.Parent then
+				joueur:LoadCharacter()
+			end
+		end
 	end
 end)
 

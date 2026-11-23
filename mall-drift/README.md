@@ -14,9 +14,10 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
-- **📖 Tuto interactif** (à la toute première partie, à la place de la cinématique) : accélérer, tourner,
-  drifter (il faut vraiment appuyer sur les touches, elles s'allument), étoiles et boost, sol mouillé, police,
-  touches utiles, garage et menu. Le serveur retient qu'il a été vu ; bouton **📖 TUTO** dans le menu pour le revoir
+- **📖 Tuto sur la piste** (à la toute première partie) : le joueur reçoit directement un kart (3, 2, 1)
+  et une carte en haut de l'écran le guide en **3 étapes** : accélère et tourne → drifte jusqu'à ⭐ →
+  lâche le drift pour le BOOST. Touches qui s'allument, barre, ✔ et confettis. Le serveur retient qu'il
+  a été vu ; bouton **📖 TUTO** du menu pour le refaire (au lobby, retour au garage à la fin)
 - **🦄 Kart exclusif « Licorne Galaxie »** : uniquement en Robux (`Config.Karts.Galaxie.ProduitId`, ou l'offre
   `KartGalaxie` du magasin) : carrosserie arc-en-ciel animée, ailes néon, corne dorée, aileron lumineux,
   paillettes d'étoiles et traînée arc-en-ciel. Exposé dans le garage sur un socle lumineux
@@ -273,7 +274,7 @@ mall-drift/
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP
-        ├── Tutoriel.client.luau             (LocalScript) tuto de pilotage (1re partie)
+        ├── Tutoriel.client.luau             (LocalScript) tuto sur la piste, 3 étapes
         ├── SecuriteUI.client.luau           (LocalScript) alertes de la police
         └── PartieUI.client.luau             (LocalScript) écrans du mode en ligne
 ```

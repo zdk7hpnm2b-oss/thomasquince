@@ -335,13 +335,15 @@ local function afficherProfil(profil, niveauGagne: number?)
 end
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
 task.spawn(function()
-	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
-	-- On attend la fin du tuto avant d'afficher les conseils
+	local profilDepart = remotes:WaitForChild("ObtenirProfil"):InvokeServer()
+	afficherProfil(profilDepart)
+	-- (à la toute 1re partie, c'est le tuto sur la piste qui explique tout)
+	local tutoAFaire = type(profilDepart) == "table" and not profilDepart.TutoFait
 	local debut = os.clock()
 	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 300 do
 		task.wait(0.2)
 	end
-	if TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn" then
+	if (TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn") and not tutoAFaire and not joueur:GetAttribute("EnTuto") then
 		message("Bienvenue au garage ! Visite, puis ☰ MENU (en bas à droite) pour jouer", Color3.fromRGB(255, 215, 80), 3.5)
 		task.wait(3.8)
 		message("Borne de l'atelier : E = personnaliser ton kart", Color3.new(1, 1, 1), 3.5)
@@ -378,6 +380,7 @@ local function terminerDrift(reussi: boolean)
 			local poursuivi = joueur:GetAttribute("Poursuivi") == true or joueur:GetAttribute("Role") == "Fugitif"
 			local multiplicateur = if poursuivi then (Config.Score.BoostEvasion or 1.5) else 1
 			tempsBoost = reglageBoost.Duree * (if poursuivi then 1.2 else 1)
+			joueur:SetAttribute("TutoBoost", os.clock()) -- (pour le tuto)
 			forceBoost = reglageBoost.Force * multiplicateur
 			message(if poursuivi then ("🚨 BOOST D'ÉVASION %s !"):format(string.rep("★", etoiles)) else ("BOOST %s !"):format(string.rep("★", etoiles)),
 				if poursuivi then Color3.fromRGB(255, 140, 60) else Color3.fromRGB(120, 255, 140), 0.9)
@@ -389,6 +392,7 @@ local function terminerDrift(reussi: boolean)
 	drift.actif = false
 	drift.points, drift.temps, drift.rotation, drift.horsDrift, drift.combo, drift.nb360 = 0, 0, 0, 0, 1, 0
 	blocDrift.Visible = false
+	joueur:SetAttribute("TutoDriftPoints", 0)
 end
 
 ---------------------------------------------------------------------
@@ -1170,6 +1174,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 		end
 		local pts = math.floor(drift.points)
 		pointsLabel.Text = ("+%d"):format(pts)
+		joueur:SetAttribute("TutoDriftPoints", pts) -- (pour le tuto)
 		comboLabel.Text = ("x%.1f%s"):format(drift.combo, mouille and "  💧 BONUS EAU" or "")
 		etoilesLabel.Text = texteEtoiles(nombreEtoiles(pts))
 	end
