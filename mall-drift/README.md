@@ -22,6 +22,10 @@ Ce prototype contient :
   (notifications Roblox), bonus de groupe (`Config.Cadeaux.GroupeId`). Réglages : `Config.Cadeaux`
 - **Graphismes** : nuages réalistes, caméra qui penche dans les drifts et tremble au boost, flou de vitesse ;
   mode LÉGER automatique sur téléphone / graphismes bas (le jeu reste fluide)
+- **Menu d'accueil partout** : depuis un mode de jeu, ☰ MENU ramène à l'accueil complet (on descend du kart
+  et on voit les autres jouer en fond). JOUER lance un autre mode directement, même depuis une place de jeu
+- **👀 Aperçu avant d'acheter** : au magasin, un clic sur une offre montre ton kart équipé de l'objet en 3D
+  (qui tourne), avec le bouton ACHETER. Au garage : 1er clic = essayer, 2e clic = acheter
 - **🎡 Roue du jour** (menu) : 1 tour GRATUIT par jour (2 avec le Pass VIP) + tours achetables. Cadeaux :
   pièces, XP, couleur, traînée, et le JACKPOT (kart Licorne Galaxie). Tirage fait par le serveur, chances
   affichées sous la roue (obligatoire sur Roblox pour un tirage au sort payant). Réglages : `Config.Roue`

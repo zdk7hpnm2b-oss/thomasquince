@@ -188,7 +188,7 @@ comboLabel.TextColor3 = Color3.fromRGB(120, 220, 255)
 
 -- Messages qui apparaissent au milieu (« SUPER DRIFT ★★ », « 360° ! »…)
 local function message(texte: string, couleur: Color3?, duree: number?)
-	local m = label("Message", gui, UDim2.new(0, 600, 0, 60), UDim2.new(0.5, -300, 0.28, 0))
+	local m = label("Message", gui, UDim2.new(0, 600, 0, 60), UDim2.new(0.5, -300, 0.3, 0)) -- (sous les feux et la carte du tuto)
 	m.Text = texte
 	m.TextColor3 = couleur or Color3.new(1, 1, 1)
 	m.ZIndex = 10
@@ -450,7 +450,7 @@ local dernierRestePolice = -1
 local blocFeux = Instance.new("Frame")
 blocFeux.AnchorPoint = Vector2.new(0.5, 0)
 blocFeux.Size = UDim2.new(0, 330, 0, 120)
-blocFeux.Position = UDim2.new(0.5, 0, 0.14, 0)
+blocFeux.Position = UDim2.new(0.5, 0, 0.1, 0)
 blocFeux.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 blocFeux.BackgroundTransparency = 0.15
 blocFeux.Visible = false

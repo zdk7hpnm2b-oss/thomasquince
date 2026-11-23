@@ -371,6 +371,13 @@ for i, e in ipairs(kartsTries) do
 		b.BackgroundColor3 = if actif then Color3.fromRGB(44, 30, 36) else CASE
 	end)
 	b.Activated:Connect(function()
+		if e.k.Exclusif and not possede("Karts", e.id) and persoEdite.Kart ~= e.id then
+			-- 1er clic : on ESSAIE le kart exclusif (aperçu sur le plateau)
+			persoEdite.Kart = e.id
+			afficherStatut(("👀 Aperçu %s · reclique pour l'acheter (%s)"):format(e.k.Nom, e.k.PrixAffiche or "R$"), VIOLET)
+			rafraichir()
+			return
+		end
 		if e.k.Exclusif and not possede("Karts", e.id) then
 			afficherStatut(("🦄 %s : %s"):format(e.k.Nom, e.k.Description), VIOLET)
 			acheterRobux(e.k.ProduitId, e.id, function()
@@ -622,6 +629,13 @@ local function grillePremium(parent: Instance, exclusives: boolean)
 			if possede("Premium", pp.Nom) then
 				persoEdite.Premium = if persoEdite.Premium == pp.Nom then nil else pp.Nom
 				afficherStatut(pp.Nom, Color3.fromRGB(220, 220, 230))
+				rafraichir()
+				return
+			end
+			if persoEdite.Premium ~= pp.Nom then
+				-- 1er clic : on ESSAIE la peinture sur le kart (aperçu)
+				persoEdite.Premium = pp.Nom
+				afficherStatut(("👀 Aperçu %s · reclique pour l'acheter (%s)"):format(pp.Nom, pp.PrixAffiche or "R$"), if exclusives then VIOLET else OR)
 				rafraichir()
 				return
 			end
@@ -911,12 +925,37 @@ joueur:GetAttributeChangedSignal("OuvrirGarage"):Connect(function()
 	end
 end)
 
+-- Ce qui n'est qu'un ESSAI (pas encore acheté) n'est pas enregistré
+local function retirerEssais(): boolean
+	local retire = false
+	if persoEdite.Premium and not possede("Premium", persoEdite.Premium) then
+		persoEdite.Premium = nil
+		retire = true
+	end
+	local k = Config.Karts[persoEdite.Kart]
+	if k and k.Exclusif and not possede("Karts", persoEdite.Kart) then
+		persoEdite.Kart = (profil and profil.Perso and profil.Perso.Kart) or "Basique"
+		retire = true
+	end
+	if persoEdite.Trainee and persoEdite.Trainee ~= "Aucune" and not possede("Trainees", persoEdite.Trainee) then
+		persoEdite.Trainee = "Aucune"
+		retire = true
+	end
+	return retire
+end
+
 boutonEnregistrer.Activated:Connect(function()
+	if retirerEssais() then
+		rafraichir()
+		afficherStatut("(Les objets en aperçu non achetés ont été retirés)", Color3.fromRGB(255, 200, 90))
+		task.wait(1.2)
+	end
 	remotes.Personnaliser:FireServer(persoEdite)
 	afficherStatut("✔ Kart enregistré !", Color3.fromRGB(140, 255, 160))
 end)
 
 boutonSortir.Activated:Connect(function()
+	retirerEssais()
 	remotes.Personnaliser:FireServer(persoEdite)
 	fermer(true) -- la cinématique de départ prend le relais
 	task.wait(0.35) -- laisse le serveur enregistrer avant de sortir le kart

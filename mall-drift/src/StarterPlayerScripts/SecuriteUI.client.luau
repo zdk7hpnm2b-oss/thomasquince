@@ -66,7 +66,7 @@ local function grandMessage(texte: string, couleur: Color3, duree: number)
 	local l = Instance.new("TextLabel")
 	l.AnchorPoint = Vector2.new(0.5, 0.5)
 	l.Size = UDim2.new(0.8, 0, 0, 70)
-	l.Position = UDim2.fromScale(0.5, 0.38)
+	l.Position = UDim2.fromScale(0.5, 0.42) -- (sous les messages de drift)
 	l.BackgroundTransparency = 1
 	l.TextColor3 = couleur
 	l.Font = Enum.Font.GothamBlack

@@ -316,9 +316,9 @@ local VIOLET = Color3.fromRGB(110, 60, 220)
 
 local boutonMenu = Instance.new("TextButton")
 boutonMenu.Name = "BoutonMenu"
-boutonMenu.AnchorPoint = Vector2.new(1, 1)
-boutonMenu.Size = UDim2.new(0, 190, 0, 54)
-boutonMenu.Position = UDim2.new(1, -20, 1, -40)
+boutonMenu.AnchorPoint = Vector2.new(1, 0) -- en haut à droite, sous le score (en bas, il y a les boutons tactiles)
+boutonMenu.Size = UDim2.new(0, 170, 0, 46)
+boutonMenu.Position = UDim2.new(1, -16, 0, 128)
 boutonMenu.Font = Enum.Font.GothamBlack
 boutonMenu.TextScaled = true
 boutonMenu.TextColor3 = Color3.new(1, 1, 1)
@@ -531,10 +531,8 @@ local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour
 local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(255, 205, 70))
 local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(150, 200, 255))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
-carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
-for _, carteJeu in ipairs({ carteJouer, listeModes, carteGarage } :: { GuiObject }) do
-	carteJeu.Visible = not DANS_UNE_PLACE_DE_JEU
-end
+-- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
+carteLobby.Visible = false
 
 -- En bas à droite : l'offre du moment (le kart exclusif)
 local offrePromo = nil
@@ -704,7 +702,18 @@ local flouPages = Instance.new("BlurEffect")
 flouPages.Name = "FlouPages"
 flouPages.Size = 0
 flouPages.Parent = camera
-local pagesOuvertes = 0
+local pagesListe: { Frame } = {}
+-- Le flou n'est là que si le menu est ouvert ET qu'une page y est affichée
+local function majFlouPages()
+	local ouverte = false
+	for _, page in ipairs(pagesListe) do
+		if page.Visible then
+			ouverte = true
+		end
+	end
+	TweenService:Create(flouPages, TweenInfo.new(0.35), { Size = if ouverte and fondMenu.Visible then 14 else 0 }):Play()
+end
+fondMenu:GetPropertyChangedSignal("Visible"):Connect(majFlouPages)
 local function fenetre(nom: string, titreFenetre: string, _largeur: number, _hauteur: number, couleurBord: Color3): (Frame, TextLabel)
 	local f = Instance.new("Frame")
 	f.Name = nom
@@ -803,11 +812,8 @@ local function fenetre(nom: string, titreFenetre: string, _largeur: number, _hau
 		f.Visible = false
 	end)
 	-- Flou de l'arrière-plan tant qu'une page est ouverte
-	f:GetPropertyChangedSignal("Visible"):Connect(function()
-		pagesOuvertes += if f.Visible then 1 else -1
-		pagesOuvertes = math.max(pagesOuvertes, 0)
-		TweenService:Create(flouPages, TweenInfo.new(0.35), { Size = if pagesOuvertes > 0 then 14 else 0 }):Play()
-	end)
+	table.insert(pagesListe, f)
+	f:GetPropertyChangedSignal("Visible"):Connect(majFlouPages)
 	return f, t
 end
 
@@ -889,6 +895,7 @@ local function dejaAchete(offre): boolean
 	return offre.Unique == true and p.Produits ~= nil and p.Produits[offre.Id] == true
 end
 
+local ouvrirApercu: (any) -> () -- (définie plus bas : la page d'aperçu)
 local function acheterOffre(offre)
 	if dejaAchete(offre) then
 		ajouterAuFil("✔ Tu l'as déjà !", Color3.fromRGB(140, 255, 160))
@@ -1014,7 +1021,7 @@ for ordre, offre in ipairs(Config.Boutique or {}) do
 		TweenService:Create(echelle, TweenInfo.new(0.12), { Scale = 1 }):Play()
 	end)
 	b.Activated:Connect(function()
-		acheterOffre(offre)
+		ouvrirApercu(offre) -- d'abord l'aperçu, puis le bouton ACHETER
 	end)
 	local cat = offre.Categorie or "Offres"
 	cartesParCategorie[cat] = cartesParCategorie[cat] or {}
@@ -1071,6 +1078,178 @@ end
 local function ouvrirMagasin(categorie: string?)
 	montrerCategorie(categorie or "Offres")
 	apparaitre(panneauMagasin)
+end
+
+-- 👀 APERÇU AVANT D'ACHETER : on clique sur une offre → page avec ton kart équipé
+-- de l'objet, qui tourne en 3D, et le gros bouton ACHETER.
+do
+	local KartBuilderApercu = require(ReplicatedStorage:WaitForChild("KartBuilder"))
+	local pageApercu = fenetre("Apercu", "👀 APERÇU", 0, 0, Color3.fromRGB(225, 30, 45))
+	pageApercu.ZIndex = 35
+
+	-- La scène 3D (à gauche)
+	local scene = Instance.new("ViewportFrame")
+	scene.Size = UDim2.new(0.58, 0, 1, -100)
+	scene.Position = UDim2.new(0, 10, 0, 90)
+	scene.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+	scene.BackgroundTransparency = 0.2
+	scene.Ambient = Color3.fromRGB(150, 150, 160)
+	scene.LightColor = Color3.fromRGB(255, 245, 230)
+	scene.LightDirection = Vector3.new(-1, -1.5, -0.6)
+	scene.ZIndex = 32
+	scene.Parent = pageApercu
+	Instance.new("UICorner", scene).CornerRadius = UDim.new(0, 8)
+	local degradeScene = Instance.new("UIGradient")
+	degradeScene.Color = ColorSequence.new(Color3.fromRGB(70, 70, 90), Color3.fromRGB(20, 20, 28))
+	degradeScene.Rotation = 90
+	degradeScene.Parent = scene
+	local cameraScene = Instance.new("Camera")
+	cameraScene.FieldOfView = 40
+	cameraScene.Parent = scene
+	scene.CurrentCamera = cameraScene
+	-- Ruban de couleur de la traînée (les traînées 3D ne s'affichent pas dans un aperçu)
+	local ruban = Instance.new("Frame")
+	ruban.AnchorPoint = Vector2.new(0, 0.5)
+	ruban.Size = UDim2.new(0.55, 0, 0, 34)
+	ruban.Position = UDim2.new(0, 10, 0.62, 0)
+	ruban.BackgroundColor3 = Color3.new(1, 1, 1)
+	ruban.Visible = false
+	ruban.ZIndex = 31
+	ruban.Parent = pageApercu
+	Instance.new("UICorner", ruban).CornerRadius = UDim.new(0, 17)
+	local degradeRuban = Instance.new("UIGradient")
+	degradeRuban.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.6, 0.15), NumberSequenceKeypoint.new(1, 0) })
+	degradeRuban.Parent = ruban
+	local degradeRubanCouleur = Instance.new("UIGradient")
+	degradeRubanCouleur.Parent = ruban
+	-- Grosse icône pour ce qui n'est pas un objet sur le kart (pièces, tours, VIP)
+	local grosseIcone = Instance.new("TextLabel")
+	grosseIcone.AnchorPoint = Vector2.new(0.5, 0.5)
+	grosseIcone.Size = UDim2.fromScale(0.5, 0.5)
+	grosseIcone.Position = UDim2.fromScale(0.5, 0.5)
+	grosseIcone.BackgroundTransparency = 1
+	grosseIcone.TextScaled = true
+	grosseIcone.Font = Enum.Font.GothamBlack
+	grosseIcone.Visible = false
+	grosseIcone.ZIndex = 33
+	grosseIcone.Parent = scene
+
+	-- Les infos (à droite)
+	local nomApercu = texte(pageApercu, UDim2.new(0.38, 0, 0, 50), UDim2.new(0.62, 0, 0, 100), Color3.new(1, 1, 1))
+	nomApercu.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	nomApercu.TextXAlignment = Enum.TextXAlignment.Left
+	nomApercu.ZIndex = 32
+	local descApercu = texte(pageApercu, UDim2.new(0.38, 0, 0, 90), UDim2.new(0.62, 0, 0, 160), Color3.fromRGB(215, 215, 222), Enum.Font.GothamMedium)
+	descApercu.TextWrapped = true
+	descApercu.TextXAlignment = Enum.TextXAlignment.Left
+	descApercu.TextYAlignment = Enum.TextYAlignment.Top
+	descApercu.ZIndex = 32
+	local boutonAcheter = Instance.new("TextButton")
+	boutonAcheter.Size = UDim2.new(0.38, 0, 0, 74)
+	boutonAcheter.Position = UDim2.new(0.62, 0, 0, 280)
+	boutonAcheter.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
+	boutonAcheter.TextColor3 = Color3.new(1, 1, 1)
+	boutonAcheter.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	boutonAcheter.TextScaled = true
+	boutonAcheter.ZIndex = 33
+	boutonAcheter.Parent = pageApercu
+	Instance.new("UICorner", boutonAcheter).CornerRadius = UDim.new(0, 8)
+	local margeAcheter = Instance.new("UIPadding")
+	margeAcheter.PaddingTop = UDim.new(0, 16)
+	margeAcheter.PaddingBottom = UDim.new(0, 16)
+	margeAcheter.Parent = boutonAcheter
+	local reflet = Instance.new("UIGradient")
+	reflet.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.45, 0),
+		NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(0.55, 0), NumberSequenceKeypoint.new(1, 0),
+	})
+	reflet.Rotation = 20
+	reflet.Parent = boutonAcheter
+
+	local kartApercu: Model? = nil
+	local offreAffichee = nil
+	local angle = 0
+	local arcEnCiel = false
+
+	local function majBouton()
+		if not offreAffichee then
+			return
+		end
+		local achete = dejaAchete(offreAffichee)
+		boutonAcheter.Text = if achete then "✔ DÉJÀ À TOI" else ("ACHETER · %s"):format(offreAffichee.PrixAffiche or "R$")
+		boutonAcheter.BackgroundColor3 = if achete then Color3.fromRGB(40, 140, 70) else Color3.fromRGB(225, 30, 45)
+	end
+	table.insert(majMagasin, majBouton)
+
+	ouvrirApercu = function(offre)
+		offreAffichee = offre
+		if kartApercu then
+			kartApercu:Destroy()
+			kartApercu = nil
+		end
+		nomApercu.Text = offre.Nom
+		descApercu.Text = offre.Description or ""
+		majBouton()
+		-- Le kart du joueur, équipé de l'objet
+		local perso = table.clone(profilMenu and profilMenu.Perso or Config.PersoParDefaut)
+		local surLeKart = false
+		if offre.Kart then
+			perso.Kart = offre.Kart
+			perso.Premium = nil
+			surLeKart = true
+		end
+		local premium = offre.Premium or (offre.Premiums and offre.Premiums[1])
+		if premium then
+			perso.Premium = premium
+			surLeKart = true
+		end
+		local trainee = offre.Trainee and Config.Trainee(offre.Trainee)
+		ruban.Visible = trainee ~= nil and trainee.Couleurs ~= nil
+		if trainee and trainee.Couleurs then
+			degradeRubanCouleur.Color = trainee.Couleurs
+			surLeKart = true
+		end
+		grosseIcone.Visible = not surLeKart
+		if surLeKart then
+			kartApercu = KartBuilderApercu.Construire(perso, CFrame.new(), true)
+			kartApercu.Parent = scene
+			local pp = premium and Config.PeinturePremium(premium)
+			arcEnCiel = perso.Kart == "Galaxie" or (pp ~= nil and pp.ArcEnCiel == true)
+		else
+			grosseIcone.Text = if offre.Tours then "🎡" elseif offre.Id == "PassVIP" then "👑" else "💰"
+		end
+		apparaitre(pageApercu)
+	end
+
+	boutonAcheter.Activated:Connect(function()
+		if offreAffichee then
+			acheterOffre(offreAffichee)
+			majBouton()
+		end
+	end)
+
+	-- Le kart tourne lentement (et l'arc-en-ciel s'anime)
+	RunService.RenderStepped:Connect(function(dt)
+		if not pageApercu.Visible then
+			return
+		end
+		angle += dt * 0.6
+		reflet.Offset = Vector2.new((angle * 0.5) % 2 - 1, 0)
+		local k = kartApercu
+		if k then
+			k:PivotTo(CFrame.Angles(0, angle, 0))
+			cameraScene.CFrame = CFrame.lookAt(Vector3.new(0, 4.5, 13), Vector3.new(0, 0.8, 0))
+			if arcEnCiel then
+				for i, d in ipairs(k:GetDescendants()) do
+					if d:IsA("BasePart") and (d:GetAttribute("Peinture") == "Carrosserie" or d:GetAttribute("ArcEnCiel")) then
+						d.Color = Color3.fromHSV((os.clock() * 0.25 + i * 0.03) % 1, 0.85, 1)
+					end
+				end
+			end
+		else
+			grosseIcone.Rotation = math.sin(angle * 2) * 8
+		end
+	end)
 end
 
 local ouvrirMenu: (boolean) -> () -- (définie plus bas)
@@ -1625,6 +1804,9 @@ RunService.RenderStepped:Connect(function(dt)
 	local pos = centre + Vector3.new(math.cos(angleMenu) * 30, 14 + math.sin(angleMenu * 0.7) * 3, math.sin(angleMenu) * 30)
 	local voulu = CFrame.lookAt(pos, centre + Vector3.new(0, 1.5, 0))
 	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 4, 0, 1)) else voulu
+	if camera.CameraType ~= Enum.CameraType.Scriptable then
+		camera.CameraType = Enum.CameraType.Scriptable -- (au cas où un autre script l'a remise)
+	end
 	camera.CFrame = cfCamera :: CFrame
 end)
 
@@ -1641,7 +1823,7 @@ local function majMenu()
 		then "Tu es dans la file d'attente de Police contre Fugitifs. Clique pour la quitter."
 		else "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !"
 	boutonMenu.Text = if prete or preteBattle then "☰ MENU · ✅ EN FILE" else "☰ MENU"
-	boutonMenu.Size = UDim2.new(0, if prete or preteBattle then 300 else 190, 0, 54)
+	boutonMenu.Size = UDim2.new(0, if prete or preteBattle then 260 else 170, 0, 46)
 end
 for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle", "MenuGarage" }) do
 	joueur:GetAttributeChangedSignal(nom):Connect(majMenu)
@@ -1652,11 +1834,19 @@ ouvrirMenu = function(ouvert: boolean)
 	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
 	barre.Visible = not ouvert -- (la barre d'état du haut passerait par-dessus le menu)
+	for _, page in ipairs(pagesListe) do
+		page.Visible = false -- (magasin, roue, aperçu…)
+	end
 	panneauMagasin.Visible = false
 	panneauRoue.Visible = false
 	majMenu()
 	local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
 	local auVolant = h and h.SeatPart ~= nil
+	if ouvert and not dejaOuvert and auVolant and joueur:GetAttribute("Role") == nil then
+		-- Après un mode de jeu : retour à l'accueil, on descend du kart pour voir les autres jouer
+		Partie:FireServer({ type = "garage" })
+		auVolant = false
+	end
 	if ouvert and not dejaOuvert then
 		-- La caméra montre la carte (sauf si on est au volant)
 		if not auVolant and not joueur:GetAttribute("EnSalle") then
@@ -1703,7 +1893,7 @@ carteLobby.Activated:Connect(function()
 end)
 carteEntrainement.Activated:Connect(function()
 	ouvrirMenu(false)
-	if EN_LOBBY and Voyage then
+	if (EN_LOBBY or (DANS_UNE_PLACE_DE_JEU and TYPE ~= "Entrainement")) and Voyage then
 		Voyage:FireServer({ mode = "Entrainement" }) -- direction la place Entraînement
 		return
 	end
@@ -1716,8 +1906,8 @@ end)
 carteEnLigne.Activated:Connect(function()
 	ouvrirMenu(false)
 	local prete = joueur:GetAttribute("Pret") == true
-	if EN_LOBBY and Voyage then
-		Voyage:FireServer({ mode = "PoliceFugitifs" }) -- file d'attente du matchmaking
+	if (EN_LOBBY or DANS_UNE_PLACE_DE_JEU) and Voyage then
+		Voyage:FireServer({ mode = "PoliceFugitifs" }) -- file d'attente du matchmaking (au lobby)
 	else
 		Partie:FireServer({ type = "pret", valeur = not prete })
 	end
@@ -1725,7 +1915,7 @@ carteEnLigne.Activated:Connect(function()
 end)
 carteBattle.Activated:Connect(function()
 	ouvrirMenu(false)
-	if EN_LOBBY and Voyage then
+	if (EN_LOBBY or (DANS_UNE_PLACE_DE_JEU and TYPE ~= "DriftBattle")) and Voyage then
 		Voyage:FireServer({ mode = "DriftBattle" }) -- direction la place Drift Battle
 	else
 		Partie:FireServer({ type = "battle" }) -- le défi démarre tout de suite
@@ -1783,7 +1973,7 @@ end
 -- Dès qu'on arrive dans le jeu (et au retour d'une partie) : le menu s'ouvre
 -- directement, avec la partie qui se joue en fond
 task.spawn(function()
-	if EN_LOBBY or TYPE == "ToutEnUn" then
+	if EN_LOBBY or TYPE == "ToutEnUn" then -- (dans les modes de jeu : bouton ☰ MENU)
 		while not joueur:GetAttribute("IntroFinie") do
 			task.wait(0.2)
 		end
@@ -1791,6 +1981,11 @@ task.spawn(function()
 		perso:WaitForChild("HumanoidRootPart", 10)
 		task.wait(0.3)
 		ouvrirMenu(true)
+		local donnees = TeleportService:GetLocalPlayerTeleportData()
+		if EN_LOBBY and type(donnees) == "table" and donnees.fileAuto and Voyage and not joueur:GetAttribute("Pret") then
+			Voyage:FireServer({ mode = "PoliceFugitifs" }) -- (demandé depuis un autre mode)
+			ajouterAuFil("🌐 Tu es dans la file pour Police contre Fugitifs !", Color3.fromRGB(90, 150, 255))
+		end
 	end
 end)
 
@@ -1897,7 +2092,7 @@ local MarketplaceVies = game:GetService("MarketplaceService")
 local coeurs = Instance.new("TextLabel")
 coeurs.AnchorPoint = Vector2.new(0.5, 0)
 coeurs.Size = UDim2.new(0, 220, 0, 40)
-coeurs.Position = UDim2.new(0.5, 0, 0, 8)
+coeurs.Position = UDim2.new(0.5, 0, 0, 54) -- (sous la barre d'état du haut)
 coeurs.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 coeurs.BackgroundTransparency = 0.3
 coeurs.TextColor3 = Color3.new(1, 1, 1)

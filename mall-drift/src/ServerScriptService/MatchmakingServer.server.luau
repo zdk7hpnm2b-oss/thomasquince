@@ -69,9 +69,20 @@ end)
 ---------------------------------------------------------------------
 if TYPE ~= "Lobby" then
 	Voyage.OnServerEvent:Connect(function(joueur: Player, info)
-		if type(info) == "table" and info.mode == "Lobby" then
+		if type(info) ~= "table" then
+			return
+		end
+		if info.mode == "Lobby" then
 			Voyage:FireClient(joueur, { type = "depart", texte = "Retour au lobby…" })
 			teleporter({ joueur }, Config.Places.Lobby, { ouvrirMenu = true })
+		elseif (info.mode == "Entrainement" or info.mode == "DriftBattle") and info.mode ~= TYPE then
+			-- Le menu d'accueil marche aussi ici : on part directement vers l'autre mode
+			Voyage:FireClient(joueur, { type = "depart", texte = if info.mode == "Entrainement" then "Direction l'entraînement…" else "Direction le Drift Battle…" })
+			teleporter({ joueur }, Config.Places[info.mode] or 0, { mode = info.mode })
+		elseif info.mode == "PoliceFugitifs" then
+			-- La file d'attente est au lobby : on y va, et on entre dans la file tout seul
+			Voyage:FireClient(joueur, { type = "depart", texte = "Recherche d'une partie en ligne…" })
+			teleporter({ joueur }, Config.Places.Lobby, { fileAuto = true })
 		end
 	end)
 	print(("[Matchmaking] Place de jeu « %s » : retour au lobby prêt."):format(TYPE))

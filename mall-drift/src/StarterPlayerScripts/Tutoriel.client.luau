@@ -76,7 +76,7 @@ end
 local carte = Instance.new("Frame")
 carte.AnchorPoint = Vector2.new(0.5, 0)
 carte.Size = UDim2.new(0.9, 0, 0, 150)
-carte.Position = UDim2.new(0.5, 0, 0, 70)
+carte.Position = UDim2.new(0.5, 0, 0, 58)
 carte.BackgroundColor3 = Color3.new(1, 1, 1)
 carte.BackgroundTransparency = 0.1
 carte.Parent = gui
@@ -498,7 +498,7 @@ local function lancer()
 	echelleCarte.Scale = 0.3
 	carte.Position = UDim2.new(0.5, 0, 0, 30)
 	TweenService:Create(echelleCarte, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	TweenService:Create(carte, TweenInfo.new(0.45, Enum.EasingStyle.Quint), { Position = UDim2.new(0.5, 0, 0, 70) }):Play()
+	TweenService:Create(carte, TweenInfo.new(0.45, Enum.EasingStyle.Quint), { Position = UDim2.new(0.5, 0, 0, 58) }):Play()
 	montrerEtape(1)
 
 	local temps = 0
