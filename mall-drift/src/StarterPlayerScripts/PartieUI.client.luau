@@ -2238,6 +2238,120 @@ boutonVengeance.Activated:Connect(function()
 end)
 -- Si l'achat de la vengeance est confirmé, l'écran se ferme quand on revient en piste
 
+---------------------------------------------------------------------
+-- 📡 RADAR de la police + 👀 MODE SPECTATEUR quand on est éliminé
+---------------------------------------------------------------------
+local function modelesManche(): { Model }
+	local liste = {}
+	for _, nomDossier in ipairs({ "KartsJoueurs", "BotsManche" }) do
+		local dossier = workspace:FindFirstChild(nomDossier)
+		if dossier then
+			for _, m in ipairs(dossier:GetChildren()) do
+				if m:IsA("Model") and m:GetAttribute("Role") and m:GetAttribute("Proprietaire") ~= joueur.UserId then
+					table.insert(liste, m)
+				end
+			end
+		end
+	end
+	return liste
+end
+
+local function radar(duree: number)
+	local monRole = joueur:GetAttribute("Role")
+	if monRole == "Fugitif" then
+		ajouterAuFil("📡 Le radar de la police vous a repérés ! Bouge !", ORANGE)
+		return
+	end
+	if monRole ~= "Police" then
+		return
+	end
+	ajouterAuFil("📡 RADAR : les fugitifs sont visibles à travers les murs !", BLEU)
+	for _, m in ipairs(modelesManche()) do
+		if m:GetAttribute("Role") == "Fugitif" then
+			local h = Instance.new("Highlight")
+			h.FillColor = Color3.fromRGB(255, 140, 30)
+			h.FillTransparency = 0.35
+			h.OutlineColor = Color3.new(1, 1, 1)
+			h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			h.Parent = m
+			game:GetService("Debris"):AddItem(h, duree)
+		end
+	end
+end
+
+-- Le mode spectateur : on suit les joueurs encore en jeu, ◀ ▶ pour changer
+local spectateur = false
+local cibleSpectateur = 1
+local cfSpectateur: CFrame? = nil
+local barreSpectateur = Instance.new("Frame")
+barreSpectateur.AnchorPoint = Vector2.new(0.5, 1)
+barreSpectateur.Size = UDim2.new(0, 460, 0, 56)
+barreSpectateur.Position = UDim2.new(0.5, 0, 1, -24)
+barreSpectateur.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+barreSpectateur.BackgroundTransparency = 0.2
+barreSpectateur.Visible = false
+barreSpectateur.ZIndex = 8
+barreSpectateur.Parent = gui
+Instance.new("UICorner", barreSpectateur).CornerRadius = UDim.new(0, 10)
+local nomSpectateur = texte(barreSpectateur, UDim2.new(1, -130, 0, 30), UDim2.new(0, 65, 0, 13), Color3.new(1, 1, 1))
+nomSpectateur.ZIndex = 9
+local function flecheSpectateur(t: string, x: number, sens: number)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(48, 44)
+	b.Position = UDim2.new(x, if x == 0 then 6 else -54, 0, 6)
+	b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.Font = Enum.Font.GothamBlack
+	b.TextSize = 22
+	b.Text = t
+	b.ZIndex = 9
+	b.Parent = barreSpectateur
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+	b.Activated:Connect(function()
+		cibleSpectateur += sens
+	end)
+end
+flecheSpectateur("◀", 0, -1)
+flecheSpectateur("▶", 1, 1)
+
+local function arreterSpectateur()
+	if spectateur then
+		spectateur = false
+		barreSpectateur.Visible = false
+		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+RunService.RenderStepped:Connect(function(dt)
+	if not spectateur then
+		return
+	end
+	local liste = modelesManche()
+	if #liste == 0 then
+		nomSpectateur.Text = "👀 SPECTATEUR · en attente…"
+		return
+	end
+	cibleSpectateur = (cibleSpectateur - 1) % #liste + 1
+	local m = liste[cibleSpectateur]
+	local support = m.PrimaryPart or m:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not support then
+		return
+	end
+	local proprio = m:GetAttribute("Proprietaire")
+	local pilote = proprio and Players:GetPlayerByUserId(proprio)
+	nomSpectateur.Text = ("👀 %s %s"):format(if m:GetAttribute("Role") == "Police" then "🚓" else "🏃", if pilote then pilote.DisplayName else m.Name)
+	local avant = Vector3.new(support.CFrame.LookVector.X, 0, support.CFrame.LookVector.Z)
+	avant = if avant.Magnitude > 0.1 then avant.Unit else Vector3.new(0, 0, -1)
+	local voulu = CFrame.lookAt(support.Position - avant * 16 + Vector3.new(0, 7, 0), support.Position + avant * 6)
+	cfSpectateur = if cfSpectateur then cfSpectateur:Lerp(voulu, math.clamp(dt * 4, 0, 1)) else voulu
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CFrame = cfSpectateur :: CFrame
+end)
+local function demarrerSpectateur()
+	spectateur = true
+	cfSpectateur = nil
+	barreSpectateur.Visible = true
+end
+
 Partie.OnClientEvent:Connect(function(info)
 	if type(info) ~= "table" then
 		return
@@ -2316,11 +2430,15 @@ Partie.OnClientEvent:Connect(function(info)
 		fermerChoix()
 	elseif info.type == "vengeance" then
 		ajouterAuFil(("⚡ VENGEANCE ! %s se venge de %s !"):format(info.par or "?", info.cible or "?"), Color3.fromRGB(255, 90, 90))
+	elseif info.type == "radar" then
+		radar(info.duree or 3)
 	elseif info.type == "arrete" then
 		fermerChoix()
+		task.delay(4.2, demarrerSpectateur) -- (après la carte « PLUS DE VIES »)
 		montrerCarte("💀 ÉLIMINÉ PAR " .. string.upper(info.par or "LA POLICE"), "PLUS DE VIES !",
 			"Tu regardes la fin de la manche depuis le garage. Courage à ton équipe !", Color3.fromRGB(255, 70, 70), 4)
 	elseif info.type == "fin" then
+		arreterSpectateur()
 		local police = info.gagnant == "Police"
 		local monRole = joueur:GetAttribute("Role")
 		local gagne = (police and monRole == "Police") or (not police and monRole == "Fugitif")

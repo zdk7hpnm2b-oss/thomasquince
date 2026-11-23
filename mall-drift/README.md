@@ -32,6 +32,9 @@ Ce prototype contient :
 - **🛒 Magasin à onglets** : ⭐ Offres (kart exclusif, 👑 Pass VIP pièces x2, Méga pack Légende, Pack de
   démarrage) · 🌈 Traînées (Feu, Arc-en-ciel, Étoiles, Éclair, Cœurs, Galaxie — aussi au garage, onglet DÉCO)
   · 🎡 Roue (3 ou 10 tours) · 💰 Pièces (1 000 à 15 000). Tout est dans `Config.Boutique`
+- **Police contre Fugitifs, façon gros jeux Roblox** : effet « POUF » et disparition immédiate quand on
+  perd une vie, nom coloré au-dessus de chaque kart (🚓 bleu / 🏃 orange), 📡 RADAR de la police toutes
+  les 20 s (fugitifs visibles à travers les murs pendant 3 s), 👀 mode SPECTATEUR quand on est éliminé (◀ ▶)
 - **❤️ 3 vies en Police contre Fugitifs** (police ET fugitifs). Quand on perd une vie : 🔄 RÉAPPARAÎTRE
   (gratuit) ou ⚡ VENGEANCE (payant, `Config.Partie.ProduitVengeance`) : celui qui t'a eu perd une vie.
   À 0 vie, on est éliminé. 3 s de protection en revenant. Cœurs affichés en haut de l'écran

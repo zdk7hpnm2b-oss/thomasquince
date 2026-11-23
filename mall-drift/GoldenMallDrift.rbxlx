@@ -4442,7 +4442,7 @@ local function piloterBot(p: Participant, participants: { Participant })
 		-- Le participant adverse le plus proche
 		local plusProche, distance = nil, math.huge
 		for _, autre in ipairs(participants) do
-			if autre ~= p and autre.role ~= p.role and present(autre) and not autre.arrete then
+			if autre ~= p and autre.role ~= p.role and present(autre) and not autre.arrete and not autre.attente then
 				local pos = positionDe(autre)
 				if pos then
 					local d = (pos - maPosition).Magnitude
@@ -4547,6 +4547,73 @@ local function participantDe(joueur: Player): Participant?
 	return nil
 end
 
+-- Nom coloré au-dessus du kart (bleu = police, orange = fugitif) + rôle lisible par les clients (radar)
+local function etiqueter(modele: Instance?, p: Participant)
+	if not modele then
+		return
+	end
+	modele:SetAttribute("Role", p.role)
+	local support = (modele :: Model).PrimaryPart or modele:FindFirstChild("HumanoidRootPart") or modele:FindFirstChildWhichIsA("BasePart")
+	if not support or support:FindFirstChild("NomManche") then
+		return
+	end
+	local panneau = Instance.new("BillboardGui")
+	panneau.Name = "NomManche"
+	panneau.Size = UDim2.fromOffset(170, 30)
+	panneau.StudsOffset = Vector3.new(0, 5.5, 0)
+	panneau.AlwaysOnTop = true
+	panneau.MaxDistance = 220
+	panneau.LightInfluence = 0
+	panneau.Parent = support
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundColor3 = if p.role == "Police" then Color3.fromRGB(40, 90, 230) else Color3.fromRGB(240, 130, 30)
+	t.BackgroundTransparency = 0.25
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.Font = Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.Text = (if p.role == "Police" then "🚓 " else "🏃 ") .. p.nom
+	t.Parent = panneau
+	Instance.new("UICorner", t).CornerRadius = UDim.new(0, 8)
+end
+
+-- Effet « POUF » : celui qui perd une vie disparaît d'un coup dans un nuage d'étoiles
+local function pouf(position: Vector3?)
+	if not position then
+		return
+	end
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Transparency = 1
+	p.Size = Vector3.one
+	p.Position = position
+	p.Parent = workspace
+	local nuage = Instance.new("ParticleEmitter")
+	nuage.Color = ColorSequence.new(Color3.fromRGB(240, 240, 250))
+	nuage.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
+	nuage.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+	nuage.Lifetime = NumberRange.new(0.5, 0.9)
+	nuage.Speed = NumberRange.new(8, 16)
+	nuage.SpreadAngle = Vector2.new(180, 180)
+	nuage.Enabled = false
+	nuage.Parent = p
+	local etoiles = Instance.new("ParticleEmitter")
+	etoiles.LightEmission = 1
+	etoiles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 90, 90))
+	etoiles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
+	etoiles.Lifetime = NumberRange.new(0.4, 0.8)
+	etoiles.Speed = NumberRange.new(15, 28)
+	etoiles.SpreadAngle = Vector2.new(180, 180)
+	etoiles.Enabled = false
+	etoiles.Parent = p
+	nuage:Emit(30)
+	etoiles:Emit(40)
+	game:GetService("Debris"):AddItem(p, 2)
+end
+
 -- Revenir en jeu : kart sur sa grille de départ (police au nord, fugitifs au sud)
 local function reapparaitre(p: Participant)
 	if not p.attente or p.arrete or not workspace:GetAttribute("MancheEnCours") then
@@ -4555,7 +4622,7 @@ local function reapparaitre(p: Participant)
 	p.attente = false
 	p.protegeJusqua = os.clock() + (P.ProtectionReapparition or 3)
 	if p.joueur and p.joueur.Parent then
-		PlacerKart:Invoke(p.joueur, false)
+		etiqueter(PlacerKart:Invoke(p.joueur, false), p)
 		Partie:FireClient(p.joueur, { type = "reapparu", vies = p.vies })
 	elseif p.bot and p.bot.modele.Parent then
 		p.bot.modele:PivotTo(departBot(p.role :: string))
@@ -4567,6 +4634,7 @@ perdreVie = function(p: Participant, parQui: Participant)
 	if p.arrete or p.attente then
 		return
 	end
+	pouf(positionKart(p)) -- (il disparaît tout de suite, dans un nuage)
 	p.vies = math.max((p.vies or 1) - 1, 0)
 	p.tueur = parQui
 	local j = p.joueur
@@ -4600,7 +4668,7 @@ perdreVie = function(p: Participant, parQui: Participant)
 		RetirerKart:Invoke(j)
 		local cf = apparitionGarage()
 		if cf then
-			task.delay(0.15, function()
+			task.delay(0.05, function()
 				if j.Character then
 					j.Character:PivotTo(cf)
 				end
@@ -4614,7 +4682,10 @@ perdreVie = function(p: Participant, parQui: Participant)
 			reapparaitre(p) -- (pas de choix à temps : on revient tout seul)
 		end)
 	else
-		-- Un bot revient sur sa grille de départ au bout de 3 secondes
+		-- Un bot disparaît tout de suite (renvoyé sur sa grille) et repart au bout de 3 secondes
+		if p.bot and p.bot.modele.Parent then
+			p.bot.modele:PivotTo(departBot(p.role :: string))
+		end
 		task.delay(3, function()
 			reapparaitre(p)
 		end)
@@ -4690,12 +4761,14 @@ local function jouerManche(participants: { Participant })
 			mettreEnSalle(p.joueur, false)
 			RetirerKart:Invoke(p.joueur)
 			local kart = PlacerKart:Invoke(p.joueur, true)
+			etiqueter(kart, p)
 			if kart and p.role == "Police" then
 				kart:SetAttribute("BloqueJusqua", debloquePolice)
 			end
 		elseif not p.joueur then
 			p.bot = creerBot(p.nom, p.role :: string, departBot(p.role :: string))
 			if p.bot then
+				etiqueter(p.bot.modele, p)
 				task.delay(if p.role == "Police" then DUREE_DEPART + AVANCE else DUREE_DEPART, function()
 					piloterBot(p, participants)
 				end)
@@ -4716,6 +4789,7 @@ local function jouerManche(participants: { Participant })
 	local fin = os.clock() + DUREE + DUREE_DEPART
 	local gagnant = nil
 	local prochainEnvoi = 0
+	local prochainRadar = os.clock() + DUREE_DEPART + AVANCE + 20
 	while not gagnant do
 		task.wait(0.1)
 		local maintenant = os.clock()
@@ -4736,6 +4810,12 @@ local function jouerManche(participants: { Participant })
 					end
 				end
 			end
+		end
+
+		-- 📡 RADAR : toutes les 20 s, la police voit les fugitifs à travers les murs (3 s)
+		if os.clock() >= prochainRadar then
+			prochainRadar = os.clock() + 20
+			envoyerATous({ type = "radar", duree = 3 })
 		end
 
 		local restants, policeEnJeu = 0, 0
@@ -11726,6 +11806,120 @@ boutonVengeance.Activated:Connect(function()
 end)
 -- Si l'achat de la vengeance est confirmé, l'écran se ferme quand on revient en piste
 
+---------------------------------------------------------------------
+-- 📡 RADAR de la police + 👀 MODE SPECTATEUR quand on est éliminé
+---------------------------------------------------------------------
+local function modelesManche(): { Model }
+	local liste = {}
+	for _, nomDossier in ipairs({ "KartsJoueurs", "BotsManche" }) do
+		local dossier = workspace:FindFirstChild(nomDossier)
+		if dossier then
+			for _, m in ipairs(dossier:GetChildren()) do
+				if m:IsA("Model") and m:GetAttribute("Role") and m:GetAttribute("Proprietaire") ~= joueur.UserId then
+					table.insert(liste, m)
+				end
+			end
+		end
+	end
+	return liste
+end
+
+local function radar(duree: number)
+	local monRole = joueur:GetAttribute("Role")
+	if monRole == "Fugitif" then
+		ajouterAuFil("📡 Le radar de la police vous a repérés ! Bouge !", ORANGE)
+		return
+	end
+	if monRole ~= "Police" then
+		return
+	end
+	ajouterAuFil("📡 RADAR : les fugitifs sont visibles à travers les murs !", BLEU)
+	for _, m in ipairs(modelesManche()) do
+		if m:GetAttribute("Role") == "Fugitif" then
+			local h = Instance.new("Highlight")
+			h.FillColor = Color3.fromRGB(255, 140, 30)
+			h.FillTransparency = 0.35
+			h.OutlineColor = Color3.new(1, 1, 1)
+			h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			h.Parent = m
+			game:GetService("Debris"):AddItem(h, duree)
+		end
+	end
+end
+
+-- Le mode spectateur : on suit les joueurs encore en jeu, ◀ ▶ pour changer
+local spectateur = false
+local cibleSpectateur = 1
+local cfSpectateur: CFrame? = nil
+local barreSpectateur = Instance.new("Frame")
+barreSpectateur.AnchorPoint = Vector2.new(0.5, 1)
+barreSpectateur.Size = UDim2.new(0, 460, 0, 56)
+barreSpectateur.Position = UDim2.new(0.5, 0, 1, -24)
+barreSpectateur.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+barreSpectateur.BackgroundTransparency = 0.2
+barreSpectateur.Visible = false
+barreSpectateur.ZIndex = 8
+barreSpectateur.Parent = gui
+Instance.new("UICorner", barreSpectateur).CornerRadius = UDim.new(0, 10)
+local nomSpectateur = texte(barreSpectateur, UDim2.new(1, -130, 0, 30), UDim2.new(0, 65, 0, 13), Color3.new(1, 1, 1))
+nomSpectateur.ZIndex = 9
+local function flecheSpectateur(t: string, x: number, sens: number)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(48, 44)
+	b.Position = UDim2.new(x, if x == 0 then 6 else -54, 0, 6)
+	b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.Font = Enum.Font.GothamBlack
+	b.TextSize = 22
+	b.Text = t
+	b.ZIndex = 9
+	b.Parent = barreSpectateur
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
+	b.Activated:Connect(function()
+		cibleSpectateur += sens
+	end)
+end
+flecheSpectateur("◀", 0, -1)
+flecheSpectateur("▶", 1, 1)
+
+local function arreterSpectateur()
+	if spectateur then
+		spectateur = false
+		barreSpectateur.Visible = false
+		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+RunService.RenderStepped:Connect(function(dt)
+	if not spectateur then
+		return
+	end
+	local liste = modelesManche()
+	if #liste == 0 then
+		nomSpectateur.Text = "👀 SPECTATEUR · en attente…"
+		return
+	end
+	cibleSpectateur = (cibleSpectateur - 1) % #liste + 1
+	local m = liste[cibleSpectateur]
+	local support = m.PrimaryPart or m:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not support then
+		return
+	end
+	local proprio = m:GetAttribute("Proprietaire")
+	local pilote = proprio and Players:GetPlayerByUserId(proprio)
+	nomSpectateur.Text = ("👀 %s %s"):format(if m:GetAttribute("Role") == "Police" then "🚓" else "🏃", if pilote then pilote.DisplayName else m.Name)
+	local avant = Vector3.new(support.CFrame.LookVector.X, 0, support.CFrame.LookVector.Z)
+	avant = if avant.Magnitude > 0.1 then avant.Unit else Vector3.new(0, 0, -1)
+	local voulu = CFrame.lookAt(support.Position - avant * 16 + Vector3.new(0, 7, 0), support.Position + avant * 6)
+	cfSpectateur = if cfSpectateur then cfSpectateur:Lerp(voulu, math.clamp(dt * 4, 0, 1)) else voulu
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CFrame = cfSpectateur :: CFrame
+end)
+local function demarrerSpectateur()
+	spectateur = true
+	cfSpectateur = nil
+	barreSpectateur.Visible = true
+end
+
 Partie.OnClientEvent:Connect(function(info)
 	if type(info) ~= "table" then
 		return
@@ -11804,11 +11998,15 @@ Partie.OnClientEvent:Connect(function(info)
 		fermerChoix()
 	elseif info.type == "vengeance" then
 		ajouterAuFil(("⚡ VENGEANCE ! %s se venge de %s !"):format(info.par or "?", info.cible or "?"), Color3.fromRGB(255, 90, 90))
+	elseif info.type == "radar" then
+		radar(info.duree or 3)
 	elseif info.type == "arrete" then
 		fermerChoix()
+		task.delay(4.2, demarrerSpectateur) -- (après la carte « PLUS DE VIES »)
 		montrerCarte("💀 ÉLIMINÉ PAR " .. string.upper(info.par or "LA POLICE"), "PLUS DE VIES !",
 			"Tu regardes la fin de la manche depuis le garage. Courage à ton équipe !", Color3.fromRGB(255, 70, 70), 4)
 	elseif info.type == "fin" then
+		arreterSpectateur()
 		local police = info.gagnant == "Police"
 		local monRole = joueur:GetAttribute("Role")
 		local gagne = (police and monRole == "Police") or (not police and monRole == "Fugitif")

@@ -377,7 +377,7 @@ local function piloterBot(p: Participant, participants: { Participant })
 		-- Le participant adverse le plus proche
 		local plusProche, distance = nil, math.huge
 		for _, autre in ipairs(participants) do
-			if autre ~= p and autre.role ~= p.role and present(autre) and not autre.arrete then
+			if autre ~= p and autre.role ~= p.role and present(autre) and not autre.arrete and not autre.attente then
 				local pos = positionDe(autre)
 				if pos then
 					local d = (pos - maPosition).Magnitude
@@ -482,6 +482,73 @@ local function participantDe(joueur: Player): Participant?
 	return nil
 end
 
+-- Nom coloré au-dessus du kart (bleu = police, orange = fugitif) + rôle lisible par les clients (radar)
+local function etiqueter(modele: Instance?, p: Participant)
+	if not modele then
+		return
+	end
+	modele:SetAttribute("Role", p.role)
+	local support = (modele :: Model).PrimaryPart or modele:FindFirstChild("HumanoidRootPart") or modele:FindFirstChildWhichIsA("BasePart")
+	if not support or support:FindFirstChild("NomManche") then
+		return
+	end
+	local panneau = Instance.new("BillboardGui")
+	panneau.Name = "NomManche"
+	panneau.Size = UDim2.fromOffset(170, 30)
+	panneau.StudsOffset = Vector3.new(0, 5.5, 0)
+	panneau.AlwaysOnTop = true
+	panneau.MaxDistance = 220
+	panneau.LightInfluence = 0
+	panneau.Parent = support
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundColor3 = if p.role == "Police" then Color3.fromRGB(40, 90, 230) else Color3.fromRGB(240, 130, 30)
+	t.BackgroundTransparency = 0.25
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.Font = Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.Text = (if p.role == "Police" then "🚓 " else "🏃 ") .. p.nom
+	t.Parent = panneau
+	Instance.new("UICorner", t).CornerRadius = UDim.new(0, 8)
+end
+
+-- Effet « POUF » : celui qui perd une vie disparaît d'un coup dans un nuage d'étoiles
+local function pouf(position: Vector3?)
+	if not position then
+		return
+	end
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Transparency = 1
+	p.Size = Vector3.one
+	p.Position = position
+	p.Parent = workspace
+	local nuage = Instance.new("ParticleEmitter")
+	nuage.Color = ColorSequence.new(Color3.fromRGB(240, 240, 250))
+	nuage.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 5) })
+	nuage.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+	nuage.Lifetime = NumberRange.new(0.5, 0.9)
+	nuage.Speed = NumberRange.new(8, 16)
+	nuage.SpreadAngle = Vector2.new(180, 180)
+	nuage.Enabled = false
+	nuage.Parent = p
+	local etoiles = Instance.new("ParticleEmitter")
+	etoiles.LightEmission = 1
+	etoiles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 90, 90))
+	etoiles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
+	etoiles.Lifetime = NumberRange.new(0.4, 0.8)
+	etoiles.Speed = NumberRange.new(15, 28)
+	etoiles.SpreadAngle = Vector2.new(180, 180)
+	etoiles.Enabled = false
+	etoiles.Parent = p
+	nuage:Emit(30)
+	etoiles:Emit(40)
+	game:GetService("Debris"):AddItem(p, 2)
+end
+
 -- Revenir en jeu : kart sur sa grille de départ (police au nord, fugitifs au sud)
 local function reapparaitre(p: Participant)
 	if not p.attente or p.arrete or not workspace:GetAttribute("MancheEnCours") then
@@ -490,7 +557,7 @@ local function reapparaitre(p: Participant)
 	p.attente = false
 	p.protegeJusqua = os.clock() + (P.ProtectionReapparition or 3)
 	if p.joueur and p.joueur.Parent then
-		PlacerKart:Invoke(p.joueur, false)
+		etiqueter(PlacerKart:Invoke(p.joueur, false), p)
 		Partie:FireClient(p.joueur, { type = "reapparu", vies = p.vies })
 	elseif p.bot and p.bot.modele.Parent then
 		p.bot.modele:PivotTo(departBot(p.role :: string))
@@ -502,6 +569,7 @@ perdreVie = function(p: Participant, parQui: Participant)
 	if p.arrete or p.attente then
 		return
 	end
+	pouf(positionKart(p)) -- (il disparaît tout de suite, dans un nuage)
 	p.vies = math.max((p.vies or 1) - 1, 0)
 	p.tueur = parQui
 	local j = p.joueur
@@ -535,7 +603,7 @@ perdreVie = function(p: Participant, parQui: Participant)
 		RetirerKart:Invoke(j)
 		local cf = apparitionGarage()
 		if cf then
-			task.delay(0.15, function()
+			task.delay(0.05, function()
 				if j.Character then
 					j.Character:PivotTo(cf)
 				end
@@ -549,7 +617,10 @@ perdreVie = function(p: Participant, parQui: Participant)
 			reapparaitre(p) -- (pas de choix à temps : on revient tout seul)
 		end)
 	else
-		-- Un bot revient sur sa grille de départ au bout de 3 secondes
+		-- Un bot disparaît tout de suite (renvoyé sur sa grille) et repart au bout de 3 secondes
+		if p.bot and p.bot.modele.Parent then
+			p.bot.modele:PivotTo(departBot(p.role :: string))
+		end
 		task.delay(3, function()
 			reapparaitre(p)
 		end)
@@ -625,12 +696,14 @@ local function jouerManche(participants: { Participant })
 			mettreEnSalle(p.joueur, false)
 			RetirerKart:Invoke(p.joueur)
 			local kart = PlacerKart:Invoke(p.joueur, true)
+			etiqueter(kart, p)
 			if kart and p.role == "Police" then
 				kart:SetAttribute("BloqueJusqua", debloquePolice)
 			end
 		elseif not p.joueur then
 			p.bot = creerBot(p.nom, p.role :: string, departBot(p.role :: string))
 			if p.bot then
+				etiqueter(p.bot.modele, p)
 				task.delay(if p.role == "Police" then DUREE_DEPART + AVANCE else DUREE_DEPART, function()
 					piloterBot(p, participants)
 				end)
@@ -651,6 +724,7 @@ local function jouerManche(participants: { Participant })
 	local fin = os.clock() + DUREE + DUREE_DEPART
 	local gagnant = nil
 	local prochainEnvoi = 0
+	local prochainRadar = os.clock() + DUREE_DEPART + AVANCE + 20
 	while not gagnant do
 		task.wait(0.1)
 		local maintenant = os.clock()
@@ -671,6 +745,12 @@ local function jouerManche(participants: { Participant })
 					end
 				end
 			end
+		end
+
+		-- 📡 RADAR : toutes les 20 s, la police voit les fugitifs à travers les murs (3 s)
+		if os.clock() >= prochainRadar then
+			prochainRadar = os.clock() + 20
+			envoyerATous({ type = "radar", duree = 3 })
 		end
 
 		local restants, policeEnJeu = 0, 0
