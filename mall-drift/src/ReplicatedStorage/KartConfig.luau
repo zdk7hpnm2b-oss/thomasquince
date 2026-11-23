@@ -192,6 +192,36 @@ Config.Boutique = {
 }
 Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
 
+-- 🎁 CADEAUX GRATUITS (ce qui fait revenir les joueurs chaque jour)
+Config.Cadeaux = {
+	-- Cadeaux de temps de jeu (à chaque partie) : plus on reste, plus c'est gros
+	TempsDeJeu = {
+		{ Minutes = 3, Pieces = 50 },
+		{ Minutes = 10, Pieces = 100 },
+		{ Minutes = 20, Pieces = 200 },
+		{ Minutes = 35, Tours = 1 },
+		{ Minutes = 60, Pieces = 500 },
+	},
+	-- Série de connexion : 1 cadeau par jour, de plus en plus gros (jour 7 = énorme)
+	Serie = {
+		{ Pieces = 100 }, { Pieces = 150 }, { Tours = 1 }, { Pieces = 300 },
+		{ Pieces = 400 }, { Tours = 2 }, { Pieces = 1000, Tours = 3 },
+	},
+	BonusAmi = 150, -- 💰 pour toi ET ton ami quand vous jouez ensemble (1 fois par serveur)
+	GroupeId = 0, -- numéro de ton groupe Roblox (0 = pas de bonus de groupe)
+	BonusGroupe = 500, -- 💰 une seule fois pour avoir rejoint le groupe
+}
+function Config.TexteCadeau(c): string
+	local morceaux = {}
+	if c.Pieces then
+		table.insert(morceaux, ("%d 💰"):format(c.Pieces))
+	end
+	if c.Tours then
+		table.insert(morceaux, ("%d tour%s 🎡"):format(c.Tours, if c.Tours > 1 then "s" else ""))
+	end
+	return table.concat(morceaux, " + ")
+end
+
 -- 🎡 LA ROUE DU JOUR : 1 tour gratuit par jour (2 avec le Pass VIP) + les tours achetés.
 -- Poids = chances relatives (affichées en % dans le jeu, c'est obligatoire sur Roblox).
 Config.Roue = {

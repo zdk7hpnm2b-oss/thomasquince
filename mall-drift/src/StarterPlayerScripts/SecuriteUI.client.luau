@@ -144,6 +144,8 @@ remotes:WaitForChild("Alerte").OnClientEvent:Connect(function(info)
 	elseif info.etat == "seme" then
 		afficherNiveau(0)
 		grandMessage(("TU AS SEMÉ LA SÉCURITÉ ! 😎  +%d XP"):format(info.bonus or 0), Color3.fromRGB(110, 255, 140), 2.2)
+	elseif info.etat == "message" then
+		grandMessage(tostring(info.texte or ""), Color3.fromRGB(110, 255, 140), 2.4)
 	elseif info.etat == "glisse" then
 		grandMessage(("LE GARDE A GLISSÉ ! 😂  +%d XP"):format(info.bonus or 0), Color3.fromRGB(120, 210, 255), 1.8)
 	elseif info.etat == "attrape" then

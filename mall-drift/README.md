@@ -17,6 +17,11 @@ Ce prototype contient :
 - **Arrivée dans le jeu** : le MENU s'ouvre directement (options à gauche, partie en direct en fond).
 - **📖 Tuto sur la piste** (bouton TUTO du menu) : un kart (3, 2, 1) et une carte en haut de l'écran en
   **3 étapes** : accélère et tourne → drifte jusqu'à ⭐ → lâche le drift pour le BOOST
+- **🎁 Cadeaux gratuits** (cartes à droite du menu) : cadeaux de temps de jeu (3, 10, 20, 35, 60 min),
+  série de connexion sur 7 jours, bonus quand on joue avec un ami, invitation d'amis, « M'avertir »
+  (notifications Roblox), bonus de groupe (`Config.Cadeaux.GroupeId`). Réglages : `Config.Cadeaux`
+- **Graphismes** : nuages réalistes, caméra qui penche dans les drifts et tremble au boost, flou de vitesse ;
+  mode LÉGER automatique sur téléphone / graphismes bas (le jeu reste fluide)
 - **🎡 Roue du jour** (menu) : 1 tour GRATUIT par jour (2 avec le Pass VIP) + tours achetables. Cadeaux :
   pièces, XP, couleur, traînée, et le JACKPOT (kart Licorne Galaxie). Tirage fait par le serveur, chances
   affichées sous la roue (obligatoire sur Roblox pour un tirage au sort payant). Réglages : `Config.Roue`
@@ -115,7 +120,7 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 12 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 14 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
@@ -159,6 +164,8 @@ Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et c
 | `KartController` | [`src/StarterPlayerScripts/KartController.client.luau`](src/StarterPlayerScripts/KartController.client.luau) |
 | `GarageUI` | [`src/StarterPlayerScripts/GarageUI.client.luau`](src/StarterPlayerScripts/GarageUI.client.luau) |
 | `Tutoriel` | [`src/StarterPlayerScripts/Tutoriel.client.luau`](src/StarterPlayerScripts/Tutoriel.client.luau) |
+| `Cadeaux` | [`src/StarterPlayerScripts/Cadeaux.client.luau`](src/StarterPlayerScripts/Cadeaux.client.luau) |
+| `Graphismes` | [`src/StarterPlayerScripts/Graphismes.client.luau`](src/StarterPlayerScripts/Graphismes.client.luau) |
 | `SecuriteUI` | [`src/StarterPlayerScripts/SecuriteUI.client.luau`](src/StarterPlayerScripts/SecuriteUI.client.luau) |
 | `PartieUI` | [`src/StarterPlayerScripts/PartieUI.client.luau`](src/StarterPlayerScripts/PartieUI.client.luau) |
 
@@ -284,6 +291,21 @@ mall-drift/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP
         ├── Tutoriel.client.luau             (LocalScript) tuto sur la piste, 3 étapes
+        ├── Cadeaux.client.luau              (LocalScript) cadeau gratuit, série du jour, amis, notifications
+        ├── Graphismes.client.luau           (LocalScript) mode léger automatique sur téléphone
         ├── SecuriteUI.client.luau           (LocalScript) alertes de la police
         └── PartieUI.client.luau             (LocalScript) écrans du mode en ligne
 ```
+
+## 🚀 Pour attirer un max de joueurs (lancement)
+
+- **Titre** court + emoji + mise à jour : `🏎️ Golden Mall Drift [🎡 ROUE]` (change le crochet à chaque mise à jour).
+- **Icône** : un kart qui drifte avec de la fumée et les néons, couleurs vives, gros contraste, PAS de texte.
+- **Miniatures** (3 à 5) : un drift avec étoiles, la poursuite police, le kart Licorne Galaxie, la roue du jour.
+- **Description** : 2 lignes d'accroche (« Drifte dans le plus grand mall de Dubaï et sème la police ! »),
+  puis la liste des modes, et « 👍 Like + ⭐ Favori pour la prochaine mise à jour ».
+- **TikTok / Shorts** : vidéos de 10-15 s en caméra GoPro (touche V) : un long drift + boost, une vengeance,
+  un jackpot à la roue, un « avant / après » de personnalisation. 1 vidéo par jour, son tendance.
+- **Rythme** : une petite mise à jour par semaine (nouvelle traînée, nouvel événement) + notification « M'avertir ».
+- **Groupe Roblox** : crée-le, mets son numéro dans `Config.Cadeaux.GroupeId` (bonus de 500 💰 pour le rejoindre).
+- **Pubs Roblox** : quand le jeu est stable, un petit budget en pub « Sponsor » sur le jour de la mise à jour.

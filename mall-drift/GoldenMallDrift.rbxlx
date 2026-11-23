@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Lighting" referent="RBX13"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">true</bool></Properties></Item><Item class="ReplicatedStorage" referent="RBX14"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">KartBuilder</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Lighting" referent="RBX15"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">true</bool></Properties></Item><Item class="ReplicatedStorage" referent="RBX16"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">KartBuilder</string><ProtectedString name="Source"><![CDATA[--[[
 	KartBuilder  (ModuleScript)
 	À placer dans : ReplicatedStorage   — nom exact : KartBuilder
 
@@ -845,6 +845,36 @@ Config.Boutique = {
 }
 Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
 
+-- 🎁 CADEAUX GRATUITS (ce qui fait revenir les joueurs chaque jour)
+Config.Cadeaux = {
+	-- Cadeaux de temps de jeu (à chaque partie) : plus on reste, plus c'est gros
+	TempsDeJeu = {
+		{ Minutes = 3, Pieces = 50 },
+		{ Minutes = 10, Pieces = 100 },
+		{ Minutes = 20, Pieces = 200 },
+		{ Minutes = 35, Tours = 1 },
+		{ Minutes = 60, Pieces = 500 },
+	},
+	-- Série de connexion : 1 cadeau par jour, de plus en plus gros (jour 7 = énorme)
+	Serie = {
+		{ Pieces = 100 }, { Pieces = 150 }, { Tours = 1 }, { Pieces = 300 },
+		{ Pieces = 400 }, { Tours = 2 }, { Pieces = 1000, Tours = 3 },
+	},
+	BonusAmi = 150, -- 💰 pour toi ET ton ami quand vous jouez ensemble (1 fois par serveur)
+	GroupeId = 0, -- numéro de ton groupe Roblox (0 = pas de bonus de groupe)
+	BonusGroupe = 500, -- 💰 une seule fois pour avoir rejoint le groupe
+}
+function Config.TexteCadeau(c): string
+	local morceaux = {}
+	if c.Pieces then
+		table.insert(morceaux, ("%d 💰"):format(c.Pieces))
+	end
+	if c.Tours then
+		table.insert(morceaux, ("%d tour%s 🎡"):format(c.Tours, if c.Tours > 1 then "s" else ""))
+	end
+	return table.concat(morceaux, " + ")
+end
+
 -- 🎡 LA ROUE DU JOUR : 1 tour gratuit par jour (2 avec le Pass VIP) + les tours achetés.
 -- Poids = chances relatives (affichées en % dans le jeu, c'est obligatoire sur Roblox).
 Config.Roue = {
@@ -1174,7 +1204,7 @@ function Config.AppliquerAmbiance(nuit: boolean)
 end
 
 return Config
-]]></ProtectedString></Properties></Item></Item><Item class="ServerScriptService" referent="RBX15"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX3"><Properties><string name="Name">MallDriftServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ServerScriptService" referent="RBX17"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX3"><Properties><string name="Name">MallDriftServer</string><ProtectedString name="Source"><![CDATA[--[[
 	MallDriftServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : MallDriftServer
 
@@ -1206,6 +1236,14 @@ Config.AppliquerAmbiance(Config.NuitParDefaut)
 local TYPE = Config.TypeDePlace() -- rôle de cette place (voir KartConfig > Config.Places)
 
 -- (bloom, couleurs, rayons du soleil, profondeur de champ : voir Config.AppliquerAmbiance)
+-- Vrais nuages dans le ciel de Dubaï (vus du parking et par la verrière)
+pcall(function()
+	local nuages = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	nuages.Cover = 0.45
+	nuages.Density = 0.55
+	nuages.Color = Color3.fromRGB(255, 248, 240)
+	nuages.Parent = workspace.Terrain
+end)
 
 local carte = Instance.new("Folder")
 carte.Name = "GoldenMall"
@@ -2977,6 +3015,9 @@ type Profil = {
 	ToursRoue: number, -- tours de roue achetés (ou offerts) pas encore joués
 	DernierJourRoue: number, -- dernier jour (UTC) où le tour gratuit a été joué
 	ToursGratuitsJour: number, -- tours gratuits déjà joués ce jour-là
+	SerieJours: number, -- série de connexion (1 à 7)
+	DernierJourConnexion: number,
+	JourSeriePris: number, -- jour où le cadeau de la série a été pris
 }
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
@@ -3053,7 +3094,8 @@ local function sauvegarder(joueur: Player)
 		return
 	end
 	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait,
-		ToursRoue = profil.ToursRoue, DernierJourRoue = profil.DernierJourRoue, ToursGratuitsJour = profil.ToursGratuitsJour }
+		ToursRoue = profil.ToursRoue, DernierJourRoue = profil.DernierJourRoue, ToursGratuitsJour = profil.ToursGratuitsJour,
+		SerieJours = profil.SerieJours, DernierJourConnexion = profil.DernierJourConnexion, JourSeriePris = profil.JourSeriePris }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -3074,6 +3116,9 @@ local function chargerProfil(joueur: Player)
 		ToursRoue = 0,
 		DernierJourRoue = 0,
 		ToursGratuitsJour = 0,
+		SerieJours = 0,
+		DernierJourConnexion = 0,
+		JourSeriePris = 0,
 	}
 	if magasin then
 		local ok, donnees = pcall(function()
@@ -3089,6 +3134,9 @@ local function chargerProfil(joueur: Player)
 				profil.ToursRoue = type(donnees.ToursRoue) == "number" and math.clamp(math.floor(donnees.ToursRoue), 0, 9999) or 0
 				profil.DernierJourRoue = type(donnees.DernierJourRoue) == "number" and donnees.DernierJourRoue or 0
 				profil.ToursGratuitsJour = type(donnees.ToursGratuitsJour) == "number" and donnees.ToursGratuitsJour or 0
+				profil.SerieJours = type(donnees.SerieJours) == "number" and donnees.SerieJours or 0
+				profil.DernierJourConnexion = type(donnees.DernierJourConnexion) == "number" and donnees.DernierJourConnexion or 0
+				profil.JourSeriePris = type(donnees.JourSeriePris) == "number" and donnees.JourSeriePris or 0
 				if type(donnees.Possessions) == "table" then
 					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts", "Trainees" }) do
 						if type(donnees.Possessions[liste]) == "table" then
@@ -3797,6 +3845,130 @@ RoueDuJour.OnServerInvoke = function(joueur: Player, action: any)
 		end
 	end)
 	return { ok = true, indice = indice, message = cadeau, profil = versionPublique(profil) }
+end
+
+-- 🎁 CADEAUX GRATUITS : temps de jeu, série de connexion, amis, groupe
+do
+	local Cadeaux = Instance.new("RemoteFunction")
+	Cadeaux.Name = "Cadeaux"
+	Cadeaux.Parent = remotes
+	local C = Config.Cadeaux or {}
+	local debutSession: { [Player]: number } = {}
+	local cadeauxPris: { [Player]: { [number]: boolean } } = {}
+	local amisDejaRecompenses: { [string]: boolean } = {}
+
+	local function donner(joueur: Player, profil: Profil, c: { [string]: any })
+		if c.Pieces then
+			profil.Pieces += c.Pieces
+		end
+		if c.Tours then
+			profil.ToursRoue += c.Tours
+		end
+		task.spawn(sauvegarder, joueur)
+		ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+	end
+
+	-- Met à jour la série de connexion (appelé quand le joueur regarde ses cadeaux)
+	local function majSerie(profil: Profil)
+		local aujourdhui = jourActuel()
+		if profil.DernierJourConnexion ~= aujourdhui then
+			if profil.DernierJourConnexion == aujourdhui - 1 then
+				profil.SerieJours = profil.SerieJours % #(C.Serie or { 1 }) + 1
+			else
+				profil.SerieJours = 1 -- (série cassée : on recommence au jour 1)
+			end
+			profil.DernierJourConnexion = aujourdhui
+		end
+	end
+
+	local function etat(joueur: Player, profil: Profil)
+		majSerie(profil)
+		local minutes = (os.clock() - (debutSession[joueur] or os.clock())) / 60
+		local temps = {}
+		for i, c in ipairs(C.TempsDeJeu or {}) do
+			temps[i] = {
+				texte = Config.TexteCadeau(c),
+				minutes = c.Minutes,
+				pret = minutes >= c.Minutes and not (cadeauxPris[joueur] and cadeauxPris[joueur][i]),
+				pris = cadeauxPris[joueur] ~= nil and cadeauxPris[joueur][i] == true,
+				reste = math.max(0, math.ceil(c.Minutes * 60 - minutes * 60)),
+			}
+		end
+		return {
+			temps = temps,
+			serieJour = profil.SerieJours,
+			seriePrete = profil.JourSeriePris ~= jourActuel(),
+			groupe = (C.GroupeId or 0) ~= 0 and not profil.Possessions.Produits.BonusGroupe,
+		}
+	end
+
+	Cadeaux.OnServerInvoke = function(joueur: Player, action: any, indice: any)
+		local profil = profils[joueur]
+		if not profil then
+			return nil
+		end
+		if tropRapide(joueur, "cadeau", 0.3) then
+			return etat(joueur, profil)
+		end
+		if action == "temps" and type(indice) == "number" then
+			local c = (C.TempsDeJeu or {})[indice]
+			local minutes = (os.clock() - (debutSession[joueur] or os.clock())) / 60
+			cadeauxPris[joueur] = cadeauxPris[joueur] or {}
+			if c and minutes >= c.Minutes and not cadeauxPris[joueur][indice] then
+				cadeauxPris[joueur][indice] = true
+				donner(joueur, profil, c)
+			end
+		elseif action == "serie" then
+			majSerie(profil)
+			local c = (C.Serie or {})[profil.SerieJours]
+			if c and profil.JourSeriePris ~= jourActuel() then
+				profil.JourSeriePris = jourActuel()
+				donner(joueur, profil, c)
+			end
+		elseif action == "groupe" and (C.GroupeId or 0) ~= 0 and not profil.Possessions.Produits.BonusGroupe then
+			local ok, membre = pcall(function()
+				return joueur:IsInGroup(C.GroupeId)
+			end)
+			if ok and membre then
+				profil.Possessions.Produits.BonusGroupe = true
+				donner(joueur, profil, { Pieces = C.BonusGroupe or 500 })
+			end
+		end
+		return etat(joueur, profil)
+	end
+
+	-- Jouer avec un ami = bonus pour les deux
+	local function arrivee(joueur: Player)
+		debutSession[joueur] = os.clock()
+		task.delay(8, function()
+			for _, autre in ipairs(Players:GetPlayers()) do
+				if autre ~= joueur and joueur.Parent then
+					local cle = if joueur.UserId < autre.UserId then (joueur.UserId .. "_" .. autre.UserId) else (autre.UserId .. "_" .. joueur.UserId)
+					local ok, amis = pcall(function()
+						return joueur:IsFriendsWith(autre.UserId)
+					end)
+					if ok and amis and not amisDejaRecompenses[cle] then
+						amisDejaRecompenses[cle] = true
+						for _, j in ipairs({ joueur, autre }) do
+							local p = profils[j]
+							if p then
+								donner(j, p, { Pieces = C.BonusAmi or 150 })
+								Alerte:FireClient(j, { etat = "message", texte = ("👥 TU JOUES AVEC TON AMI ! +%d 💰"):format(C.BonusAmi or 150) })
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+	Players.PlayerRemoving:Connect(function(j)
+		debutSession[j] = nil
+		cadeauxPris[j] = nil
+	end)
 end
 
 -- Les achats en Robux : Roblox appelle cette fonction quand un paiement a réussi
@@ -6251,7 +6423,379 @@ for i = 1, (R.PoliciersEtage or 0) do
 end
 
 print(("[Golden Mall] Police en place : %d policiers en bas, %d à l'étage."):format(R.Policiers, R.PoliciersEtage or 0))
-]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX17"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX16"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX8"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX19"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX18"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX8"><Properties><string name="Name">Cadeaux</string><ProtectedString name="Source"><![CDATA[--[[
+	Cadeaux  (LocalScript)
+	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Cadeaux
+
+	Ce qui fait revenir les joueurs (comme dans les gros jeux Roblox) :
+	  🎁 CADEAU GRATUIT : des cadeaux selon le temps de jeu (3, 10, 20, 35, 60 min)
+	  📅 SÉRIE DU JOUR  : 1 cadeau par jour, de plus en plus gros jusqu'au jour 7
+	  👥 INVITER DES AMIS : invitation Roblox (bonus quand vous jouez ensemble)
+	  🔔 M'AVERTIR : notifications Roblox quand il y a du nouveau
+	  👪 GROUPE : bonus unique si on rejoint le groupe (si Config.Cadeaux.GroupeId est réglé)
+	Les cartes s'affichent à droite du menu. Une pastille rouge « ! » = cadeau prêt.
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SocialService = game:GetService("SocialService")
+
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
+local Cadeaux = remotes:WaitForChild("Cadeaux") :: RemoteFunction
+
+local joueur = Players.LocalPlayer
+local hud = joueur:WaitForChild("PlayerGui"):WaitForChild("PartieHUD")
+local menu = hud:WaitForChild("Menu") :: Frame
+
+local POLICE = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local ROUGE = Color3.fromRGB(225, 30, 45)
+local VERT = Color3.fromRGB(50, 170, 90)
+
+local function coins(o: GuiObject, r: number)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = o
+end
+
+local function texte(parent: Instance, taille: UDim2, position: UDim2, couleur: Color3, police: Enum.Font?): TextLabel
+	local t = Instance.new("TextLabel")
+	t.Size = taille
+	t.Position = position
+	t.BackgroundTransparency = 1
+	t.TextColor3 = couleur
+	t.Font = police or Enum.Font.GothamBold
+	t.TextScaled = true
+	t.TextXAlignment = Enum.TextXAlignment.Left
+	t.ZIndex = 24
+	t.Parent = parent
+	return t
+end
+
+---------------------------------------------------------------------
+-- Les cartes à droite du menu
+---------------------------------------------------------------------
+local colonne = Instance.new("Frame")
+colonne.AnchorPoint = Vector2.new(1, 0.5)
+colonne.Size = UDim2.new(0, 270, 0, 0)
+colonne.AutomaticSize = Enum.AutomaticSize.Y
+colonne.Position = UDim2.new(1, -40, 0.42, 0)
+colonne.BackgroundTransparency = 1
+colonne.ZIndex = 22
+colonne.Parent = menu
+local dispo = Instance.new("UIListLayout")
+dispo.Padding = UDim.new(0, 8)
+dispo.SortOrder = Enum.SortOrder.LayoutOrder
+dispo.Parent = colonne
+local echelle = Instance.new("UIScale")
+echelle.Parent = colonne
+local camera = workspace.CurrentCamera
+local function ajuster()
+	echelle.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.62, 1)
+end
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajuster)
+ajuster()
+
+local function carte(ordre: number, icone: string, titre: string): (TextButton, TextLabel, Frame)
+	local b = Instance.new("TextButton")
+	b.LayoutOrder = ordre
+	b.Size = UDim2.new(1, 0, 0, 60)
+	b.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+	b.BackgroundTransparency = 0.05
+	b.AutoButtonColor = false
+	b.Text = ""
+	b.ZIndex = 23
+	b.Parent = colonne
+	coins(b, 4)
+	local bord = Instance.new("UIStroke")
+	bord.Color = Color3.fromRGB(60, 60, 70)
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	local fondIcone = Instance.new("Frame")
+	fondIcone.Size = UDim2.fromOffset(44, 44)
+	fondIcone.Position = UDim2.new(0, 8, 0.5, -22)
+	fondIcone.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
+	fondIcone.ZIndex = 24
+	fondIcone.Parent = b
+	coins(fondIcone, 4)
+	local i = texte(fondIcone, UDim2.new(1, -10, 1, -10), UDim2.new(0, 5, 0, 5), Color3.new(1, 1, 1))
+	i.TextXAlignment = Enum.TextXAlignment.Center
+	i.Text = icone
+	i.ZIndex = 25
+	local t = texte(b, UDim2.new(1, -70, 0, 22), UDim2.new(0, 62, 0, 9), Color3.new(1, 1, 1))
+	t.FontFace = POLICE
+	t.Text = titre
+	local sous = texte(b, UDim2.new(1, -70, 0, 16), UDim2.new(0, 62, 0, 34), Color3.fromRGB(190, 190, 200), Enum.Font.GothamMedium)
+	-- Pastille rouge « ! »
+	local pastille = Instance.new("Frame")
+	pastille.AnchorPoint = Vector2.new(0.5, 0.5)
+	pastille.Size = UDim2.fromOffset(16, 16)
+	pastille.Position = UDim2.new(1, -4, 0, 4)
+	pastille.BackgroundColor3 = Color3.fromRGB(240, 40, 50)
+	pastille.Visible = false
+	pastille.ZIndex = 26
+	pastille.Parent = b
+	coins(pastille, 8)
+	local e = Instance.new("UIScale")
+	e.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1.04 }):Play()
+		TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(38, 38, 46) }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1 }):Play()
+		TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(20, 20, 24) }):Play()
+	end)
+	-- La pastille « respire »
+	task.spawn(function()
+		while b.Parent do
+			if pastille.Visible then
+				TweenService:Create(pastille, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Size = UDim2.fromOffset(20, 20) }):Play()
+				task.wait(0.5)
+				TweenService:Create(pastille, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Size = UDim2.fromOffset(16, 16) }):Play()
+			end
+			task.wait(0.5)
+		end
+	end)
+	return b, sous, pastille
+end
+
+local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit")
+local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour")
+local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis")
+sousAmis.Text = ("Jouez ensemble : +%d 💰 chacun"):format(Config.Cadeaux.BonusAmi or 150)
+local carteNotif, sousNotif = carte(4, "🔔", "M'avertir")
+sousNotif.Text = "Nouveautés, événements, cadeaux"
+local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe")
+sousGroupe.Text = ("+%d 💰 une seule fois"):format(Config.Cadeaux.BonusGroupe or 500)
+carteGroupe.Visible = false
+
+---------------------------------------------------------------------
+-- Le panneau qui détaille les cadeaux
+---------------------------------------------------------------------
+local panneau = Instance.new("Frame")
+panneau.AnchorPoint = Vector2.new(0.5, 0.5)
+panneau.Size = UDim2.new(0, 460, 0, 420)
+panneau.Position = UDim2.fromScale(0.6, 0.5)
+panneau.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+panneau.Visible = false
+panneau.ZIndex = 40
+panneau.Parent = menu
+coins(panneau, 6)
+local lisere = Instance.new("Frame")
+lisere.Size = UDim2.new(1, 0, 0, 5)
+lisere.BackgroundColor3 = ROUGE
+lisere.BorderSizePixel = 0
+lisere.ZIndex = 41
+lisere.Parent = panneau
+local titrePanneau = texte(panneau, UDim2.new(1, -90, 0, 34), UDim2.new(0, 20, 0, 18), Color3.new(1, 1, 1))
+titrePanneau.FontFace = POLICE
+titrePanneau.ZIndex = 41
+local fermer = Instance.new("TextButton")
+fermer.AnchorPoint = Vector2.new(1, 0)
+fermer.Size = UDim2.fromOffset(38, 38)
+fermer.Position = UDim2.new(1, -14, 0, 16)
+fermer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+fermer.TextColor3 = Color3.new(1, 1, 1)
+fermer.Font = Enum.Font.GothamBlack
+fermer.TextSize = 18
+fermer.Text = "X"
+fermer.ZIndex = 42
+fermer.Parent = panneau
+coins(fermer, 6)
+fermer.Activated:Connect(function()
+	panneau.Visible = false
+end)
+local liste = Instance.new("Frame")
+liste.Size = UDim2.new(1, -40, 1, -80)
+liste.Position = UDim2.new(0, 20, 0, 66)
+liste.BackgroundTransparency = 1
+liste.ZIndex = 41
+liste.Parent = panneau
+local dispoListe = Instance.new("UIGridLayout")
+dispoListe.CellPadding = UDim2.fromOffset(8, 8)
+dispoListe.SortOrder = Enum.SortOrder.LayoutOrder
+dispoListe.Parent = liste
+
+local etat: any = nil
+local vue = "" -- "temps" ou "serie"
+
+local function formatTemps(s: number): string
+	return ("%d:%02d"):format(s // 60, s % 60)
+end
+
+local function remplir()
+	for _, e in ipairs(liste:GetChildren()) do
+		if e:IsA("GuiObject") then
+			e:Destroy()
+		end
+	end
+	if not etat then
+		return
+	end
+	if vue == "temps" then
+		titrePanneau.Text = "🎁 CADEAUX DE TEMPS DE JEU"
+		dispoListe.CellSize = UDim2.new(1, 0, 0, 58)
+		for i, c in ipairs(etat.temps or {}) do
+			local b = Instance.new("TextButton")
+			b.LayoutOrder = i
+			b.BackgroundColor3 = if c.pret then VERT elseif c.pris then Color3.fromRGB(30, 30, 36) else Color3.fromRGB(26, 26, 32)
+			b.AutoButtonColor = c.pret
+			b.Text = ""
+			b.ZIndex = 42
+			b.Parent = liste
+			coins(b, 4)
+			local t = texte(b, UDim2.new(0.6, 0, 0, 24), UDim2.new(0, 14, 0, 8), Color3.new(1, 1, 1))
+			t.FontFace = POLICE
+			t.Text = c.texte
+			t.ZIndex = 43
+			local s = texte(b, UDim2.new(0.6, 0, 0, 16), UDim2.new(0, 14, 0, 34), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+			s.Text = ("Après %d min de jeu"):format(c.minutes)
+			s.ZIndex = 43
+			local d = texte(b, UDim2.new(0.35, 0, 0, 26), UDim2.new(0.62, 0, 0, 16), Color3.new(1, 1, 1))
+			d.TextXAlignment = Enum.TextXAlignment.Right
+			d.Text = if c.pris then "✔ PRIS" elseif c.pret then "RÉCUPÉRER" else "⏳ " .. formatTemps(c.reste)
+			d.ZIndex = 43
+			if c.pret then
+				b.Activated:Connect(function()
+					etat = Cadeaux:InvokeServer("temps", i)
+					remplir()
+				end)
+			end
+		end
+	else
+		titrePanneau.Text = ("📅 SÉRIE DU JOUR · JOUR %d"):format(etat.serieJour or 1)
+		dispoListe.CellSize = UDim2.new(0.25, -6, 0, 120)
+		for i, c in ipairs(Config.Cadeaux.Serie or {}) do
+			local aujourdhui = i == etat.serieJour
+			local passe = i < (etat.serieJour or 1) or (aujourdhui and not etat.seriePrete)
+			local b = Instance.new("TextButton")
+			b.LayoutOrder = i
+			b.BackgroundColor3 = if aujourdhui and etat.seriePrete then ROUGE elseif passe then VERT else Color3.fromRGB(28, 28, 34)
+			b.AutoButtonColor = aujourdhui and etat.seriePrete
+			b.Text = ""
+			b.ZIndex = 42
+			b.Parent = liste
+			coins(b, 4)
+			local j = texte(b, UDim2.new(1, -10, 0, 20), UDim2.new(0, 5, 0, 8), Color3.new(1, 1, 1))
+			j.TextXAlignment = Enum.TextXAlignment.Center
+			j.FontFace = POLICE
+			j.Text = "JOUR " .. i
+			j.ZIndex = 43
+			local ic = texte(b, UDim2.new(1, -10, 0, 34), UDim2.new(0, 5, 0, 32), Color3.new(1, 1, 1))
+			ic.TextXAlignment = Enum.TextXAlignment.Center
+			ic.Text = if passe then "✔" elseif c.Tours then "🎡" else "💰"
+			ic.ZIndex = 43
+			local t = texte(b, UDim2.new(1, -10, 0, 36), UDim2.new(0, 5, 0, 74), Color3.fromRGB(230, 230, 235), Enum.Font.GothamBold)
+			t.TextXAlignment = Enum.TextXAlignment.Center
+			t.TextWrapped = true
+			t.Text = Config.TexteCadeau(c)
+			t.ZIndex = 43
+			if aujourdhui and etat.seriePrete then
+				b.Activated:Connect(function()
+					etat = Cadeaux:InvokeServer("serie")
+					remplir()
+				end)
+			end
+		end
+	end
+end
+
+local function ouvrir(v: string)
+	vue = v
+	panneau.Visible = true
+	local e = panneau:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	e.Parent = panneau
+	e.Scale = 0.6
+	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.spawn(function()
+		etat = Cadeaux:InvokeServer("etat")
+		remplir()
+	end)
+	remplir()
+end
+carteCadeau.Activated:Connect(function()
+	ouvrir("temps")
+end)
+carteSerie.Activated:Connect(function()
+	ouvrir("serie")
+end)
+carteAmis.Activated:Connect(function()
+	pcall(function()
+		SocialService:PromptGameInvite(joueur)
+	end)
+end)
+carteNotif.Activated:Connect(function()
+	local ok = pcall(function()
+		local ens = game:GetService("ExperienceNotificationService")
+		if ens:CanPromptOptInAsync() then
+			ens:PromptOptIn()
+		end
+	end)
+	sousNotif.Text = if ok then "✔ Merci ! Tu seras averti" else "Pas disponible ici"
+end)
+carteGroupe.Activated:Connect(function()
+	if (Config.Cadeaux.GroupeId or 0) ~= 0 then
+		pcall(function()
+			game:GetService("GroupService"):PromptJoinAsync(Config.Cadeaux.GroupeId)
+		end)
+		task.wait(1)
+		etat = Cadeaux:InvokeServer("groupe")
+	end
+end)
+
+---------------------------------------------------------------------
+-- Mise à jour toutes les secondes (compte à rebours, pastilles)
+---------------------------------------------------------------------
+task.spawn(function()
+	local depuis = 0
+	while true do
+		if menu.Visible then
+			depuis += 1
+			if not etat or depuis >= 15 then
+				depuis = 0
+				local ok, r = pcall(function()
+					return Cadeaux:InvokeServer("etat")
+				end)
+				if ok and r then
+					etat = r
+				end
+			elseif etat then
+				for _, c in ipairs(etat.temps or {}) do
+					if c.reste > 0 then
+						c.reste -= 1
+						if c.reste == 0 and not c.pris then
+							c.pret = true
+						end
+					end
+				end
+			end
+			if etat then
+				local prochain = nil
+				local pret = false
+				for _, c in ipairs(etat.temps or {}) do
+					if c.pret then
+						pret = true
+					elseif not c.pris and not prochain then
+						prochain = c
+					end
+				end
+				pastilleCadeau.Visible = pret
+				sousCadeau.Text = if pret then "🎁 Récupère ton cadeau !" elseif prochain then ("Prochain dans %s"):format(formatTemps(prochain.reste)) else "Tout récupéré, bravo !"
+				pastilleSerie.Visible = etat.seriePrete == true
+				sousSerie.Text = if etat.seriePrete then ("Jour %d · cadeau prêt !"):format(etat.serieJour or 1) else ("Jour %d · reviens demain"):format(etat.serieJour or 1)
+				carteGroupe.Visible = etat.groupe == true
+				pastilleGroupe.Visible = etat.groupe == true
+				if panneau.Visible and vue == "temps" then
+					remplir()
+				end
+			end
+		end
+		task.wait(1)
+	end
+end)
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
 	GarageUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : GarageUI
 
@@ -7269,7 +7813,77 @@ task.spawn(function()
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">Graphismes</string><ProtectedString name="Source"><![CDATA[--[[
+	Graphismes  (LocalScript)
+	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Graphismes
+
+	Adapte les graphismes à l'appareil, pour que le jeu reste FLUIDE partout
+	(la majorité des joueurs Roblox sont sur téléphone : un jeu qui rame, ils partent) :
+	  • PC / console / graphismes élevés : rendu complet (ombres, profondeur de champ,
+	    rayons du soleil, flou de vitesse)
+	  • Téléphone / graphismes bas : mode LÉGER (pas d'ombres des lampes, pas de flou,
+	    moins de particules) — l'image reste belle, mais tourne bien mieux
+	Ça se réajuste tout seul si le joueur change ses réglages graphiques Roblox.
+]]
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+
+local joueur = Players.LocalPlayer
+local reglagesRoblox = UserSettings():GetService("UserGameSettings")
+
+local function modeLeger(): boolean
+	local telephone = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local niveau = reglagesRoblox.SavedQualityLevel.Value -- 0 = automatique, 1 à 10 sinon
+	if niveau == 0 then
+		return telephone
+	end
+	return niveau <= 4
+end
+
+local debitsParticules: { [ParticleEmitter]: number } = {}
+
+local function appliquer()
+	local leger = modeLeger()
+	joueur:SetAttribute("GraphismesLegers", leger)
+	for _, nom in ipairs({ "ProfondeurMallDrift", "RayonsMallDrift" }) do
+		local e = Lighting:FindFirstChild(nom)
+		if e and e:IsA("PostEffect") then
+			e.Enabled = not leger
+		end
+	end
+	local halo = Lighting:FindFirstChild("HaloMallDrift")
+	if halo and halo:IsA("BloomEffect") then
+		halo.Size = if leger then 14 else 28
+	end
+	local carte = workspace:FindFirstChild("GoldenMall")
+	if not carte then
+		return
+	end
+	for _, d in ipairs(carte:GetDescendants()) do
+		if d:IsA("SpotLight") or d:IsA("PointLight") then
+			if leger then
+				d.Shadows = false
+			end
+		elseif d:IsA("SurfaceLight") then
+			d.Enabled = not leger -- (les halos colorés des enseignes)
+		elseif d:IsA("ParticleEmitter") then
+			if not debitsParticules[d] then
+				debitsParticules[d] = d.Rate
+			end
+			d.Rate = if leger then debitsParticules[d] * 0.5 else debitsParticules[d]
+		end
+	end
+end
+
+task.spawn(function()
+	workspace:WaitForChild("GoldenMall", 30)
+	task.wait(2) -- (le temps que la carte soit construite)
+	appliquer()
+end)
+reglagesRoblox:GetPropertyChangedSignal("SavedQualityLevel"):Connect(appliquer)
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
 	KartController  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : KartController
 
@@ -7372,6 +7986,12 @@ local function majLignesVitesse(force: number, dt: number)
 		cadre.BackgroundTransparency = 1 - force * 0.55 * math.sin(l.phase * math.pi)
 	end
 end
+
+-- Flou de vitesse (léger, surtout pendant le boost)
+local flouVitesse = Instance.new("BlurEffect")
+flouVitesse.Name = "FlouVitesse"
+flouVitesse.Size = 0
+flouVitesse.Parent = camera
 
 -- Écran des éclaboussures (en dessous du reste)
 local ecranEau = Instance.new("Frame")
@@ -7911,7 +8531,11 @@ local function mettreAJourCamera(dt: number)
 	if obstacle and obstacle.Instance.CanCollide then
 		voulu = obstacle.Position + (pivot - voulu).Unit * 1
 	end
-	camera.CFrame = CFrame.lookAt(voulu, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0))
+	-- Réalisme : la caméra penche un peu dans les drifts et tremble pendant le boost
+	local glisseCam = vel:Dot(Vector3.new(-directionCamera.Z, 0, directionCamera.X))
+	local roulis = math.clamp(-glisseCam * 0.003, -0.07, 0.07)
+	local secousse = if tempsBoost > 0 then Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * 0.18 else Vector3.zero
+	camera.CFrame = CFrame.lookAt(voulu + secousse, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, roulis)
 end
 
 local function demarrerCamera()
@@ -8050,6 +8674,7 @@ local function sortirDuKart()
 	arreterCamera()
 	camera.FieldOfView = 70
 	majLignesVitesse(0, 0)
+	flouVitesse.Size = 0
 	driftAppuye = false
 	hud.Visible = false
 	kart = nil
@@ -8469,6 +9094,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 		l.Enabled = tempsBoost > 0
 	end
 	majLignesVitesse(math.clamp((vitesse - 45) / 40, 0, 0.7) + (if tempsBoost > 0 then 0.3 else 0), dt)
+	local flouVoulu = if tempsBoost > 0 then 5 elseif vitesse > 60 then 1.5 else 0
+	if workspace:GetAttribute("GraphismesLegers") or joueur:GetAttribute("GraphismesLegers") then
+		flouVoulu = 0
+	end
+	flouVitesse.Size += (flouVoulu - flouVitesse.Size) * math.clamp(dt * 6, 0, 1)
 
 	local maintenant = os.clock()
 	if mouille and vitesse > 10 then
@@ -8783,7 +9413,7 @@ RunService.Stepped:Connect(function()
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX12"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
 	PartieUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : PartieUI
 
@@ -10768,7 +11398,7 @@ carteTuto.Activated:Connect(function()
 	joueur:SetAttribute("RevoirTuto", true) -- le script Tutoriel s'en occupe
 end)
 
-end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX13"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
 	SecuriteUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : SecuriteUI
 
@@ -10914,6 +11544,8 @@ remotes:WaitForChild("Alerte").OnClientEvent:Connect(function(info)
 	elseif info.etat == "seme" then
 		afficherNiveau(0)
 		grandMessage(("TU AS SEMÉ LA SÉCURITÉ ! 😎  +%d XP"):format(info.bonus or 0), Color3.fromRGB(110, 255, 140), 2.2)
+	elseif info.etat == "message" then
+		grandMessage(tostring(info.texte or ""), Color3.fromRGB(110, 255, 140), 2.4)
 	elseif info.etat == "glisse" then
 		grandMessage(("LE GARDE A GLISSÉ ! 😂  +%d XP"):format(info.bonus or 0), Color3.fromRGB(120, 210, 255), 1.8)
 	elseif info.etat == "attrape" then
@@ -10929,7 +11561,7 @@ remotes:WaitForChild("Alerte").OnClientEvent:Connect(function(info)
 		end)
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX12"><Properties><string name="Name">Tutoriel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX14"><Properties><string name="Name">Tutoriel</string><ProtectedString name="Source"><![CDATA[--[[
 	Tutoriel  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Tutoriel
 

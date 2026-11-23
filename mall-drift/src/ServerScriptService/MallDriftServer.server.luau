@@ -30,6 +30,14 @@ Config.AppliquerAmbiance(Config.NuitParDefaut)
 local TYPE = Config.TypeDePlace() -- rôle de cette place (voir KartConfig > Config.Places)
 
 -- (bloom, couleurs, rayons du soleil, profondeur de champ : voir Config.AppliquerAmbiance)
+-- Vrais nuages dans le ciel de Dubaï (vus du parking et par la verrière)
+pcall(function()
+	local nuages = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	nuages.Cover = 0.45
+	nuages.Density = 0.55
+	nuages.Color = Color3.fromRGB(255, 248, 240)
+	nuages.Parent = workspace.Terrain
+end)
 
 local carte = Instance.new("Folder")
 carte.Name = "GoldenMall"
@@ -1801,6 +1809,9 @@ type Profil = {
 	ToursRoue: number, -- tours de roue achetés (ou offerts) pas encore joués
 	DernierJourRoue: number, -- dernier jour (UTC) où le tour gratuit a été joué
 	ToursGratuitsJour: number, -- tours gratuits déjà joués ce jour-là
+	SerieJours: number, -- série de connexion (1 à 7)
+	DernierJourConnexion: number,
+	JourSeriePris: number, -- jour où le cadeau de la série a été pris
 }
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
@@ -1877,7 +1888,8 @@ local function sauvegarder(joueur: Player)
 		return
 	end
 	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait,
-		ToursRoue = profil.ToursRoue, DernierJourRoue = profil.DernierJourRoue, ToursGratuitsJour = profil.ToursGratuitsJour }
+		ToursRoue = profil.ToursRoue, DernierJourRoue = profil.DernierJourRoue, ToursGratuitsJour = profil.ToursGratuitsJour,
+		SerieJours = profil.SerieJours, DernierJourConnexion = profil.DernierJourConnexion, JourSeriePris = profil.JourSeriePris }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -1898,6 +1910,9 @@ local function chargerProfil(joueur: Player)
 		ToursRoue = 0,
 		DernierJourRoue = 0,
 		ToursGratuitsJour = 0,
+		SerieJours = 0,
+		DernierJourConnexion = 0,
+		JourSeriePris = 0,
 	}
 	if magasin then
 		local ok, donnees = pcall(function()
@@ -1913,6 +1928,9 @@ local function chargerProfil(joueur: Player)
 				profil.ToursRoue = type(donnees.ToursRoue) == "number" and math.clamp(math.floor(donnees.ToursRoue), 0, 9999) or 0
 				profil.DernierJourRoue = type(donnees.DernierJourRoue) == "number" and donnees.DernierJourRoue or 0
 				profil.ToursGratuitsJour = type(donnees.ToursGratuitsJour) == "number" and donnees.ToursGratuitsJour or 0
+				profil.SerieJours = type(donnees.SerieJours) == "number" and donnees.SerieJours or 0
+				profil.DernierJourConnexion = type(donnees.DernierJourConnexion) == "number" and donnees.DernierJourConnexion or 0
+				profil.JourSeriePris = type(donnees.JourSeriePris) == "number" and donnees.JourSeriePris or 0
 				if type(donnees.Possessions) == "table" then
 					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts", "Trainees" }) do
 						if type(donnees.Possessions[liste]) == "table" then
@@ -2621,6 +2639,130 @@ RoueDuJour.OnServerInvoke = function(joueur: Player, action: any)
 		end
 	end)
 	return { ok = true, indice = indice, message = cadeau, profil = versionPublique(profil) }
+end
+
+-- 🎁 CADEAUX GRATUITS : temps de jeu, série de connexion, amis, groupe
+do
+	local Cadeaux = Instance.new("RemoteFunction")
+	Cadeaux.Name = "Cadeaux"
+	Cadeaux.Parent = remotes
+	local C = Config.Cadeaux or {}
+	local debutSession: { [Player]: number } = {}
+	local cadeauxPris: { [Player]: { [number]: boolean } } = {}
+	local amisDejaRecompenses: { [string]: boolean } = {}
+
+	local function donner(joueur: Player, profil: Profil, c: { [string]: any })
+		if c.Pieces then
+			profil.Pieces += c.Pieces
+		end
+		if c.Tours then
+			profil.ToursRoue += c.Tours
+		end
+		task.spawn(sauvegarder, joueur)
+		ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+	end
+
+	-- Met à jour la série de connexion (appelé quand le joueur regarde ses cadeaux)
+	local function majSerie(profil: Profil)
+		local aujourdhui = jourActuel()
+		if profil.DernierJourConnexion ~= aujourdhui then
+			if profil.DernierJourConnexion == aujourdhui - 1 then
+				profil.SerieJours = profil.SerieJours % #(C.Serie or { 1 }) + 1
+			else
+				profil.SerieJours = 1 -- (série cassée : on recommence au jour 1)
+			end
+			profil.DernierJourConnexion = aujourdhui
+		end
+	end
+
+	local function etat(joueur: Player, profil: Profil)
+		majSerie(profil)
+		local minutes = (os.clock() - (debutSession[joueur] or os.clock())) / 60
+		local temps = {}
+		for i, c in ipairs(C.TempsDeJeu or {}) do
+			temps[i] = {
+				texte = Config.TexteCadeau(c),
+				minutes = c.Minutes,
+				pret = minutes >= c.Minutes and not (cadeauxPris[joueur] and cadeauxPris[joueur][i]),
+				pris = cadeauxPris[joueur] ~= nil and cadeauxPris[joueur][i] == true,
+				reste = math.max(0, math.ceil(c.Minutes * 60 - minutes * 60)),
+			}
+		end
+		return {
+			temps = temps,
+			serieJour = profil.SerieJours,
+			seriePrete = profil.JourSeriePris ~= jourActuel(),
+			groupe = (C.GroupeId or 0) ~= 0 and not profil.Possessions.Produits.BonusGroupe,
+		}
+	end
+
+	Cadeaux.OnServerInvoke = function(joueur: Player, action: any, indice: any)
+		local profil = profils[joueur]
+		if not profil then
+			return nil
+		end
+		if tropRapide(joueur, "cadeau", 0.3) then
+			return etat(joueur, profil)
+		end
+		if action == "temps" and type(indice) == "number" then
+			local c = (C.TempsDeJeu or {})[indice]
+			local minutes = (os.clock() - (debutSession[joueur] or os.clock())) / 60
+			cadeauxPris[joueur] = cadeauxPris[joueur] or {}
+			if c and minutes >= c.Minutes and not cadeauxPris[joueur][indice] then
+				cadeauxPris[joueur][indice] = true
+				donner(joueur, profil, c)
+			end
+		elseif action == "serie" then
+			majSerie(profil)
+			local c = (C.Serie or {})[profil.SerieJours]
+			if c and profil.JourSeriePris ~= jourActuel() then
+				profil.JourSeriePris = jourActuel()
+				donner(joueur, profil, c)
+			end
+		elseif action == "groupe" and (C.GroupeId or 0) ~= 0 and not profil.Possessions.Produits.BonusGroupe then
+			local ok, membre = pcall(function()
+				return joueur:IsInGroup(C.GroupeId)
+			end)
+			if ok and membre then
+				profil.Possessions.Produits.BonusGroupe = true
+				donner(joueur, profil, { Pieces = C.BonusGroupe or 500 })
+			end
+		end
+		return etat(joueur, profil)
+	end
+
+	-- Jouer avec un ami = bonus pour les deux
+	local function arrivee(joueur: Player)
+		debutSession[joueur] = os.clock()
+		task.delay(8, function()
+			for _, autre in ipairs(Players:GetPlayers()) do
+				if autre ~= joueur and joueur.Parent then
+					local cle = if joueur.UserId < autre.UserId then (joueur.UserId .. "_" .. autre.UserId) else (autre.UserId .. "_" .. joueur.UserId)
+					local ok, amis = pcall(function()
+						return joueur:IsFriendsWith(autre.UserId)
+					end)
+					if ok and amis and not amisDejaRecompenses[cle] then
+						amisDejaRecompenses[cle] = true
+						for _, j in ipairs({ joueur, autre }) do
+							local p = profils[j]
+							if p then
+								donner(j, p, { Pieces = C.BonusAmi or 150 })
+								Alerte:FireClient(j, { etat = "message", texte = ("👥 TU JOUES AVEC TON AMI ! +%d 💰"):format(C.BonusAmi or 150) })
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(arrivee)
+	for _, j in ipairs(Players:GetPlayers()) do
+		arrivee(j)
+	end
+	Players.PlayerRemoving:Connect(function(j)
+		debutSession[j] = nil
+		cadeauxPris[j] = nil
+	end)
 end
 
 -- Les achats en Robux : Roblox appelle cette fonction quand un paiement a réussi

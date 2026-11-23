@@ -102,6 +102,12 @@ local function majLignesVitesse(force: number, dt: number)
 	end
 end
 
+-- Flou de vitesse (léger, surtout pendant le boost)
+local flouVitesse = Instance.new("BlurEffect")
+flouVitesse.Name = "FlouVitesse"
+flouVitesse.Size = 0
+flouVitesse.Parent = camera
+
 -- Écran des éclaboussures (en dessous du reste)
 local ecranEau = Instance.new("Frame")
 ecranEau.Name = "Eclaboussures"
@@ -640,7 +646,11 @@ local function mettreAJourCamera(dt: number)
 	if obstacle and obstacle.Instance.CanCollide then
 		voulu = obstacle.Position + (pivot - voulu).Unit * 1
 	end
-	camera.CFrame = CFrame.lookAt(voulu, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0))
+	-- Réalisme : la caméra penche un peu dans les drifts et tremble pendant le boost
+	local glisseCam = vel:Dot(Vector3.new(-directionCamera.Z, 0, directionCamera.X))
+	local roulis = math.clamp(-glisseCam * 0.003, -0.07, 0.07)
+	local secousse = if tempsBoost > 0 then Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * 0.18 else Vector3.zero
+	camera.CFrame = CFrame.lookAt(voulu + secousse, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, roulis)
 end
 
 local function demarrerCamera()
@@ -779,6 +789,7 @@ local function sortirDuKart()
 	arreterCamera()
 	camera.FieldOfView = 70
 	majLignesVitesse(0, 0)
+	flouVitesse.Size = 0
 	driftAppuye = false
 	hud.Visible = false
 	kart = nil
@@ -1198,6 +1209,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 		l.Enabled = tempsBoost > 0
 	end
 	majLignesVitesse(math.clamp((vitesse - 45) / 40, 0, 0.7) + (if tempsBoost > 0 then 0.3 else 0), dt)
+	local flouVoulu = if tempsBoost > 0 then 5 elseif vitesse > 60 then 1.5 else 0
+	if workspace:GetAttribute("GraphismesLegers") or joueur:GetAttribute("GraphismesLegers") then
+		flouVoulu = 0
+	end
+	flouVitesse.Size += (flouVoulu - flouVitesse.Size) * math.clamp(dt * 6, 0, 1)
 
 	local maintenant = os.clock()
 	if mouille and vitesse > 10 then
