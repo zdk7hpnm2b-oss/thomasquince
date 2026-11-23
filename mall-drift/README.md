@@ -34,9 +34,10 @@ Ce prototype contient :
   **🛒 Magasin** : Pack de démarrage et packs de pièces. Crée les produits sur le Creator Hub (Monétisation >
   Produits pour développeurs) et colle leurs numéros dans `Config.PeinturesPremium` et `Config.Boutique`
   (tant que le numéro est 0, l'achat est gratuit dans Studio pour tester)
-- **Le menu** : « Bienvenue au Golden Mall », grands boutons à gauche (Garage, Entraînement, Jouer en
-  ligne, Drift Battle, Magasin, promo du Pack de démarrage), et en fond **la partie en direct** : la
-  caméra suit un kart qui roule (🔴 EN DIRECT · pseudo), sinon elle survole le mall
+- **Le menu** : à gauche « GOLDEN MALL DRIFT », un gros bouton rouge **JOUER** qui déplie les 3 modes
+  (Entraînement, En ligne, Drift Battle), puis Garage, Magasin et Tuto. En bas à droite, l'offre du kart
+  exclusif. En fond, la caméra **tourne en continu** autour des karts : les vrais joueurs du serveur
+  (🔴 EN DIRECT) ou, s'il n'y en a pas (au lobby), des karts de démo qui driftent autour du mall
 - **☰ Un menu pour choisir son mode** : en arrivant, tu visites le garage, puis tu ouvres **☰ MENU** (en bas à droite) :
   **🏁 ENTRAÎNEMENT** (drift libre, la police du mall en bots te poursuit), **🌐 JOUER EN LIGNE**
   (Police contre Fugitifs), **🔥 DRIFT BATTLE** (défi solo instantané : petit titre de 2 s, 3-2-1, puis

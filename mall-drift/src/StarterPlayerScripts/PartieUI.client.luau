@@ -363,73 +363,105 @@ colonne.BackgroundTransparency = 1
 colonne.ZIndex = 21
 colonne.Parent = fondMenu
 
-local bienvenue = texte(colonne, UDim2.new(1, 0, 0, 22), UDim2.new(0, 0, 0.17, 0), Color3.fromRGB(220, 220, 230), Enum.Font.GothamBold)
-bienvenue.Text = "BIENVENUE AU"
-bienvenue.TextXAlignment = Enum.TextXAlignment.Left
-bienvenue.ZIndex = 22
-local titreMenu = texte(colonne, UDim2.new(1, 0, 0, 64), UDim2.new(0, 0, 0.17, 24), Color3.new(1, 1, 1))
-titreMenu.Text = string.upper(Config.NomDuJeu)
-titreMenu.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic) -- gras italique, style course
+-- (la colonne rétrécit un peu sur les petits écrans)
+local echelleColonne = Instance.new("UIScale")
+echelleColonne.Parent = colonne
+local function ajusterColonne()
+	echelleColonne.Scale = math.clamp(camera.ViewportSize.Y / 920, 0.62, 1)
+end
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterColonne)
+ajusterColonne()
+
+local POLICE_COURSE = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local ROUGE_MENU = Color3.fromRGB(225, 30, 45)
+
+-- Le titre : GOLDEN MALL en blanc, DRIFT en rouge
+local titreMenu = texte(colonne, UDim2.new(1, 0, 0, 72), UDim2.new(0, 0, 0.1, 0), Color3.new(1, 1, 1))
+titreMenu.RichText = true
+titreMenu.Text = 'GOLDEN MALL <font color="#E11E2D">DRIFT</font>'
+titreMenu.FontFace = POLICE_COURSE
 titreMenu.TextXAlignment = Enum.TextXAlignment.Left
 titreMenu.ZIndex = 22
-local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0.17, 90), Color3.fromRGB(255, 205, 70), Enum.Font.GothamBold)
-sousTitreMenu.Text = "✦ " .. Config.Lieu .. " ✦"
+local slogan = texte(colonne, UDim2.new(1, 0, 0, 26), UDim2.new(0, 0, 0.1, 82), Color3.new(1, 1, 1))
+slogan.Text = "Vitesse. Drift. Évasion."
+slogan.FontFace = POLICE_COURSE
+slogan.TextXAlignment = Enum.TextXAlignment.Left
+slogan.ZIndex = 22
+local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 18), UDim2.new(0, 0, 0.1, 112), Color3.fromRGB(215, 215, 222), Enum.Font.GothamMedium)
+sousTitreMenu.Text = "Drifte dans le plus grand mall de " .. Config.Lieu .. " et sème la police."
 sousTitreMenu.TextXAlignment = Enum.TextXAlignment.Left
 sousTitreMenu.ZIndex = 22
 
 local listeBoutons = Instance.new("Frame")
-listeBoutons.Size = UDim2.new(1, 0, 0, 420)
-listeBoutons.Position = UDim2.new(0, 0, 0.17, 130)
+listeBoutons.Size = UDim2.new(1, 0, 0, 0)
+listeBoutons.AutomaticSize = Enum.AutomaticSize.Y
+listeBoutons.Position = UDim2.new(0, 0, 0.1, 152)
 listeBoutons.BackgroundTransparency = 1
 listeBoutons.ZIndex = 21
 listeBoutons.Parent = colonne
 local dispositionBoutons = Instance.new("UIListLayout")
-dispositionBoutons.Padding = UDim.new(0, 10)
+dispositionBoutons.Padding = UDim.new(0, 8)
 dispositionBoutons.SortOrder = Enum.SortOrder.LayoutOrder
 dispositionBoutons.Parent = listeBoutons
 
 local boutonsMenu = {} -- (pour l'animation d'arrivée)
-local ROUGE_MENU = Color3.fromRGB(215, 35, 40)
+local ordreMenu = 0
 
--- Un grand bouton du menu : icône + titre + description + flèche
-local function carteMode(icone: string, titre: string, description: string, couleur: Color3, principal: boolean?): (TextButton, TextLabel, TextLabel)
+-- Une carte du menu : icône + titre + description + flèche.
+-- principal = le gros bouton rouge (JOUER) ; petit = les modes sous JOUER
+local function carteMode(icone: string, titre: string, description: string, couleur: Color3, principal: boolean?, parent: Instance?, petit: boolean?): (TextButton, TextLabel, TextLabel)
+	local hauteur = if principal then 96 elseif petit then 54 else 64
 	local b = Instance.new("TextButton")
-	b.Size = UDim2.new(1, 0, 0, 64)
-	b.LayoutOrder = #boutonsMenu + 1
-	b.BackgroundColor3 = if principal then ROUGE_MENU else Color3.fromRGB(22, 22, 28)
-	b.BackgroundTransparency = if principal then 0 else 0.1
+	b.Size = UDim2.new(1, 0, 0, hauteur)
+	ordreMenu += 1
+	b.LayoutOrder = ordreMenu
+	b.BackgroundColor3 = if principal then ROUGE_MENU elseif petit then Color3.fromRGB(32, 30, 36) else Color3.fromRGB(20, 20, 24)
+	b.BackgroundTransparency = if principal then 0 else 0.08
 	b.Text = ""
 	b.AutoButtonColor = false
 	b.ZIndex = 22
-	b.Parent = listeBoutons
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	b.Parent = parent or listeBoutons
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
 	local bord = Instance.new("UIStroke")
-	bord.Thickness = 2
-	bord.Color = if principal then Color3.fromRGB(255, 120, 120) else couleur
-	bord.Transparency = if principal then 0 else 0.5
+	bord.Thickness = 1
+	bord.Color = if principal then Color3.fromRGB(255, 110, 120) else Color3.fromRGB(60, 60, 70)
+	bord.Transparency = if principal then 0.3 else 0.4
 	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bord.Parent = b
-	local i = texte(b, UDim2.new(0, 50, 0, 44), UDim2.new(0, 14, 0, 10), Color3.new(1, 1, 1))
+	-- Petite barre de couleur à gauche (couleur du mode)
+	if not principal then
+		local barre = Instance.new("Frame")
+		barre.Size = UDim2.new(0, 3, 1, -16)
+		barre.Position = UDim2.new(0, 0, 0, 8)
+		barre.BackgroundColor3 = couleur
+		barre.BorderSizePixel = 0
+		barre.ZIndex = 23
+		barre.Parent = b
+	end
+	local decalage = if principal then 26 else 64
+	local i = texte(b, UDim2.new(0, 36, 0, 36), UDim2.new(0, 16, 0.5, -18), Color3.new(1, 1, 1))
 	i.Text = icone
 	i.ZIndex = 23
-	local t = texte(b, UDim2.new(1, -120, 0, 26), UDim2.new(0, 76, 0, 9), Color3.new(1, 1, 1))
+	i.Visible = not principal
+	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 else 24), UDim2.new(0, decalage, 0, if principal then 14 else 9), Color3.new(1, 1, 1))
 	t.Text = titre
+	t.FontFace = POLICE_COURSE
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 23
-	local d = texte(b, UDim2.new(1, -120, 0, 18), UDim2.new(0, 76, 0, 38), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+	local d = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 18 else 16), UDim2.new(0, decalage, 0, if principal then 62 else 36), Color3.fromRGB(220, 220, 228), Enum.Font.GothamMedium)
 	d.Text = description
 	d.TextXAlignment = Enum.TextXAlignment.Left
 	d.ZIndex = 23
-	local fleche = texte(b, UDim2.new(0, 30, 0, 30), UDim2.new(1, -44, 0, 17), Color3.new(1, 1, 1))
+	local fleche = texte(b, UDim2.new(0, if principal then 48 else 24, 0, if principal then 48 else 24), UDim2.new(1, if principal then -74 else -40, 0.5, if principal then -24 else -12), Color3.new(1, 1, 1))
 	fleche.Text = if principal then "»" else "›"
 	fleche.ZIndex = 23
-	-- Reflet qui balaie le bouton principal
+	-- Reflet qui balaie le gros bouton rouge
 	if principal then
 		local reflet = Instance.new("UIGradient")
 		reflet.Color = ColorSequence.new(Color3.new(1, 1, 1))
 		reflet.Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.45, 0),
-			NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(0.55, 0), NumberSequenceKeypoint.new(1, 0),
+			NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(0.55, 0), NumberSequenceKeypoint.new(1, 0),
 		})
 		reflet.Rotation = 20
 		reflet.Parent = b
@@ -441,36 +473,69 @@ local function carteMode(icone: string, titre: string, description: string, coul
 			end
 		end)
 	end
-	-- Survol : le bouton s'avance et s'éclaire
+	-- Survol : la carte s'éclaire et la flèche avance
 	local echelle = Instance.new("UIScale")
 	echelle.Parent = b
+	local couleurFond = b.BackgroundColor3
+	local positionFleche = fleche.Position
 	b.MouseEnter:Connect(function()
-		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1.04 }):Play()
-		TweenService:Create(bord, TweenInfo.new(0.15), { Transparency = 0 }):Play()
-		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = UDim2.new(1, -36, 0, 17) }):Play()
+		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1.03 }):Play()
+		TweenService:Create(b, TweenInfo.new(0.15), { BackgroundColor3 = if principal then Color3.fromRGB(245, 50, 65) else Color3.fromRGB(40, 40, 48) }):Play()
+		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = positionFleche + UDim2.fromOffset(8, 0) }):Play()
 	end)
 	b.MouseLeave:Connect(function()
 		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1 }):Play()
-		TweenService:Create(bord, TweenInfo.new(0.15), { Transparency = if principal then 0 else 0.5 }):Play()
-		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = UDim2.new(1, -44, 0, 17) }):Play()
+		TweenService:Create(b, TweenInfo.new(0.15), { BackgroundColor3 = couleurFond }):Play()
+		TweenService:Create(fleche, TweenInfo.new(0.15), { Position = positionFleche }):Play()
 	end)
-	table.insert(boutonsMenu, b)
+	if not petit then
+		table.insert(boutonsMenu, b)
+	end
 	return b, t, d
 end
 
-local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", ROUGE_MENU, true)
-local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(80, 220, 120))
-local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(90, 150, 255))
-local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 90, 170))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Pièces, peintures premium et packs", Color3.fromRGB(255, 205, 70))
-local carteLobby = carteMode("🏠", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", Color3.fromRGB(255, 205, 70), true)
--- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » + magasin
+-- JOUER : ouvre / ferme la liste des 3 modes juste en dessous
+local carteJouer, _, descJouer = carteMode("", "JOUER", "Choisis ton mode : entraînement, en ligne ou Drift Battle", ROUGE_MENU, true)
+local listeModes = Instance.new("Frame")
+ordreMenu += 1
+listeModes.LayoutOrder = ordreMenu
+listeModes.Size = UDim2.new(1, -24, 0, 0)
+listeModes.BackgroundTransparency = 1
+listeModes.ClipsDescendants = true
+listeModes.ZIndex = 21
+listeModes.Parent = listeBoutons
+local margeModes = Instance.new("UIPadding")
+margeModes.PaddingLeft = UDim.new(0, 24)
+margeModes.Parent = listeModes
+local dispoModes = Instance.new("UIListLayout")
+dispoModes.Padding = UDim.new(0, 6)
+dispoModes.SortOrder = Enum.SortOrder.LayoutOrder
+dispoModes.Parent = listeModes
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(80, 220, 120), false, listeModes, true)
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(90, 150, 255), false, listeModes, true)
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 90, 170), false, listeModes, true)
+local HAUTEUR_MODES = 3 * 54 + 2 * 6 + 2
+local modesOuverts = false
+local function ouvrirModes(ouvert: boolean)
+	modesOuverts = ouvert
+	TweenService:Create(listeModes, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { Size = UDim2.new(1, -24, 0, if ouvert then HAUTEUR_MODES else 0) }):Play()
+	descJouer.Text = if ouvert then "▼ Choisis ton mode ci-dessous" else "Choisis ton mode : entraînement, en ligne ou Drift Battle"
+end
+carteJouer.Activated:Connect(function()
+	ouvrirModes(not modesOuverts)
+end)
+
+local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 205, 70))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Pièces, peintures premium et kart exclusif", Color3.fromRGB(255, 205, 70))
+local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(150, 200, 255))
+-- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 carteLobby.Visible = DANS_UNE_PLACE_DE_JEU
-for _, carteJeu in ipairs({ carteEntrainement, carteEnLigne, carteBattle, carteGarage }) do
+for _, carteJeu in ipairs({ carteJouer, listeModes, carteGarage } :: { GuiObject }) do
 	carteJeu.Visible = not DANS_UNE_PLACE_DE_JEU
 end
 
--- La carte promo (Pack de démarrage)
+-- En bas à droite : l'offre du moment (le kart exclusif)
 local offrePromo = nil
 for _, offre in ipairs(Config.Boutique or {}) do
 	if offre.Promo and not offrePromo then
@@ -478,38 +543,84 @@ for _, offre in ipairs(Config.Boutique or {}) do
 	end
 end
 local cartePromo = Instance.new("TextButton")
-cartePromo.Size = UDim2.new(0.8, 0, 0, 62)
-cartePromo.LayoutOrder = 99
-cartePromo.BackgroundColor3 = Color3.fromRGB(25, 20, 10)
+cartePromo.AnchorPoint = Vector2.new(1, 1)
+cartePromo.Size = UDim2.new(0, 430, 0, 120)
+cartePromo.Position = UDim2.new(1, -40, 1, -40)
+cartePromo.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+cartePromo.BackgroundTransparency = 0.05
+cartePromo.AutoButtonColor = false
 cartePromo.Text = ""
 cartePromo.ZIndex = 22
 cartePromo.Visible = offrePromo ~= nil
-cartePromo.Parent = listeBoutons
-Instance.new("UICorner", cartePromo).CornerRadius = UDim.new(0, 12)
+cartePromo.Parent = fondMenu
+Instance.new("UICorner", cartePromo).CornerRadius = UDim.new(0, 4)
 local bordPromo = Instance.new("UIStroke")
-bordPromo.Thickness = 3
-bordPromo.Color = Color3.fromRGB(255, 205, 40)
+bordPromo.Thickness = 2
+bordPromo.Color = Color3.fromRGB(255, 120, 230)
 bordPromo.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 bordPromo.Parent = cartePromo
-local textePromo = texte(cartePromo, UDim2.new(1, -24, 0, 28), UDim2.new(0, 12, 0, 6), Color3.new(1, 1, 1))
+local degradeBordPromo = Instance.new("UIGradient") -- contour arc-en-ciel qui tourne
+degradeBordPromo.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 200)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(120, 200, 255)),
+	ColorSequenceKeypoint.new(0.66, Color3.fromRGB(255, 230, 90)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 90, 200)),
+})
+degradeBordPromo.Parent = bordPromo
+local barrePromo = Instance.new("Frame")
+barrePromo.Size = UDim2.new(0, 5, 1, 0)
+barrePromo.BackgroundColor3 = ROUGE_MENU
+barrePromo.BorderSizePixel = 0
+barrePromo.ZIndex = 23
+barrePromo.Parent = cartePromo
+local etiquettePromo = Instance.new("TextLabel")
+etiquettePromo.Size = UDim2.new(0, 150, 0, 22)
+etiquettePromo.Position = UDim2.new(0, 22, 0, 14)
+etiquettePromo.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
+etiquettePromo.TextColor3 = Color3.new(1, 1, 1)
+etiquettePromo.Font = Enum.Font.GothamBold
+etiquettePromo.TextScaled = true
+etiquettePromo.Text = "✦ ÉDITION EXCLUSIVE"
+etiquettePromo.ZIndex = 23
+etiquettePromo.Parent = cartePromo
+Instance.new("UICorner", etiquettePromo).CornerRadius = UDim.new(0, 4)
+local textePromo = texte(cartePromo, UDim2.new(1, -190, 0, 30), UDim2.new(0, 22, 0, 44), Color3.new(1, 1, 1))
 textePromo.Text = offrePromo and offrePromo.Nom or ""
+textePromo.FontFace = POLICE_COURSE
 textePromo.TextXAlignment = Enum.TextXAlignment.Left
 textePromo.ZIndex = 23
-local prixPromo = texte(cartePromo, UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 36), Color3.fromRGB(120, 255, 140), Enum.Font.GothamBold)
-prixPromo.Text = offrePromo and (offrePromo.PrixAffiche .. "  ·  " .. offrePromo.Description) or ""
+local prixPromo = texte(cartePromo, UDim2.new(1, -190, 0, 30), UDim2.new(0, 22, 0, 78), Color3.fromRGB(210, 210, 220), Enum.Font.GothamMedium)
+prixPromo.Text = offrePromo and offrePromo.Description or ""
 prixPromo.TextXAlignment = Enum.TextXAlignment.Left
+prixPromo.TextYAlignment = Enum.TextYAlignment.Top
+prixPromo.TextWrapped = true
 prixPromo.ZIndex = 23
-task.spawn(function() -- le cadre doré « respire »
+local boutonVoirPromo = Instance.new("TextLabel")
+boutonVoirPromo.AnchorPoint = Vector2.new(1, 0.5)
+boutonVoirPromo.Size = UDim2.new(0, 140, 0, 50)
+boutonVoirPromo.Position = UDim2.new(1, -16, 0.5, 0)
+boutonVoirPromo.BackgroundColor3 = ROUGE_MENU
+boutonVoirPromo.TextColor3 = Color3.new(1, 1, 1)
+boutonVoirPromo.FontFace = POLICE_COURSE
+boutonVoirPromo.TextScaled = true
+boutonVoirPromo.Text = offrePromo and offrePromo.PrixAffiche or "VOIR"
+boutonVoirPromo.ZIndex = 23
+boutonVoirPromo.Parent = cartePromo
+Instance.new("UICorner", boutonVoirPromo).CornerRadius = UDim.new(0, 4)
+local margeVoir = Instance.new("UIPadding")
+margeVoir.PaddingTop = UDim.new(0, 12)
+margeVoir.PaddingBottom = UDim.new(0, 12)
+margeVoir.Parent = boutonVoirPromo
+task.spawn(function()
 	while cartePromo.Parent do
-		TweenService:Create(bordPromo, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { Transparency = 0.6 }):Play()
-		task.wait(0.8)
-		TweenService:Create(bordPromo, TweenInfo.new(0.8, Enum.EasingStyle.Sine), { Transparency = 0 }):Play()
-		task.wait(0.8)
+		degradeBordPromo.Rotation = (degradeBordPromo.Rotation + 3) % 360
+		task.wait(0.03)
 	end
 end)
 
-local piecesMenu = texte(colonne, UDim2.new(1, 0, 0, 26), UDim2.new(0, 0, 0.17, 560), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
-piecesMenu.TextXAlignment = Enum.TextXAlignment.Left
+-- En haut à droite : pièces et niveau
+local piecesMenu = texte(fondMenu, UDim2.new(0, 300, 0, 26), UDim2.new(1, -400, 0, 74), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+piecesMenu.TextXAlignment = Enum.TextXAlignment.Right
 piecesMenu.ZIndex = 22
 piecesMenu.Text = "💰 0 pièces"
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(function(profil)
@@ -645,23 +756,6 @@ local function ouvrirMagasin()
 end
 carteMagasin.Activated:Connect(ouvrirMagasin)
 
--- Bouton « 📖 TUTO » (en haut à droite) : revoir le tuto de pilotage
-local boutonTuto = Instance.new("TextButton")
-boutonTuto.AnchorPoint = Vector2.new(1, 0)
-boutonTuto.Size = UDim2.new(0, 150, 0, 54)
-boutonTuto.Position = UDim2.new(1, -90, 0, 60)
-boutonTuto.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-boutonTuto.TextColor3 = Color3.new(1, 1, 1)
-boutonTuto.Font = Enum.Font.GothamBlack
-boutonTuto.TextScaled = true
-boutonTuto.Text = "📖 TUTO"
-boutonTuto.ZIndex = 22
-boutonTuto.Parent = fondMenu
-Instance.new("UICorner", boutonTuto).CornerRadius = UDim.new(0, 12)
-local margeTuto = Instance.new("UIPadding")
-margeTuto.PaddingTop = UDim.new(0, 12)
-margeTuto.PaddingBottom = UDim.new(0, 12)
-margeTuto.Parent = boutonTuto
 cartePromo.Activated:Connect(ouvrirMagasin)
 
 -- EN FOND DU MENU : la partie EN DIRECT. La caméra suit un kart qui roule
@@ -677,7 +771,7 @@ local cfCamera: CFrame? = nil
 local badgeDirect = Instance.new("TextLabel")
 badgeDirect.AnchorPoint = Vector2.new(1, 0)
 badgeDirect.Size = UDim2.new(0, 320, 0, 36)
-badgeDirect.Position = UDim2.new(1, -96, 0, 68)
+badgeDirect.Position = UDim2.new(1, -96, 0, 110)
 badgeDirect.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 badgeDirect.BackgroundTransparency = 0.2
 badgeDirect.TextColor3 = Color3.new(1, 1, 1)
@@ -728,9 +822,149 @@ local function kartsEnJeu(): { { BasePart | string } }
 	return liste
 end
 
+-- KARTS DE DÉMO : quand personne ne roule sur ce serveur (au lobby, il n'y a pas
+-- de karts), quelques karts (visibles seulement par toi) font le tour du mall
+-- en driftant dans les virages, pour que le fond du menu soit toujours vivant.
+local KartBuilder = require(ReplicatedStorage:WaitForChild("KartBuilder"))
+local CIRCUIT_DEMO = { -- la boucle : allées nord et sud, allées transversales
+	Vector3.new(-173, 0, -137), Vector3.new(173, 0, -137), Vector3.new(173, 0, 137), Vector3.new(-173, 0, 137),
+}
+local RAYON_VIRAGE = 22
+local pointsDemo: { Vector3 } = {}
+do
+	-- Rectangle aux coins arrondis, découpé en petits segments
+	local n = #CIRCUIT_DEMO
+	for k = 1, n do
+		local avant = CIRCUIT_DEMO[(k - 2) % n + 1]
+		local coin = CIRCUIT_DEMO[k]
+		local apres = CIRCUIT_DEMO[k % n + 1]
+		local entree = coin + (avant - coin).Unit * RAYON_VIRAGE
+		local sortie = coin + (apres - coin).Unit * RAYON_VIRAGE
+		for t = 0, 1, 0.125 do
+			local a = entree:Lerp(coin, t)
+			local b = coin:Lerp(sortie, t)
+			table.insert(pointsDemo, a:Lerp(b, t))
+		end
+	end
+end
+local longueursDemo = {}
+local LONGUEUR_DEMO = 0
+for k = 1, #pointsDemo do
+	longueursDemo[k] = LONGUEUR_DEMO
+	LONGUEUR_DEMO += (pointsDemo[k % #pointsDemo + 1] - pointsDemo[k]).Magnitude
+end
+local function surCircuit(distance: number): (Vector3, Vector3, number)
+	distance %= LONGUEUR_DEMO
+	local k = 1
+	while k < #pointsDemo and longueursDemo[k + 1] <= distance do
+		k += 1
+	end
+	local a, b = pointsDemo[k], pointsDemo[k % #pointsDemo + 1]
+	local seg = (b - a).Magnitude
+	local t = if seg > 0 then (distance - longueursDemo[k]) / seg else 0
+	local suivant = pointsDemo[(k + 1) % #pointsDemo + 1]
+	local courbure = (b - a).Unit:Cross((suivant - b).Unit).Y -- (≠ 0 dans les virages)
+	return a:Lerp(b, t), (b - a).Unit, courbure
+end
+
+local dossierDemo: Folder? = nil
+local kartsDemo: { { modele: Model, decalage: number, vitesse: number, angle: number, fumee: ParticleEmitter } } = {}
+local COULEURS_DEMO = { { "Rouge", "Rose" }, { "Bleu", "Cyan" }, { "Jaune", "Vert" }, { "Violet", "Violet" }, { "Orange", "Rouge" }, { "Blanc", "Bleu" } }
+
+local function creerKartsDemo()
+	if dossierDemo then
+		return
+	end
+	local dossier = Instance.new("Folder")
+	dossier.Name = "KartsDemoMenu"
+	dossier.Parent = workspace
+	dossierDemo = dossier
+	for i, couleurs in ipairs(COULEURS_DEMO) do
+		local perso = table.clone(Config.PersoParDefaut)
+		perso.Carrosserie = couleurs[1]
+		perso.Neon = couleurs[2]
+		perso.Finition = "Métallisé"
+		perso.Numero = math.random(1, 99)
+		local m = KartBuilder.Construire(perso, CFrame.new(0, -50, 0), true)
+		-- Un petit pilote avec son casque
+		local base = (m.PrimaryPart :: BasePart).CFrame
+		local function morceau(nom: string, taille: Vector3, decal: CFrame, couleur: Color3, sphere: boolean?)
+			local p = Instance.new("Part")
+			p.Name = nom
+			p.Size = taille
+			p.CFrame = base * decal
+			p.Color = couleur
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			if sphere then
+				local mesh = Instance.new("SpecialMesh")
+				mesh.MeshType = Enum.MeshType.Sphere
+				mesh.Parent = p
+			end
+			p.Parent = m
+		end
+		local couleurKart = (Config.Couleur(couleurs[1]) or Config.Couleurs[1]).Couleur
+		morceau("CorpsPilote", Vector3.new(1.7, 1.6, 0.9), CFrame.new(0, 1.65, 1.35), Color3.fromRGB(30, 30, 36))
+		morceau("CasquePilote", Vector3.new(1.35, 1.35, 1.4), CFrame.new(0, 3.05, 1.25), couleurKart, true)
+		morceau("Visiere", Vector3.new(1, 0.45, 0.5), CFrame.new(0, 3.05, 0.72), Color3.fromRGB(20, 25, 35), true)
+		for _, d in ipairs(m:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.CanCollide = false
+				d.CanQuery = false
+				d.CanTouch = false
+			end
+		end
+		local fumee = Instance.new("ParticleEmitter")
+		fumee.Color = ColorSequence.new(Color3.fromRGB(225, 225, 230))
+		fumee.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 3.5) })
+		fumee.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1) })
+		fumee.Lifetime = NumberRange.new(0.6, 1)
+		fumee.Speed = NumberRange.new(1, 3)
+		fumee.Rate = 40
+		fumee.Enabled = false
+		local att = Instance.new("Attachment")
+		att.Position = Vector3.new(0, -0.3, 2.8)
+		att.Parent = m.PrimaryPart
+		fumee.Parent = att
+		m.Parent = dossier
+		table.insert(kartsDemo, { modele = m, decalage = (i - 1) * 26 + math.random(0, 8), vitesse = 46 + math.random(-4, 4), angle = 0, fumee = fumee })
+	end
+end
+
+local function retirerKartsDemo()
+	if dossierDemo then
+		dossierDemo:Destroy()
+		dossierDemo = nil
+	end
+	kartsDemo = {}
+end
+
+local tempsDemo = 0
+local function animerKartsDemo(dt: number)
+	tempsDemo += dt
+	for _, k in ipairs(kartsDemo) do
+		k.decalage += k.vitesse * dt
+		local pos, direction, courbure = surCircuit(k.decalage)
+		-- Dans les virages, le kart part en glisse (de travers) et fume
+		local cible = if math.abs(courbure) > 0.05 then -math.sign(courbure) * math.rad(38) else 0
+		k.angle += (cible - k.angle) * math.clamp(dt * 4, 0, 1)
+		k.fumee.Enabled = math.abs(k.angle) > 0.2
+		local cf = CFrame.lookAt(pos + Vector3.new(0, 2.1, 0), pos + Vector3.new(0, 2.1, 0) + direction) * CFrame.Angles(0, k.angle, 0)
+		k.modele:PivotTo(cf)
+	end
+end
+
+-- LA CAMÉRA DU MENU : elle tourne en continu autour de l'action. Elle suit
+-- un vrai kart en jeu s'il y en a (🔴 EN DIRECT), sinon le peloton de démo.
+local pointVise: Vector3? = nil
 RunService.RenderStepped:Connect(function(dt)
 	if not cameraMenu then
 		badgeDirect.Visible = false
+		if dossierDemo then
+			retirerKartsDemo()
+		end
 		return
 	end
 	local maintenant = os.clock()
@@ -743,30 +977,31 @@ RunService.RenderStepped:Connect(function(dt)
 		else
 			cibleDirect = nil
 		end
-		prochainChangement = maintenant + 8
+		prochainChangement = maintenant + 10
 	end
 
-	local voulu: CFrame
+	local cible: Vector3
 	if cibleDirect and cibleDirect.Parent then
-		-- Caméra de télé : derrière et au-dessus du kart, qui le suit en douceur
-		local avant = Vector3.new(cibleDirect.CFrame.LookVector.X, 0, cibleDirect.CFrame.LookVector.Z)
-		if avant.Magnitude < 0.1 then
-			avant = Vector3.new(0, 0, -1)
+		if dossierDemo then
+			retirerKartsDemo()
 		end
-		avant = avant.Unit
-		local pos = cibleDirect.Position - avant * 16 + Vector3.new(0, 7, 0)
-		voulu = CFrame.lookAt(pos, cibleDirect.Position + avant * 6 + Vector3.new(0, 1.5, 0))
+		cible = cibleDirect.Position
 		badgeDirect.Text = "🔴 EN DIRECT · " .. nomDirect
 		badgeDirect.Visible = true
 	else
-		-- Personne ne roule : survol du mall
-		angleMenu += dt * 0.06
-		local centre = Vector3.new(0, 10, -20)
-		local pos = centre + Vector3.new(math.cos(angleMenu) * 26, 22 + math.sin(angleMenu * 2) * 3, math.sin(angleMenu) * 110)
-		voulu = CFrame.lookAt(pos, centre + Vector3.new(math.sin(angleMenu) * 30, -4, -math.cos(angleMenu) * 40))
+		creerKartsDemo()
+		animerKartsDemo(dt)
+		local premier = kartsDemo[1]
+		cible = if premier then premier.modele:GetPivot().Position else Vector3.new(0, 5, 0)
 		badgeDirect.Visible = false
 	end
-	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 3, 0, 1)) else voulu
+	pointVise = if pointVise then pointVise:Lerp(cible, math.clamp(dt * 2.5, 0, 1)) else cible
+	-- Orbite qui tourne tout le temps, assez haute pour voir les karts et le mall
+	angleMenu += dt * 0.16
+	local centre = pointVise :: Vector3
+	local pos = centre + Vector3.new(math.cos(angleMenu) * 30, 14 + math.sin(angleMenu * 0.7) * 3, math.sin(angleMenu) * 30)
+	local voulu = CFrame.lookAt(pos, centre + Vector3.new(0, 1.5, 0))
+	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 4, 0, 1)) else voulu
 	camera.CFrame = cfCamera :: CFrame
 end)
 
@@ -802,6 +1037,7 @@ local function ouvrirMenu(ouvert: boolean)
 		if not auVolant and not joueur:GetAttribute("EnSalle") then
 			cameraMenu = true
 			cfCamera = nil -- (on repart d'une caméra neuve)
+			pointVise = nil
 			prochainChangement = 0
 			camera.CameraType = Enum.CameraType.Scriptable
 		end
@@ -818,6 +1054,7 @@ local function ouvrirMenu(ouvert: boolean)
 				end
 			end)
 		end
+		ouvrirModes(false)
 		titreMenu.TextTransparency = 1
 		TweenService:Create(titreMenu, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
 	elseif not ouvert and cameraMenu then
@@ -1094,7 +1331,7 @@ Partie.OnClientEvent:Connect(function(info)
 	end
 end)
 
-boutonTuto.Activated:Connect(function()
+carteTuto.Activated:Connect(function()
 	ouvrirMenu(false)
 	joueur:SetAttribute("RevoirTuto", true) -- le script Tutoriel s'en occupe
 end)
