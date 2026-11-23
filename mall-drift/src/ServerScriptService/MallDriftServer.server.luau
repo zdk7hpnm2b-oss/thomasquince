@@ -29,22 +29,7 @@ local KartBuilder = require(ReplicatedStorage:WaitForChild("KartBuilder"))
 Config.AppliquerAmbiance(Config.NuitParDefaut)
 local TYPE = Config.TypeDePlace() -- rôle de cette place (voir KartConfig > Config.Places)
 
-if not Lighting:FindFirstChildOfClass("BloomEffect") then
-	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.25
-	bloom.Size = 20
-	bloom.Threshold = 1.6
-	bloom.Parent = Lighting
-end
-if not Lighting:FindFirstChild("CouleursMallDrift") then
-	local cc = Instance.new("ColorCorrectionEffect")
-	cc.Name = "CouleursMallDrift"
-	cc.Saturation = 0.08
-	cc.Contrast = 0.05
-	cc.Brightness = 0
-	cc.TintColor = Color3.fromRGB(255, 252, 246)
-	cc.Parent = Lighting
-end
+-- (bloom, couleurs, rayons du soleil, profondeur de champ : voir Config.AppliquerAmbiance)
 
 local carte = Instance.new("Folder")
 carte.Name = "GoldenMall"
@@ -95,6 +80,7 @@ local function texte(part: BasePart, face: Enum.NormalId, txt: string, couleurTe
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = face
 	sg.LightInfluence = 0
+	sg.Brightness = 1.5 -- les textes lumineux « brillent » (halo du bloom)
 	sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	sg.PixelsPerStud = 30
 	sg.Parent = part
@@ -155,8 +141,8 @@ local ALLEE_SUD = { 124, 150 }
 -- SOL, MURS, VERRIÈRE, LUMIÈRES
 ---------------------------------------------------------------------
 -- Grand carrelage clair et brillant (comme dans les vidéos)
-local sol = bloc("SolCarrelage", Vector3.new(LARGEUR, 1, PROFONDEUR), CFrame.new(0, SOL - 0.5, 0), Color3.fromRGB(226, 223, 216), Enum.Material.SmoothPlastic)
-sol.Reflectance = 0.22
+local sol = bloc("SolCarrelage", Vector3.new(LARGEUR, 1, PROFONDEUR), CFrame.new(0, SOL - 0.5, 0), Color3.fromRGB(232, 228, 220), Enum.Material.Marble)
+sol.Reflectance = 0.12 -- marbre poli (avec l'éclairage Future, on voit les reflets des néons)
 local joints = Instance.new("Folder")
 joints.Name = "JointsCarrelage"
 joints.Parent = carte
@@ -206,9 +192,9 @@ local plancher = Instance.new("Folder")
 plancher.Name = "Plancher1erEtage"
 plancher.Parent = carte
 local function dalle(nom: string, x1: number, x2: number, z1: number, z2: number)
-	local d = bloc(nom, Vector3.new(x2 - x1, 1, z2 - z1), CFrame.new((x1 + x2) / 2, SOL + HAUT_PLAFOND + 0.5, (z1 + z2) / 2), COULEUR_PLANCHER, Enum.Material.SmoothPlastic, plancher)
+	local d = bloc(nom, Vector3.new(x2 - x1, 1, z2 - z1), CFrame.new((x1 + x2) / 2, SOL + HAUT_PLAFOND + 0.5, (z1 + z2) / 2), COULEUR_PLANCHER, Enum.Material.Marble, plancher)
 	d.CastShadow = false
-	d.Reflectance = 0.15
+	d.Reflectance = 0.1
 	return d
 end
 dalle("DalleOuest", -DX - 2, -ATRIUM_X, -DZ - 2, DZ + 2)
@@ -258,10 +244,13 @@ local function lampe(x: number, z: number, hauteur: number?)
 	if nombreSpots % 2 == 0 then
 		return -- 1 spot sur 2 éclaire vraiment (bon pour les petits téléphones)
 	end
-	local pl = Instance.new("PointLight")
-	pl.Range = 26
-	pl.Brightness = 0.6
-	pl.Color = Color3.fromRGB(255, 236, 200)
+	local pl = Instance.new("SpotLight")
+	pl.Face = Enum.NormalId.Bottom
+	pl.Angle = 120
+	pl.Range = 30
+	pl.Brightness = 1.4
+	pl.Color = Color3.fromRGB(255, 232, 195)
+	pl.Shadows = nombreSpots % 6 == 1 -- quelques vraies ombres portées
 	pl.Parent = l
 end
 for _, h in ipairs({ HAUT_PLAFOND, HAUT_PLAFOND_2 }) do
@@ -641,6 +630,15 @@ local function boutique(devant: Vector3, dehors: Vector3, typeB: string, nom: st
 	-- Enseigne lumineuse
 	local enseigne = deco(bloc("Enseigne", Vector3.new(LARG_B - 6, 4, 0.4), ici(0, HAUT_B + 4.5, -0.25), NOIR_LUXE, Enum.Material.SmoothPlastic, modele))
 	texte(enseigne, Enum.NormalId.Front, nom, style.Couleur)
+	if compteurBoutiques % 2 == 0 then
+		local halo = Instance.new("SurfaceLight") -- la couleur de l'enseigne éclaire la façade et le sol
+		halo.Face = Enum.NormalId.Front
+		halo.Angle = 100
+		halo.Range = 12
+		halo.Brightness = 1.2
+		halo.Color = style.Couleur
+		halo.Parent = enseigne
+	end
 
 	-- Lumière intérieure
 	local plafonnier = deco(bloc("Plafonnier", Vector3.new(12, 0.3, 4), ici(0, HAUT_B - 0.2, PROF_B / 2), Color3.fromRGB(215, 210, 200), Enum.Material.Neon, modele))
@@ -850,6 +848,10 @@ local function gardeCorps(x1: number, x2: number, z1: number, z2: number)
 	v.Transparency = 0.55
 	local tailleMain = if surX then Vector3.new(longueur, 0.3, 0.45) else Vector3.new(0.45, 0.3, longueur)
 	deco(bloc("MainCourante", tailleMain, CFrame.new(centre + Vector3.new(0, 1.85, 0)), OR, Enum.Material.Foil, rampes))
+	-- Ruban LED doré sous le bord du balcon (éclairage indirect, très « luxe »)
+	local tailleLed = if surX then Vector3.new(longueur, 0.15, 0.35) else Vector3.new(0.35, 0.15, longueur)
+	local led = deco(bloc("RubanLED", tailleLed, CFrame.new(centre.X, SOL + HAUT_PLAFOND - 0.08, centre.Z), Color3.fromRGB(255, 205, 130), Enum.Material.Neon, rampes))
+	led.CastShadow = false
 end
 for _, sens in ipairs({ -1, 1 }) do
 	-- côtés est et ouest de l'atrium (moitiés nord et sud)
@@ -1456,11 +1458,23 @@ local function kartExpose(typeKart: string, couleur: string, neon: string, posit
 	expose.Name = "Vitrine_" .. typeKart
 	expose.Parent = garage
 	local info = Config.Karts[typeKart]
-	pancarte("PanneauKart", Vector3.new(14, 2.4, 0.3), position + Vector3.new(0, 8, 0), Vector3.new(0, 0, -1), ("%s · NIVEAU %d"):format(info.Nom, info.Niveau), Color3.fromRGB(30, 30, 36), OR, garage)
+	local titreKart = if info.Exclusif then ("✨ %s · EXCLUSIF"):format(string.upper(info.Nom)) else ("%s · NIVEAU %d"):format(info.Nom, info.Niveau)
+	pancarte("PanneauKart", Vector3.new(14, 2.4, 0.3), position + Vector3.new(0, 8, 0), Vector3.new(0, 0, -1), titreKart, if info.Exclusif then Color3.fromRGB(120, 40, 200) else Color3.fromRGB(30, 30, 36), if info.Exclusif then Color3.new(1, 1, 1) else OR, garage)
+	if info.Exclusif then
+		-- Socle lumineux arc-en-ciel sous le kart exclusif
+		local socle = deco(cylindreDebout("SocleExclusif", 0.3, 11, position + Vector3.new(0, 0.15, 0), Color3.fromRGB(255, 120, 230), Enum.Material.Neon, garage))
+		socle:SetAttribute("ArcEnCiel", true)
+		local lumiere = Instance.new("PointLight")
+		lumiere.Color = Color3.fromRGB(220, 120, 255)
+		lumiere.Range = 16
+		lumiere.Brightness = 2
+		lumiere.Parent = socle
+	end
 end
 kartExpose("Chariot", "Rouge", "Rose", Vector3.new(-62, SOL, G_Z2 - 16))
 kartExpose("Bolide", "Jaune", "Vert", Vector3.new(-32, SOL, G_Z2 - 12))
 kartExpose("ProDubai", "Or", "Or", Vector3.new(32, SOL, G_Z2 - 12))
+kartExpose("Galaxie", "Rose", "Arc-en-ciel", Vector3.new(62, SOL, G_Z2 - 16))
 
 ---------------------------------------------------------------------
 -- LA DÉCO DU GARAGE VIP
@@ -1711,6 +1725,9 @@ DriftTermine.Parent = remotes
 local Alerte = Instance.new("RemoteEvent") -- utilisé par le script de la sécurité
 Alerte.Name = "Alerte"
 Alerte.Parent = remotes
+local TutoTermine = Instance.new("RemoteEvent") -- le joueur a fini (ou passé) le tuto du début
+TutoTermine.Name = "TutoTermine"
+TutoTermine.Parent = remotes
 
 -- Les autres scripts serveur (la sécurité) peuvent donner de l'XP avec cet événement
 local AjouterXP = Instance.new("BindableEvent")
@@ -1764,7 +1781,8 @@ type Profil = {
 	Perso: { [string]: any },
 	Charge: boolean,
 	Pieces: number, -- la monnaie du jeu 💰
-	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean } },
+	Possessions: { Couleurs: { [string]: boolean }, Premium: { [string]: boolean }, Produits: { [string]: boolean }, Karts: { [string]: boolean } },
+	TutoFait: boolean, -- le tuto du début a déjà été vu
 }
 local profils: { [Player]: Profil } = {}
 local kartsJoueurs: { [Player]: Model } = {}
@@ -1789,6 +1807,7 @@ local function versionPublique(profil: Profil)
 		Perso = profil.Perso,
 		Pieces = profil.Pieces,
 		Possessions = profil.Possessions,
+		TutoFait = profil.TutoFait,
 	}
 end
 
@@ -1819,7 +1838,7 @@ local function sauvegarder(joueur: Player)
 	if not profil or not profil.Charge or not magasin then
 		return
 	end
-	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions }
+	local donnees = { XP = profil.XP, Record = profil.Record, Perso = profil.Perso, Pieces = profil.Pieces, Possessions = profil.Possessions, TutoFait = profil.TutoFait }
 	local ok, err = pcall(function()
 		magasin:SetAsync("joueur_" .. joueur.UserId, donnees)
 	end)
@@ -1835,7 +1854,8 @@ local function chargerProfil(joueur: Player)
 		Perso = table.clone(Config.PersoParDefaut),
 		Charge = magasin == nil,
 		Pieces = 0,
-		Possessions = { Couleurs = {}, Premium = {}, Produits = {} },
+		Possessions = { Couleurs = {}, Premium = {}, Produits = {}, Karts = {} },
+		TutoFait = false,
 	}
 	if magasin then
 		local ok, donnees = pcall(function()
@@ -1847,8 +1867,9 @@ local function chargerProfil(joueur: Player)
 				profil.XP = type(donnees.XP) == "number" and math.max(0, math.floor(donnees.XP)) or 0
 				profil.Record = type(donnees.Record) == "number" and math.max(0, math.floor(donnees.Record)) or 0
 				profil.Pieces = type(donnees.Pieces) == "number" and math.max(0, math.floor(donnees.Pieces)) or 0
+				profil.TutoFait = donnees.TutoFait == true
 				if type(donnees.Possessions) == "table" then
-					for _, liste in ipairs({ "Couleurs", "Premium", "Produits" }) do
+					for _, liste in ipairs({ "Couleurs", "Premium", "Produits", "Karts" }) do
 						if type(donnees.Possessions[liste]) == "table" then
 							for nom, possede in pairs(donnees.Possessions[liste]) do
 								if type(nom) == "string" and possede == true then
@@ -2269,6 +2290,9 @@ local function accorderProduit(joueur: Player, profil: Profil, produit: { [strin
 	if produit.Premium then
 		profil.Possessions.Premium[produit.Premium] = true
 	end
+	if produit.Kart and Config.Karts[produit.Kart] and Config.Karts[produit.Kart].Exclusif then
+		profil.Possessions.Karts[produit.Kart] = true -- kart exclusif débloqué
+	end
 	if produit.Id then
 		profil.Possessions.Produits[produit.Id] = true
 	end
@@ -2288,6 +2312,11 @@ local function produitDepuisId(produitId: number): { [string]: any }?
 	for _, offre in ipairs(Config.Boutique or {}) do
 		if offre.ProduitId ~= 0 and offre.ProduitId == produitId then
 			return offre
+		end
+	end
+	for _, k in pairs(Config.Karts) do
+		if k.Exclusif and k.ProduitId ~= 0 and k.ProduitId == produitId then
+			return k
 		end
 	end
 	return nil
@@ -2326,6 +2355,9 @@ Acheter.OnServerInvoke = function(joueur: Player, info: any)
 				end
 			end
 		end
+		if not produit and type(info.nom) == "string" and Config.Karts[info.nom] and Config.Karts[info.nom].Exclusif then
+			produit = Config.Karts[info.nom]
+		end
 		if not produit then
 			return { ok = false, message = "Produit inconnu." }
 		end
@@ -2361,6 +2393,14 @@ ObtenirProfil.OnServerInvoke = function(joueur: Player)
 	local profil = profils[joueur]
 	return profil and versionPublique(profil) or nil
 end
+
+TutoTermine.OnServerEvent:Connect(function(joueur: Player)
+	local profil = profils[joueur]
+	if profil and not profil.TutoFait then
+		profil.TutoFait = true
+		task.spawn(sauvegarder, joueur)
+	end
+end)
 
 Players.PlayerAdded:Connect(chargerProfil)
 for _, j in ipairs(Players:GetPlayers()) do

@@ -96,8 +96,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 		angleApercu += dt * (if menuOuvert then 0.5 else 0.3)
 		apercu:PivotTo(CFrame.new(plateau.Position + Vector3.new(0, 1.1, 0)) * CFrame.Angles(0, angleApercu, 0))
 	end
-	-- Caméra de showroom : le kart apparaît à droite du menu
-	local cfShowroom = CFrame.lookAt(plateau.Position + Vector3.new(-17, 7, 4), plateau.Position + Vector3.new(0, 1.5, -4))
+	-- Caméra de showroom : le kart apparaît à gauche du menu (le panneau est à droite)
+	local cfShowroom = CFrame.lookAt(plateau.Position + Vector3.new(-16, 6, 4), plateau.Position + Vector3.new(2, 1.5, 4))
 	if menuOuvert then
 		-- La caméra glisse en douceur jusqu'au plateau
 		camera.CFrame = camDepart:Lerp(cfShowroom, adoucir((os.clock() - debutTransition) / DUREE_TRANSITION))
@@ -120,10 +120,16 @@ RunService.RenderStepped:Connect(function(dt: number)
 end)
 
 ---------------------------------------------------------------------
--- INTERFACE
+-- INTERFACE  (style « atelier de course » : panneau sombre à droite,
+-- liseré rouge, onglets, cases de couleur avec leur prix)
 ---------------------------------------------------------------------
 local OR = Color3.fromRGB(255, 205, 80)
-local FOND = Color3.fromRGB(14, 14, 20)
+local FOND = Color3.fromRGB(17, 17, 21)
+local ROUGE = Color3.fromRGB(225, 30, 45)
+local ROUGE_SOMBRE = Color3.fromRGB(120, 22, 32)
+local CASE = Color3.fromRGB(32, 32, 38)
+local GRIS_TEXTE = Color3.fromRGB(170, 170, 180)
+local VIOLET = Color3.fromRGB(190, 110, 255)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "GarageVIP"
@@ -135,7 +141,7 @@ gui.Parent = joueur:WaitForChild("PlayerGui")
 
 local function coins(objet: GuiObject, rayon: number?)
 	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, rayon or 8)
+	c.CornerRadius = UDim.new(0, rayon or 6)
 	c.Parent = objet
 end
 
@@ -146,6 +152,37 @@ local function contour(objet: GuiObject, couleur: Color3, epaisseur: number): UI
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	s.Parent = objet
 	return s
+end
+
+local function etiquette(parent: Instance, texte: string, taille: UDim2, position: UDim2, couleur: Color3, police: Enum.Font?): TextLabel
+	local l = Instance.new("TextLabel")
+	l.Size = taille
+	l.Position = position
+	l.BackgroundTransparency = 1
+	l.Font = police or Enum.Font.GothamBlack
+	l.TextScaled = true
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextColor3 = couleur
+	l.Text = texte
+	l.Parent = parent
+	return l
+end
+
+-- Animations : la case grossit au survol et « rebondit » quand on clique
+local function animer(b: GuiButton)
+	local echelle = Instance.new("UIScale")
+	echelle.Parent = b
+	local info = TweenInfo.new(0.12, Enum.EasingStyle.Quad)
+	b.MouseEnter:Connect(function()
+		TweenService:Create(echelle, info, { Scale = 1.06 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(echelle, info, { Scale = 1 }):Play()
+	end)
+	b.Activated:Connect(function()
+		echelle.Scale = 0.9
+		TweenService:Create(echelle, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	end)
 end
 
 local function bouton(parent: Instance, texte: string, couleur: Color3, taille: UDim2, position: UDim2?): TextButton
@@ -162,150 +199,114 @@ local function bouton(parent: Instance, texte: string, couleur: Color3, taille: 
 	b.AutoButtonColor = true
 	coins(b)
 	local marge = Instance.new("UIPadding")
-	marge.PaddingTop = UDim.new(0, 6)
-	marge.PaddingBottom = UDim.new(0, 6)
-	marge.PaddingLeft = UDim.new(0, 6)
-	marge.PaddingRight = UDim.new(0, 6)
+	marge.PaddingTop = UDim.new(0, 9)
+	marge.PaddingBottom = UDim.new(0, 9)
+	marge.PaddingLeft = UDim.new(0, 8)
+	marge.PaddingRight = UDim.new(0, 8)
 	marge.Parent = b
 	b.Parent = parent
+	animer(b)
 	return b
 end
 
+-- Le panneau (à droite de l'écran, le kart tourne à gauche)
 local panneau = Instance.new("Frame")
 panneau.Name = "Panneau"
-panneau.Size = UDim2.new(0, 400, 1, -40)
-panneau.Position = UDim2.new(0, 20, 0, 20)
+panneau.AnchorPoint = Vector2.new(1, 0.5)
+panneau.Size = UDim2.new(0.34, 0, 0.92, 0)
+panneau.Position = UDim2.new(1, -24, 0.5, 0)
 panneau.BackgroundColor3 = FOND
-panneau.BackgroundTransparency = 0.08
+panneau.BackgroundTransparency = 0.04
+panneau.ClipsDescendants = true
 panneau.Parent = gui
-coins(panneau, 14)
-contour(panneau, OR, 2)
+coins(panneau, 8)
+contour(panneau, Color3.fromRGB(45, 45, 52), 1)
 local tailleMax = Instance.new("UISizeConstraint")
-tailleMax.MaxSize = Vector2.new(400, 900)
+tailleMax.MinSize = Vector2.new(330, 420)
+tailleMax.MaxSize = Vector2.new(470, 880)
 tailleMax.Parent = panneau
+-- Liseré rouge en haut (avec un reflet qui passe)
+local lisere = Instance.new("Frame")
+lisere.Size = UDim2.new(1, 0, 0, 5)
+lisere.BackgroundColor3 = ROUGE
+lisere.BorderSizePixel = 0
+lisere.Parent = panneau
+local refletLisere = Instance.new("UIGradient")
+refletLisere.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, ROUGE),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 150)),
+	ColorSequenceKeypoint.new(1, ROUGE),
+})
+refletLisere.Parent = lisere
+task.spawn(function()
+	while true do
+		refletLisere.Offset = Vector2.new(-1, 0)
+		local t = TweenService:Create(refletLisere, TweenInfo.new(1.6, Enum.EasingStyle.Sine), { Offset = Vector2.new(1, 0) })
+		t:Play()
+		task.wait(3.2)
+	end
+end)
 
-local titre = Instance.new("TextLabel")
-titre.Size = UDim2.new(1, -70, 0, 40)
-titre.Position = UDim2.new(0, 16, 0, 12)
-titre.BackgroundTransparency = 1
-titre.Font = Enum.Font.GothamBlack
-titre.TextScaled = true
-titre.TextXAlignment = Enum.TextXAlignment.Left
-titre.TextColor3 = OR
-titre.Text = "★ GARAGE VIP"
-titre.Parent = panneau
+etiquette(panneau, "Garage", UDim2.new(0.5, 0, 0, 16), UDim2.new(0, 18, 0, 16), GRIS_TEXTE, Enum.Font.GothamMedium)
+local titre = etiquette(panneau, "PERSONNALISER", UDim2.new(1, -90, 0, 40), UDim2.new(0, 18, 0, 32), Color3.new(1, 1, 1))
+titre.Font = Enum.Font.Oswald
+local sousTitre = etiquette(panneau, "", UDim2.new(0.6, 0, 0, 18), UDim2.new(0, 18, 0, 76), Color3.fromRGB(230, 230, 235))
+local soldePieces = etiquette(panneau, "💰 0", UDim2.new(0.35, 0, 0, 18), UDim2.new(0.65, -18, 0, 76), OR)
+soldePieces.TextXAlignment = Enum.TextXAlignment.Right
+local sousTitreNiveau = sousTitre -- (compatibilité)
 
-local sousTitre = Instance.new("TextLabel")
-sousTitre.Size = UDim2.new(1, -32, 0, 18)
-sousTitre.Position = UDim2.new(0, 16, 0, 54)
-sousTitre.BackgroundTransparency = 1
-sousTitre.Font = Enum.Font.Gotham
-sousTitre.TextScaled = true
-sousTitre.TextXAlignment = Enum.TextXAlignment.Left
-sousTitre.TextColor3 = Color3.fromRGB(200, 200, 210)
-sousTitre.Parent = panneau
+local boutonFermer = bouton(panneau, "X", Color3.fromRGB(32, 32, 38), UDim2.new(0, 42, 0, 42), UDim2.new(1, -58, 0, 18))
+boutonFermer.TextColor3 = Color3.fromRGB(220, 220, 225)
 
-local boutonFermer = bouton(panneau, "✕", Color3.fromRGB(60, 60, 70), UDim2.new(0, 40, 0, 40), UDim2.new(1, -52, 0, 12))
-
-local liste = Instance.new("ScrollingFrame")
-liste.Size = UDim2.new(1, -24, 1, -200)
-liste.Position = UDim2.new(0, 12, 0, 84)
-liste.BackgroundTransparency = 1
-liste.BorderSizePixel = 0
-liste.ScrollBarThickness = 6
-liste.ScrollBarImageColor3 = OR
-liste.CanvasSize = UDim2.new()
-liste.AutomaticCanvasSize = Enum.AutomaticSize.Y
-liste.Parent = panneau
-local disposition = Instance.new("UIListLayout")
-disposition.Padding = UDim.new(0, 8)
-disposition.SortOrder = Enum.SortOrder.LayoutOrder
-disposition.Parent = liste
-
-local statut = Instance.new("TextLabel")
-statut.Size = UDim2.new(1, -24, 0, 20)
-statut.Position = UDim2.new(0, 12, 1, -108)
-statut.BackgroundTransparency = 1
-statut.Font = Enum.Font.GothamBold
-statut.TextScaled = true
-statut.TextColor3 = Color3.fromRGB(255, 160, 160)
-statut.Text = ""
-statut.Parent = panneau
-
-local boutonEnregistrer = bouton(panneau, "ENREGISTRER", Color3.fromRGB(40, 150, 80), UDim2.new(0.5, -18, 0, 50), UDim2.new(0, 12, 1, -80))
-local boutonSortir = bouton(panneau, "SORTIR MON KART 🏁", Color3.fromRGB(200, 140, 20), UDim2.new(0.5, -18, 0, 50), UDim2.new(0.5, 6, 1, -80))
+local statut = Instance.new("TextLabel") -- (ligne d'info, placée en bas)
 
 local function afficherStatut(texte: string, couleur: Color3?)
 	statut.Text = texte
 	statut.TextColor3 = couleur or Color3.fromRGB(255, 160, 160)
-	statut.TextTransparency = 0
-	task.delay(2.5, function()
-		if statut.Text == texte then
-			TweenService:Create(statut, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-		end
-	end)
+	statut.TextTransparency = 1
+	TweenService:Create(statut, TweenInfo.new(0.25), { TextTransparency = 0 }):Play()
 end
 
 ---------------------------------------------------------------------
--- Contenu du menu (les boutons se mettent à jour à chaque changement)
+-- Les « slots » : un onglet par modèle de kart (comme SLOT 1, 2, 3...)
 ---------------------------------------------------------------------
 local miseAJour: { () -> () } = {}
-local ordre = 0
 
-local function suivant(): number
-	ordre += 1
-	return ordre
+local function possede(liste: string, nom: string): boolean
+	local p = profil and profil.Possessions
+	return p ~= nil and type(p[liste]) == "table" and p[liste][nom] == true
 end
 
-local function rafraichir()
-	for _, f in ipairs(miseAJour) do
-		f()
+local MarketplaceService = game:GetService("MarketplaceService")
+-- Achat en Robux (ou gratuit dans Studio tant que le produit n'est pas configuré)
+local function acheterRobux(produitId: number?, nomTest: string, quandOk: (() -> ())?)
+	if (produitId or 0) ~= 0 then
+		MarketplaceService:PromptProductPurchase(joueur, produitId :: number)
+		return
 	end
-	sousTitre.Text = ("Niveau %d  ·  💰 %d pièces  ·  drifte pour en gagner !"):format(niveau(), profil and profil.Pieces or 0)
-	if menuOuvert then
-		majApercu(persoEdite)
+	local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = nomTest })
+	if type(resultat) == "table" then
+		if resultat.profil then
+			profil = resultat.profil
+			if quandOk then
+				quandOk()
+			end
+		end
+		afficherStatut(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
 	end
 end
 
-local function verrouille(niveauRequis: number): boolean
-	if niveauRequis > niveau() then
-		afficherStatut(("🔒 Débloqué au niveau %d (continue à drifter !)"):format(niveauRequis))
-		return true
-	end
-	return false
-end
+local rangeeSlots = Instance.new("Frame")
+rangeeSlots.Size = UDim2.new(1, -32, 0, 50)
+rangeeSlots.Position = UDim2.new(0, 16, 0, 104)
+rangeeSlots.BackgroundTransparency = 1
+rangeeSlots.Parent = panneau
+local dispoSlots = Instance.new("UIListLayout")
+dispoSlots.FillDirection = Enum.FillDirection.Horizontal
+dispoSlots.Padding = UDim.new(0, 5)
+dispoSlots.SortOrder = Enum.SortOrder.LayoutOrder
+dispoSlots.Parent = rangeeSlots
 
-local function section(nom: string): TextLabel
-	local l = Instance.new("TextLabel")
-	l.LayoutOrder = suivant()
-	l.Size = UDim2.new(1, -10, 0, 24)
-	l.BackgroundTransparency = 1
-	l.Font = Enum.Font.GothamBlack
-	l.TextScaled = true
-	l.TextXAlignment = Enum.TextXAlignment.Left
-	l.TextColor3 = OR
-	l.Text = nom
-	l.Parent = liste
-	return l
-end
-
-local function grille(taille: Vector2): Frame
-	local f = Instance.new("Frame")
-	f.LayoutOrder = suivant()
-	f.Size = UDim2.new(1, -10, 0, 0)
-	f.AutomaticSize = Enum.AutomaticSize.Y
-	f.BackgroundTransparency = 1
-	local g = Instance.new("UIGridLayout")
-	g.CellSize = UDim2.fromOffset(taille.X, taille.Y)
-	g.CellPadding = UDim2.fromOffset(6, 6)
-	g.SortOrder = Enum.SortOrder.LayoutOrder
-	g.Parent = f
-	f.Parent = liste
-	return f
-end
-
--- 1) LE MODÈLE DE KART
-section("🏎️  MODÈLE")
 local kartsTries = {}
 for id, k in pairs(Config.Karts) do
 	table.insert(kartsTries, { id = id, k = k })
@@ -313,55 +314,210 @@ end
 table.sort(kartsTries, function(a, b)
 	return a.k.Ordre < b.k.Ordre
 end)
-for _, e in ipairs(kartsTries) do
+local largeurSlot = 1 / #kartsTries
+
+local rafraichir: () -> ()
+for i, e in ipairs(kartsTries) do
 	local b = Instance.new("TextButton")
-	b.LayoutOrder = suivant()
-	b.Size = UDim2.new(1, -10, 0, 58)
-	b.BackgroundColor3 = Color3.fromRGB(32, 32, 42)
+	b.LayoutOrder = i
+	b.Size = UDim2.new(largeurSlot, -5, 1, 0)
+	b.BackgroundColor3 = CASE
 	b.Text = ""
 	b.AutoButtonColor = true
-	coins(b)
-	local trait = contour(b, OR, 0)
-	local nom = Instance.new("TextLabel")
-	nom.Size = UDim2.new(1, -20, 0, 24)
-	nom.Position = UDim2.new(0, 10, 0, 6)
-	nom.BackgroundTransparency = 1
-	nom.Font = Enum.Font.GothamBlack
-	nom.TextScaled = true
-	nom.TextXAlignment = Enum.TextXAlignment.Left
-	nom.TextColor3 = Color3.new(1, 1, 1)
-	nom.Parent = b
-	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(1, -20, 0, 18)
-	desc.Position = UDim2.new(0, 10, 0, 33)
-	desc.BackgroundTransparency = 1
-	desc.Font = Enum.Font.Gotham
-	desc.TextScaled = true
-	desc.TextXAlignment = Enum.TextXAlignment.Left
-	desc.TextColor3 = Color3.fromRGB(190, 190, 200)
-	desc.Parent = b
-	b.Parent = liste
-
+	b.Parent = rangeeSlots
+	coins(b, 5)
+	animer(b)
+	local nomSlot = etiquette(b, "", UDim2.new(1, -8, 0.48, 0), UDim2.new(0, 4, 0.08, 0), Color3.new(1, 1, 1))
+	nomSlot.TextXAlignment = Enum.TextXAlignment.Center
+	local infoSlot = etiquette(b, "", UDim2.new(1, -8, 0.3, 0), UDim2.new(0, 4, 0.58, 0), GRIS_TEXTE, Enum.Font.GothamBold)
+	infoSlot.TextXAlignment = Enum.TextXAlignment.Center
+	local souligne = Instance.new("Frame")
+	souligne.AnchorPoint = Vector2.new(0, 1)
+	souligne.Size = UDim2.new(1, 0, 0, 3)
+	souligne.Position = UDim2.new(0, 0, 1, 0)
+	souligne.BackgroundColor3 = ROUGE
+	souligne.BorderSizePixel = 0
+	souligne.Parent = b
+	local bordExclusif: UIStroke? = nil
+	if e.k.Exclusif then
+		-- Le kart exclusif : cadre arc-en-ciel qui tourne
+		bordExclusif = contour(b, Color3.new(1, 1, 1), 2)
+		local degrade = Instance.new("UIGradient")
+		degrade.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 200)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(120, 200, 255)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(255, 230, 90)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 90, 200)),
+		})
+		degrade.Parent = bordExclusif
+		task.spawn(function()
+			while b.Parent do
+				degrade.Rotation = (degrade.Rotation + 4) % 360
+				task.wait(0.03)
+			end
+		end)
+	end
 	table.insert(miseAJour, function()
-		local bloque = e.k.Niveau > niveau()
-		nom.Text = (bloque and "🔒 " or "") .. e.k.Nom .. ("   ·   %d km/h"):format(e.k.VitesseMax)
-		desc.Text = if bloque then ("Débloqué au niveau %d"):format(e.k.Niveau) else e.k.Description
-		b.BackgroundTransparency = bloque and 0.5 or 0
-		trait.Thickness = persoEdite.Kart == e.id and 3 or 0
+		local bloqueNiveau = e.k.Niveau > niveau()
+		local aAcheter = e.k.Exclusif and not possede("Karts", e.id)
+		nomSlot.Text = if e.k.Exclusif then "🦄 " .. string.upper(e.k.Nom) else string.upper(e.k.Nom)
+		infoSlot.Text = if aAcheter then "🔒 " .. (e.k.PrixAffiche or "R$")
+			elseif bloqueNiveau then ("🔒 NIV %d"):format(e.k.Niveau)
+			elseif e.id == (profil and profil.Perso and profil.Perso.Kart) then "ACTUEL"
+			else ("%d km/h"):format(e.k.VitesseMax)
+		infoSlot.TextColor3 = if aAcheter then Color3.fromRGB(255, 200, 90) elseif bloqueNiveau then Color3.fromRGB(255, 120, 120) else GRIS_TEXTE
+		local actif = persoEdite.Kart == e.id
+		souligne.Visible = actif
+		b.BackgroundColor3 = if actif then Color3.fromRGB(44, 30, 36) else CASE
 	end)
 	b.Activated:Connect(function()
-		if not verrouille(e.k.Niveau) then
-			persoEdite.Kart = e.id
+		if e.k.Exclusif and not possede("Karts", e.id) then
+			afficherStatut(("🦄 %s : %s"):format(e.k.Nom, e.k.Description), VIOLET)
+			acheterRobux(e.k.ProduitId, e.id, function()
+				persoEdite.Kart = e.id
+			end)
 			rafraichir()
+			return
 		end
+		if e.k.Niveau > niveau() then
+			afficherStatut(("🔒 %s : débloqué au niveau %d (continue à drifter !)"):format(e.k.Nom, e.k.Niveau))
+			return
+		end
+		persoEdite.Kart = e.id
+		afficherStatut(("%s · %s"):format(e.k.Nom, e.k.Description), Color3.fromRGB(220, 220, 230))
+		rafraichir()
 	end)
 end
 
--- 2) LES COULEURS (carrosserie, jantes, siège, bandes)
--- Ce que le joueur a acheté
-local function possede(liste: string, nom: string): boolean
-	local p = profil and profil.Possessions
-	return p ~= nil and type(p[liste]) == "table" and p[liste][nom] == true
+---------------------------------------------------------------------
+-- Onglets : PEINTURE / FINITIONS / DÉCO, et sous-onglets de la peinture
+---------------------------------------------------------------------
+local function rangeeOnglets(y: number, hauteur: number, noms: { string }, sombre: boolean?): ({ TextButton }, Frame)
+	local f = Instance.new("Frame")
+	f.Size = UDim2.new(1, -32, 0, hauteur)
+	f.Position = UDim2.new(0, 16, 0, y)
+	f.BackgroundTransparency = 1
+	f.Parent = panneau
+	local l = Instance.new("UIListLayout")
+	l.FillDirection = Enum.FillDirection.Horizontal
+	l.Padding = UDim.new(0, 6)
+	l.Parent = f
+	local boutons = {}
+	for i, nom in ipairs(noms) do
+		local b = bouton(f, nom, CASE, UDim2.new(1 / #noms, -6, 1, 0))
+		b.LayoutOrder = i
+		b.TextColor3 = Color3.fromRGB(225, 225, 230)
+		if sombre then
+			b.Font = Enum.Font.GothamBold
+		end
+		boutons[i] = b
+	end
+	return boutons, f
+end
+
+local ongletsPrincipaux = rangeeOnglets(162, 42, { "PEINTURE", "FINITIONS", "DÉCO" })
+local sousOnglets, rangeeSous = rangeeOnglets(212, 32, { "CARROSSERIE", "JANTES", "SIÈGE", "BANDES" }, true)
+local ongletActif, sousOngletActif = 1, 1
+
+-- La zone qui défile (une page par onglet)
+local zone = Instance.new("ScrollingFrame")
+zone.Size = UDim2.new(1, -24, 1, -250 - 128)
+zone.Position = UDim2.new(0, 12, 0, 252)
+zone.BackgroundTransparency = 1
+zone.BorderSizePixel = 0
+zone.ScrollBarThickness = 5
+zone.ScrollBarImageColor3 = ROUGE
+zone.CanvasSize = UDim2.new()
+zone.AutomaticCanvasSize = Enum.AutomaticSize.Y
+zone.Parent = panneau
+
+local function page(): Frame
+	local p = Instance.new("Frame")
+	p.Size = UDim2.new(1, -8, 0, 0)
+	p.Position = UDim2.new(0, 4, 0, 0)
+	p.AutomaticSize = Enum.AutomaticSize.Y
+	p.BackgroundTransparency = 1
+	p.Visible = false
+	p.Parent = zone
+	local l = Instance.new("UIListLayout")
+	l.Padding = UDim.new(0, 8)
+	l.SortOrder = Enum.SortOrder.LayoutOrder
+	l.Parent = p
+	return p
+end
+
+local ordre = 0
+local function suivant(): number
+	ordre += 1
+	return ordre
+end
+
+local function section(parent: Instance, nom: string, couleur: Color3?): TextLabel
+	local l = etiquette(parent, nom, UDim2.new(1, 0, 0, 18), UDim2.new(), couleur or Color3.fromRGB(205, 205, 212), Enum.Font.GothamBlack)
+	l.LayoutOrder = suivant()
+	return l
+end
+
+local function grille(parent: Instance, taille: Vector2): Frame
+	local f = Instance.new("Frame")
+	f.LayoutOrder = suivant()
+	f.Size = UDim2.new(1, 0, 0, 0)
+	f.AutomaticSize = Enum.AutomaticSize.Y
+	f.BackgroundTransparency = 1
+	local g = Instance.new("UIGridLayout")
+	g.CellSize = UDim2.fromOffset(taille.X, taille.Y)
+	g.CellPadding = UDim2.fromOffset(7, 7)
+	g.SortOrder = Enum.SortOrder.LayoutOrder
+	g.Parent = f
+	f.Parent = parent
+	return f
+end
+
+local DEGRADE_ARC_EN_CIEL = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
+	ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
+})
+local DEGRADE_PASTEL = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 230)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 220, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 240, 170)),
+})
+
+-- Une case de couleur, avec sa pastille de prix en bas (comme sur la photo)
+local function caseCouleur(parent: Instance, ordreCase: number, couleur: Color3): (TextButton, TextLabel, UIStroke)
+	local b = Instance.new("TextButton")
+	b.LayoutOrder = ordreCase
+	b.BackgroundColor3 = couleur
+	b.Text = ""
+	b.AutoButtonColor = true
+	coins(b, 6)
+	local trait = contour(b, Color3.new(1, 1, 1), 0)
+	-- Petit reflet en haut de la case
+	local brillance = Instance.new("Frame")
+	brillance.Size = UDim2.new(1, -6, 0.32, 0)
+	brillance.Position = UDim2.new(0, 3, 0, 3)
+	brillance.BackgroundColor3 = Color3.new(1, 1, 1)
+	brillance.BackgroundTransparency = 0.82
+	brillance.BorderSizePixel = 0
+	brillance.Parent = b
+	coins(brillance, 4)
+	local prix = Instance.new("TextLabel")
+	prix.AnchorPoint = Vector2.new(0.5, 1)
+	prix.Size = UDim2.new(0.86, 0, 0.3, 0)
+	prix.Position = UDim2.new(0.5, 0, 1, -4)
+	prix.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+	prix.BackgroundTransparency = 0.25
+	prix.Font = Enum.Font.GothamBlack
+	prix.TextScaled = true
+	prix.TextColor3 = Color3.new(1, 1, 1)
+	prix.Text = ""
+	prix.Parent = b
+	coins(prix, 4)
+	b.Parent = parent
+	animer(b)
+	return b, prix, trait
 end
 
 -- Acheter une couleur avec des pièces (2 clics : le 1er demande confirmation)
@@ -389,42 +545,30 @@ local function acheterCouleur(c): boolean
 	return false
 end
 
-local function choixCouleur(titreSection: string, champ: string, liste: { any }?)
-	local entete = section(titreSection)
-	local g = grille(Vector2.new(40, 40))
+local function grilleCouleurs(parent: Instance, champ: string, liste: { any }?)
+	local g = grille(parent, Vector2.new(58, 58))
 	for i, c in ipairs(liste or Config.Couleurs) do
-		local b = Instance.new("TextButton")
-		b.LayoutOrder = i
-		b.BackgroundColor3 = c.Couleur
-		b.Font = Enum.Font.GothamBold
-		b.TextScaled = true
-		b.TextColor3 = Color3.new(1, 1, 1)
-		b.Text = ""
-		coins(b, 20)
-		local trait = contour(b, Color3.new(1, 1, 1), 0)
+		local b, prix, trait = caseCouleur(g, i, c.Couleur)
 		if c.Nom == "Aucun" then
 			b.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
 		elseif c.Nom == "Arc-en-ciel" then
 			local degrade = Instance.new("UIGradient")
-			degrade.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
-				ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
-				ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
-			})
+			degrade.Color = DEGRADE_ARC_EN_CIEL
 			degrade.Parent = b
 		end
-		b.Parent = g
 		local payante = (c.Prix or 0) > 0
 		table.insert(miseAJour, function()
-			local bloque = c.Niveau > niveau()
+			local bloque = (c.Niveau or 1) > niveau()
 			local aAcheter = payante and not possede("Couleurs", c.Nom)
-			b.Text = if bloque then "🔒" elseif aAcheter then (tostring(c.Prix) .. "💰") elseif c.Nom == "Aucun" then "∅" else ""
-			b.BackgroundTransparency = if bloque then 0.55 elseif aAcheter then 0.25 else 0
-			trait.Thickness = if persoEdite[champ] == c.Nom and not (champ == "Carrosserie" and persoEdite.Premium) then 3 else 0
+			prix.Text = if bloque then ("🔒 NIV %d"):format(c.Niveau) elseif aAcheter then (tostring(c.Prix) .. " 💰") elseif c.Nom == "Aucun" then "AUCUN" else ""
+			prix.Visible = prix.Text ~= ""
+			local choisi = persoEdite[champ] == c.Nom and not (champ == "Carrosserie" and persoEdite.Premium)
+			trait.Thickness = if choisi then 3 else 0
+			b.BackgroundTransparency = if bloque then 0.5 else 0
 		end)
 		b.Activated:Connect(function()
-			if verrouille(c.Niveau) then
+			if (c.Niveau or 1) > niveau() then
+				afficherStatut(("🔒 Débloqué au niveau %d (continue à drifter !)"):format(c.Niveau))
 				return
 			end
 			if payante and not possede("Couleurs", c.Nom) and not acheterCouleur(c) then
@@ -435,150 +579,150 @@ local function choixCouleur(titreSection: string, champ: string, liste: { any }?
 			if champ == "Carrosserie" then
 				persoEdite.Premium = nil -- une couleur normale remplace la peinture premium
 			end
+			afficherStatut(c.Nom, Color3.fromRGB(220, 220, 230))
 			rafraichir()
 		end)
 	end
-	table.insert(miseAJour, function()
-		entete.Text = ("%s  ·  %s"):format(titreSection, persoEdite[champ])
-	end)
 end
 
-choixCouleur("🎨  CARROSSERIE", "Carrosserie")
-
--- 2 bis) LES PEINTURES PREMIUM (Robux)
-local MarketplaceService = game:GetService("MarketplaceService")
-local entetePremium = section("💎  PEINTURES PREMIUM")
-local grillePremium = grille(Vector2.new(40, 40))
-for i, pp in ipairs(Config.PeinturesPremium or {}) do
-	local b = Instance.new("TextButton")
-	b.LayoutOrder = i
-	b.BackgroundColor3 = pp.Couleur
-	b.Font = Enum.Font.GothamBlack
-	b.TextScaled = true
-	b.TextColor3 = Color3.new(1, 1, 1)
-	coins(b, 8)
-	local trait = contour(b, OR, 0)
-	if pp.ArcEnCiel then
-		local degrade = Instance.new("UIGradient")
-		degrade.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
-			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(60, 255, 100)),
-			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(60, 120, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 220)),
-		})
-		degrade.Parent = b
-	end
-	b.Parent = grillePremium
-	table.insert(miseAJour, function()
-		b.Text = if possede("Premium", pp.Nom) then "" else "R$"
-		trait.Thickness = if persoEdite.Premium == pp.Nom then 3 else 0
-	end)
-	b.Activated:Connect(function()
-		if possede("Premium", pp.Nom) then
-			persoEdite.Premium = if persoEdite.Premium == pp.Nom then nil else pp.Nom
-			rafraichir()
-		elseif (pp.ProduitId or 0) ~= 0 then
-			MarketplaceService:PromptProductPurchase(joueur, pp.ProduitId) -- achat Roblox
-		else
-			-- Pas encore configuré : gratuit dans Studio pour tester
-			local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = pp.Nom })
-			if type(resultat) == "table" then
-				if resultat.profil then
-					profil = resultat.profil
-					persoEdite.Premium = pp.Nom
-				end
-				afficherStatut(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
-			end
-			rafraichir()
+-- Les peintures Robux (premium, puis exclusives)
+local function grillePremium(parent: Instance, exclusives: boolean)
+	local g = grille(parent, Vector2.new(58, 58))
+	for i, pp in ipairs(Config.PeinturesPremium or {}) do
+		if (pp.Exclusive == true) ~= exclusives then
+			continue
 		end
-	end)
+		local b, prix, trait = caseCouleur(g, i, pp.Couleur)
+		if pp.ArcEnCiel then
+			local degrade = Instance.new("UIGradient")
+			degrade.Color = if pp.Pastel then DEGRADE_PASTEL else DEGRADE_ARC_EN_CIEL
+			degrade.Rotation = 35
+			degrade.Parent = b
+		elseif pp.Materiau == Enum.Material.Foil or pp.Materiau == Enum.Material.Ice or pp.Materiau == Enum.Material.Glass then
+			local degrade = Instance.new("UIGradient") -- effet métal / glace / galaxie
+			degrade.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, pp.Couleur:Lerp(Color3.new(1, 1, 1), 0.6)),
+				ColorSequenceKeypoint.new(0.5, pp.Couleur),
+				ColorSequenceKeypoint.new(1, pp.Couleur:Lerp(Color3.new(0, 0, 0), 0.4)),
+			})
+			degrade.Rotation = 45
+			degrade.Parent = b
+		end
+		local bordCouleur = contour(b, if exclusives then VIOLET else OR, 1)
+		table.insert(miseAJour, function()
+			local achete = possede("Premium", pp.Nom)
+			prix.Text = if achete then "" else "R$"
+			prix.TextColor3 = if exclusives then Color3.fromRGB(230, 190, 255) else Color3.fromRGB(120, 255, 140)
+			prix.Visible = not achete
+			local choisi = persoEdite.Premium == pp.Nom
+			trait.Thickness = if choisi then 3 else 0
+			bordCouleur.Thickness = if choisi then 0 else 1
+		end)
+		b.Activated:Connect(function()
+			if possede("Premium", pp.Nom) then
+				persoEdite.Premium = if persoEdite.Premium == pp.Nom then nil else pp.Nom
+				afficherStatut(pp.Nom, Color3.fromRGB(220, 220, 230))
+				rafraichir()
+				return
+			end
+			afficherStatut(("%s %s · %s"):format(if exclusives then "✦" else "💎", pp.Nom, pp.PrixAffiche or "R$"), if exclusives then VIOLET else OR)
+			acheterRobux(pp.ProduitId, pp.Nom, function()
+				persoEdite.Premium = pp.Nom
+			end)
+			rafraichir()
+		end)
+	end
 end
-table.insert(miseAJour, function()
-	entetePremium.Text = "💎  PEINTURES PREMIUM" .. (if persoEdite.Premium then ("  ·  " .. persoEdite.Premium) else "  ·  " .. (Config.PeinturesPremium[1] and Config.PeinturesPremium[1].PrixAffiche or "") .. " et +")
-end)
 
--- 3) LA FINITION
-local enteteFinition = section("✨  FINITION")
-local grilleFinition = grille(Vector2.new(112, 34))
+-- PAGE PEINTURE (un contenu par sous-onglet)
+local pagesPeinture = {}
+for i, champ in ipairs({ "Carrosserie", "Jantes", "Siege", "Bandes" }) do
+	local p = page()
+	section(p, "COULEURS")
+	grilleCouleurs(p, champ)
+	if champ == "Carrosserie" then
+		section(p, "PEINTURE PREMIUM", OR)
+		grillePremium(p, false)
+		section(p, "✦ COULEURS EXCLUSIVES", VIOLET)
+		grillePremium(p, true)
+	elseif champ == "Bandes" then
+		local b = bouton(p, "", CASE, UDim2.new(1, 0, 0, 38))
+		b.LayoutOrder = 0 -- (en haut de la page)
+		table.insert(miseAJour, function()
+			b.Text = if persoEdite.BandesActives then "BANDES DE COURSE : OUI ✔" else "BANDES DE COURSE : NON ✕"
+			b.BackgroundColor3 = if persoEdite.BandesActives then ROUGE_SOMBRE else CASE
+		end)
+		b.Activated:Connect(function()
+			persoEdite.BandesActives = not persoEdite.BandesActives
+			rafraichir()
+		end)
+	end
+	pagesPeinture[i] = p
+end
+
+-- PAGE FINITIONS
+local pageFinitions = page()
+section(pageFinitions, "FINITION DE LA PEINTURE")
+local grilleFinition = grille(pageFinitions, Vector2.new(124, 44))
 for i, f in ipairs(Config.Finitions) do
-	local b = bouton(grilleFinition, f.Nom, Color3.fromRGB(45, 45, 58), UDim2.new())
+	local b = bouton(grilleFinition, f.Nom, CASE, UDim2.new())
 	b.LayoutOrder = i
-	local trait = contour(b, OR, 0)
+	local trait = contour(b, ROUGE, 0)
 	table.insert(miseAJour, function()
 		local bloque = f.Niveau > niveau()
-		b.Text = (bloque and "🔒 " or "") .. f.Nom
-		b.BackgroundTransparency = bloque and 0.5 or 0
-		trait.Thickness = persoEdite.Finition == f.Nom and 3 or 0
+		b.Text = if bloque then ("🔒 %s · NIV %d"):format(f.Nom, f.Niveau) else f.Nom
+		b.BackgroundTransparency = if bloque then 0.5 else 0
+		b.BackgroundColor3 = if persoEdite.Finition == f.Nom then ROUGE_SOMBRE else CASE
+		trait.Thickness = if persoEdite.Finition == f.Nom then 2 else 0
 	end)
 	b.Activated:Connect(function()
-		if not verrouille(f.Niveau) then
-			persoEdite.Finition = f.Nom
-			rafraichir()
+		if f.Niveau > niveau() then
+			afficherStatut(("🔒 Débloqué au niveau %d (continue à drifter !)"):format(f.Niveau))
+			return
 		end
+		persoEdite.Finition = f.Nom
+		afficherStatut("Finition : " .. f.Nom, Color3.fromRGB(220, 220, 230))
+		rafraichir()
 	end)
 end
-table.insert(miseAJour, function()
-	enteteFinition.Text = "✨  FINITION  ·  " .. persoEdite.Finition
-end)
+local noteFinition = etiquette(pageFinitions, "(Une peinture premium a sa propre finition.)", UDim2.new(1, 0, 0, 14), UDim2.new(), GRIS_TEXTE, Enum.Font.GothamMedium)
+noteFinition.LayoutOrder = suivant()
 
-choixCouleur("💡  NÉONS SOUS LE KART", "Neon", Config.Neons)
-choixCouleur("🛞  JANTES", "Jantes")
-choixCouleur("💺  SIÈGE", "Siege")
-
--- 4) LES BANDES DE COURSE
-section("🏁  BANDES DE COURSE")
-local boutonBandes = bouton(liste, "", Color3.fromRGB(45, 45, 58), UDim2.new(1, -10, 0, 36))
-boutonBandes.LayoutOrder = suivant()
-table.insert(miseAJour, function()
-	boutonBandes.Text = persoEdite.BandesActives and "Bandes : OUI ✔" or "Bandes : NON ✕"
-end)
-boutonBandes.Activated:Connect(function()
-	persoEdite.BandesActives = not persoEdite.BandesActives
-	rafraichir()
-end)
-choixCouleur("     Couleur des bandes", "Bandes")
-
--- 5) L'AUTOCOLLANT
-local enteteAutocollant = section("⭐  AUTOCOLLANT")
-local grilleAutocollant = grille(Vector2.new(46, 46))
+-- PAGE DÉCO : néons, autocollant, numéro
+local pageDeco = page()
+section(pageDeco, "NÉONS SOUS LE KART")
+grilleCouleurs(pageDeco, "Neon", Config.Neons)
+section(pageDeco, "AUTOCOLLANT")
+local grilleAutocollant = grille(pageDeco, Vector2.new(58, 58))
 for i, a in ipairs(Config.Autocollants) do
-	local b = bouton(grilleAutocollant, a.Texte ~= "" and a.Texte or "∅", Color3.fromRGB(45, 45, 58), UDim2.new())
+	local b = bouton(grilleAutocollant, a.Texte ~= "" and a.Texte or "∅", CASE, UDim2.new())
 	b.LayoutOrder = i
-	local trait = contour(b, OR, 0)
+	local trait = contour(b, Color3.new(1, 1, 1), 0)
 	table.insert(miseAJour, function()
 		local bloque = a.Niveau > niveau()
-		b.Text = bloque and "🔒" or (a.Texte ~= "" and a.Texte or "∅")
-		b.BackgroundTransparency = bloque and 0.5 or 0
-		trait.Thickness = persoEdite.Autocollant == a.Nom and 3 or 0
+		b.Text = if bloque then "🔒" else (a.Texte ~= "" and a.Texte or "∅")
+		b.BackgroundTransparency = if bloque then 0.5 else 0
+		trait.Thickness = if persoEdite.Autocollant == a.Nom then 3 else 0
 	end)
 	b.Activated:Connect(function()
-		if not verrouille(a.Niveau) then
-			persoEdite.Autocollant = a.Nom
-			rafraichir()
+		if a.Niveau > niveau() then
+			afficherStatut(("🔒 Débloqué au niveau %d (continue à drifter !)"):format(a.Niveau))
+			return
 		end
+		persoEdite.Autocollant = a.Nom
+		rafraichir()
 	end)
 end
-table.insert(miseAJour, function()
-	enteteAutocollant.Text = "⭐  AUTOCOLLANT  ·  " .. persoEdite.Autocollant
-end)
-
--- 6) LE NUMÉRO
-section("#️⃣  NUMÉRO")
+section(pageDeco, "NUMÉRO")
 local ligneNumero = Instance.new("Frame")
 ligneNumero.LayoutOrder = suivant()
-ligneNumero.Size = UDim2.new(1, -10, 0, 40)
+ligneNumero.Size = UDim2.new(1, 0, 0, 44)
 ligneNumero.BackgroundTransparency = 1
-ligneNumero.Parent = liste
-local moins = bouton(ligneNumero, "−", Color3.fromRGB(45, 45, 58), UDim2.new(0, 50, 1, 0), UDim2.new(0, 0, 0, 0))
-local plus = bouton(ligneNumero, "+", Color3.fromRGB(45, 45, 58), UDim2.new(0, 50, 1, 0), UDim2.new(0, 160, 0, 0))
-local valeurNumero = Instance.new("TextLabel")
-valeurNumero.Size = UDim2.new(0, 90, 1, 0)
-valeurNumero.Position = UDim2.new(0, 60, 0, 0)
-valeurNumero.BackgroundTransparency = 1
-valeurNumero.Font = Enum.Font.GothamBlack
-valeurNumero.TextScaled = true
-valeurNumero.TextColor3 = Color3.new(1, 1, 1)
-valeurNumero.Parent = ligneNumero
+ligneNumero.Parent = pageDeco
+local moins = bouton(ligneNumero, "−", CASE, UDim2.new(0, 54, 1, 0), UDim2.new(0, 0, 0, 0))
+local plus = bouton(ligneNumero, "+", CASE, UDim2.new(0, 54, 1, 0), UDim2.new(0, 160, 0, 0))
+local valeurNumero = etiquette(ligneNumero, "", UDim2.new(0, 90, 1, 0), UDim2.new(0, 62, 0, 0), Color3.new(1, 1, 1))
+valeurNumero.TextXAlignment = Enum.TextXAlignment.Center
 table.insert(miseAJour, function()
 	valeurNumero.Text = tostring(persoEdite.Numero)
 end)
@@ -591,12 +735,78 @@ plus.Activated:Connect(function()
 	rafraichir()
 end)
 
--- Un peu d'espace en bas de la liste
-local espace = Instance.new("Frame")
-espace.LayoutOrder = suivant()
-espace.Size = UDim2.new(1, 0, 0, 10)
-espace.BackgroundTransparency = 1
-espace.Parent = liste
+-- Affichage des onglets
+local function majOnglets()
+	for i, b in ipairs(ongletsPrincipaux) do
+		b.BackgroundColor3 = if i == ongletActif then ROUGE else CASE
+	end
+	for i, b in ipairs(sousOnglets) do
+		b.BackgroundColor3 = if i == sousOngletActif then ROUGE_SOMBRE else CASE
+	end
+	rangeeSous.Visible = ongletActif == 1
+	for i, p in ipairs(pagesPeinture) do
+		p.Visible = ongletActif == 1 and i == sousOngletActif
+	end
+	pageFinitions.Visible = ongletActif == 2
+	pageDeco.Visible = ongletActif == 3
+	-- sans sous-onglets, la zone remonte un peu
+	zone.Position = UDim2.new(0, 12, 0, if ongletActif == 1 then 252 else 214)
+	zone.Size = UDim2.new(1, -24, 1, if ongletActif == 1 then -378 else -340)
+	zone.CanvasPosition = Vector2.zero
+end
+for i, b in ipairs(ongletsPrincipaux) do
+	b.Activated:Connect(function()
+		ongletActif = i
+		majOnglets()
+	end)
+end
+for i, b in ipairs(sousOnglets) do
+	b.Activated:Connect(function()
+		sousOngletActif = i
+		majOnglets()
+	end)
+end
+majOnglets()
+
+-- Ligne d'info + boutons du bas (RÉINITIALISER / ENREGISTRER / SORTIR)
+local barreStatut = Instance.new("Frame")
+barreStatut.Size = UDim2.new(1, -32, 0, 38)
+barreStatut.Position = UDim2.new(0, 16, 1, -120)
+barreStatut.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+barreStatut.Parent = panneau
+coins(barreStatut, 5)
+statut.Size = UDim2.new(1, -24, 0.56, 0)
+statut.Position = UDim2.new(0, 12, 0.22, 0)
+statut.BackgroundTransparency = 1
+statut.Font = Enum.Font.GothamBold
+statut.TextScaled = true
+statut.TextXAlignment = Enum.TextXAlignment.Left
+statut.TextColor3 = Color3.fromRGB(220, 220, 230)
+statut.Parent = barreStatut
+
+local boutonReinit = bouton(panneau, "RÉINIT.", Color3.fromRGB(32, 32, 38), UDim2.new(0.26, -8, 0, 52), UDim2.new(0, 16, 1, -70))
+local boutonEnregistrer = bouton(panneau, "ENREGISTRER", ROUGE_SOMBRE, UDim2.new(0.37, -8, 0, 52), UDim2.new(0.26, 14, 1, -70))
+local boutonSortir = bouton(panneau, "ROULER 🏁", ROUGE, UDim2.new(0.37, -14, 0, 52), UDim2.new(0.63, 12, 1, -70))
+contour(boutonEnregistrer, ROUGE, 1)
+
+boutonReinit.Activated:Connect(function()
+	persoEdite = table.clone(profil and profil.Perso or Config.PersoParDefaut)
+	afficherStatut("Retour au look enregistré", Color3.fromRGB(220, 220, 230))
+	rafraichir()
+end)
+
+rafraichir = function()
+	for _, f in ipairs(miseAJour) do
+		f()
+	end
+	local k = Config.Karts[persoEdite.Kart]
+	sousTitre.Text = string.upper(k and k.Nom or "") .. ("  ·  NIV %d"):format(niveau())
+	soldePieces.Text = ("💰 %d"):format(profil and profil.Pieces or 0)
+	if menuOuvert then
+		majApercu(persoEdite)
+	end
+end
+local _ = sousTitreNiveau
 
 ---------------------------------------------------------------------
 -- OUVRIR / FERMER / ENREGISTRER
@@ -617,10 +827,12 @@ local function ouvrir()
 	controles:Disable()
 	camera.CameraType = Enum.CameraType.Scriptable
 	gui.Enabled = true
-	statut.Text = ""
-	-- Le panneau arrive en glissant depuis la gauche
-	panneau.Position = UDim2.new(0, -440, 0, 20)
-	TweenService:Create(panneau, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0, 20, 0, 20) }):Play()
+	local k = Config.Karts[persoEdite.Kart]
+	statut.Text = ("%s · look actuel"):format(k and k.Nom or "Kart")
+	statut.TextColor3 = Color3.fromRGB(220, 220, 230)
+	-- Le panneau arrive en glissant depuis la droite
+	panneau.Position = UDim2.new(1, 480, 0.5, 0)
+	TweenService:Create(panneau, TweenInfo.new(0.55, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.new(1, -24, 0.5, 0) }):Play()
 	rafraichir()
 end
 

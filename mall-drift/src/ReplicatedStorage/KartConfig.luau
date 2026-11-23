@@ -78,7 +78,20 @@ Config.Karts = {
 		VitesseMax = 74, Acceleration = 48, Freinage = 85,
 		Rotation = 2.8, RotationDrift = 2.3, Adherence = 3.3, AdherenceDrift = 0.28, Boost = 26,
 	},
+	-- ✨ KART EXCLUSIF : seulement en Robux (pas de niveau requis). Carrosserie
+	-- arc-en-ciel animée, ailes néon, corne dorée, paillettes d'étoiles et
+	-- traînée arc-en-ciel. Crée un « Produit pour développeurs » et mets son numéro ici.
+	Galaxie = {
+		Nom = "Licorne Galaxie", Niveau = 1, Ordre = 5,
+		Exclusif = true, ProduitId = 0, PrixAffiche = "R$ 399",
+		Description = "ÉDITION EXCLUSIVE ✨ Arc-en-ciel animé, ailes néon, paillettes d'étoiles !",
+		VitesseMax = 76, Acceleration = 50, Freinage = 85,
+		Rotation = 2.9, RotationDrift = 2.4, Adherence = 3.2, AdherenceDrift = 0.26, Boost = 28,
+	},
 }
+for id, k in pairs(Config.Karts) do
+	k.Kart = id -- (pratique pour les achats)
+end
 
 ---------------------------------------------------------------------
 -- PERSONNALISATION (le garage VIP)
@@ -125,9 +138,17 @@ Config.PeinturesPremium = {
 	{ Nom = "Rouge bonbon", Couleur = Color3.fromRGB(200, 10, 30), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.4, ProduitId = 0, PrixAffiche = "R$ 29" },
 	{ Nom = "Cyan néon", Couleur = Color3.fromRGB(40, 230, 255), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 39" },
 	{ Nom = "Vert toxique", Couleur = Color3.fromRGB(110, 255, 60), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 39" },
+	-- ✦ Couleurs EXCLUSIVES
+	{ Nom = "Licorne pastel", Couleur = Color3.fromRGB(255, 170, 230), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.3, ProduitId = 0, PrixAffiche = "R$ 99", ArcEnCiel = true, Pastel = true, Exclusive = true },
+	{ Nom = "Galaxie", Couleur = Color3.fromRGB(95, 40, 200), Materiau = Enum.Material.Glass, Reflet = 0.5, ProduitId = 0, PrixAffiche = "R$ 79", Exclusive = true },
+	{ Nom = "Lave", Couleur = Color3.fromRGB(255, 90, 20), Materiau = Enum.Material.Neon, Reflet = 0, ProduitId = 0, PrixAffiche = "R$ 59", Exclusive = true },
+	{ Nom = "Glace polaire", Couleur = Color3.fromRGB(170, 225, 255), Materiau = Enum.Material.Ice, Reflet = 0.3, ProduitId = 0, PrixAffiche = "R$ 59", Exclusive = true },
+	{ Nom = "Carbone", Couleur = Color3.fromRGB(35, 35, 40), Materiau = Enum.Material.DiamondPlate, Reflet = 0.15, ProduitId = 0, PrixAffiche = "R$ 49", Exclusive = true },
+	{ Nom = "Bonbon rose", Couleur = Color3.fromRGB(255, 70, 170), Materiau = Enum.Material.SmoothPlastic, Reflet = 0.45, ProduitId = 0, PrixAffiche = "R$ 39", Exclusive = true },
 }
 
 Config.Boutique = {
+	{ Id = "KartGalaxie", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
 	{ Id = "PackDemarrage", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats", Pieces = 1000, Premium = "Or 24 carats", ProduitId = 0, PrixAffiche = "R$ 45", Promo = true },
 	{ Id = "Pieces1000", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
 	{ Id = "Pieces5000", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
@@ -347,23 +368,77 @@ Config.Camera = {
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)
-	-- L'intérieur du mall reste bien éclairé dans les deux cas (comme un vrai
-	-- centre commercial) : c'est surtout le ciel et le parking qui changent.
-	-- Lumière naturelle : ni trop sombre, ni éblouissante.
-	Lighting.EnvironmentDiffuseScale = 0.4
-	Lighting.EnvironmentSpecularScale = 0.6 -- reflets légers sur le carrelage
-	Lighting.ExposureCompensation = 0
+	-- Rendu « poussé » : à utiliser avec Lighting.Technology = Future (réglé dans
+	-- le fichier .rbxlx). Ombres douces, reflets sur le carrelage, brume de Dubaï.
+	-- L'intérieur du mall reste bien éclairé jour et nuit (comme un vrai centre).
+	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = 0.25
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 1 -- vrais reflets sur le sol et les karts
+	Lighting.GeographicLatitude = 25 -- Dubaï
+	local atmo = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+	atmo.Parent = Lighting
+	local ciel = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
+	ciel.SunAngularSize = 14
+	ciel.MoonAngularSize = 9
+	ciel.StarCount = 3500
+	ciel.Parent = Lighting
 	if nuit then
 		Lighting.ClockTime = 21.5
-		Lighting.Brightness = 1
-		Lighting.Ambient = Color3.fromRGB(95, 95, 108)
-		Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 90)
+		Lighting.Brightness = 1.2
+		Lighting.ExposureCompensation = 0.1
+		Lighting.Ambient = Color3.fromRGB(70, 72, 90)
+		Lighting.OutdoorAmbient = Color3.fromRGB(60, 62, 92)
+		Lighting.ColorShift_Top = Color3.fromRGB(120, 140, 255)
+		Lighting.ColorShift_Bottom = Color3.fromRGB(40, 30, 80)
+		atmo.Density = 0.32
+		atmo.Offset = 0.1
+		atmo.Color = Color3.fromRGB(70, 80, 130)
+		atmo.Decay = Color3.fromRGB(40, 30, 90)
+		atmo.Glare = 0
+		atmo.Haze = 1.2
 	else
-		Lighting.ClockTime = 14
-		Lighting.Brightness = 2
-		Lighting.Ambient = Color3.fromRGB(118, 116, 112)
-		Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+		Lighting.ClockTime = 15.2 -- soleil un peu bas : ombres longues, lumière dorée
+		Lighting.Brightness = 3
+		Lighting.ExposureCompensation = -0.1
+		Lighting.Ambient = Color3.fromRGB(105, 100, 95)
+		Lighting.OutdoorAmbient = Color3.fromRGB(135, 128, 118)
+		Lighting.ColorShift_Top = Color3.fromRGB(255, 225, 170)
+		Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
+		atmo.Density = 0.3
+		atmo.Offset = 0.25
+		atmo.Color = Color3.fromRGB(235, 205, 160) -- brume de sable
+		atmo.Decay = Color3.fromRGB(150, 110, 75)
+		atmo.Glare = 0.4
+		atmo.Haze = 1.6
 	end
+	-- Effets d'image (créés une seule fois, réglés selon jour / nuit)
+	local function effet(classe: string, nom: string): any
+		local e = Lighting:FindFirstChild(nom)
+		if not e then
+			e = Instance.new(classe)
+			e.Name = nom
+			e.Parent = Lighting
+		end
+		return e
+	end
+	local bloom = effet("BloomEffect", "HaloMallDrift")
+	bloom.Intensity = if nuit then 0.9 else 0.55
+	bloom.Size = 28
+	bloom.Threshold = if nuit then 0.85 else 1.1 -- les néons et enseignes « brillent »
+	local rayons = effet("SunRaysEffect", "RayonsMallDrift")
+	rayons.Intensity = if nuit then 0 else 0.07
+	rayons.Spread = 0.75
+	local cc = effet("ColorCorrectionEffect", "CouleursMallDrift")
+	cc.Saturation = if nuit then 0.2 else 0.15
+	cc.Contrast = 0.12
+	cc.Brightness = if nuit then 0.02 else 0
+	cc.TintColor = if nuit then Color3.fromRGB(235, 238, 255) else Color3.fromRGB(255, 248, 238)
+	local flou = effet("DepthOfFieldEffect", "ProfondeurMallDrift")
+	flou.FarIntensity = 0.12 -- le fond lointain se floute un peu (effet « caméra »)
+	flou.FocusDistance = 60
+	flou.InFocusRadius = 70
+	flou.NearIntensity = 0
 	Lighting:SetAttribute("Nuit", nuit)
 end
 

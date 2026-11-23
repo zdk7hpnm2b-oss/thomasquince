@@ -62,6 +62,46 @@ local function label(nom: string, parent: Instance, taille: UDim2, position: UDi
 	return l
 end
 
+-- Lignes de vitesse sur les bords de l'écran (quand on va vite / en boost)
+local lignesVitesse = Instance.new("Frame")
+lignesVitesse.Name = "LignesVitesse"
+lignesVitesse.Size = UDim2.fromScale(1, 1)
+lignesVitesse.BackgroundTransparency = 1
+lignesVitesse.ZIndex = 1
+lignesVitesse.Parent = gui
+local lignes = {}
+do
+	local alea = Random.new(7)
+	for i = 1, 28 do
+		local angle = (i / 28) * math.pi * 2 + alea:NextNumber(-0.08, 0.08)
+		local l = Instance.new("Frame")
+		l.AnchorPoint = Vector2.new(0.5, 0.5)
+		l.BackgroundColor3 = Color3.new(1, 1, 1)
+		l.BorderSizePixel = 0
+		l.Rotation = math.deg(angle)
+		l.BackgroundTransparency = 1
+		l.Parent = lignesVitesse
+		local degradeLigne = Instance.new("UIGradient")
+		degradeLigne.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) })
+		degradeLigne.Parent = l
+		table.insert(lignes, { cadre = l, angle = angle, phase = alea:NextNumber(0, 1), vitesse = alea:NextNumber(1.5, 3) })
+	end
+end
+local function majLignesVitesse(force: number, dt: number)
+	lignesVitesse.Visible = force > 0.02
+	if not lignesVitesse.Visible then
+		return
+	end
+	for _, l in ipairs(lignes) do
+		l.phase = (l.phase + dt * l.vitesse * (0.6 + force)) % 1
+		local rayon = 0.42 + l.phase * 0.35
+		local cadre = l.cadre
+		cadre.Position = UDim2.fromScale(0.5 + math.cos(l.angle) * rayon * 0.75, 0.5 + math.sin(l.angle) * rayon)
+		cadre.Size = UDim2.new(0, 60 + 160 * force, 0, 2)
+		cadre.BackgroundTransparency = 1 - force * 0.55 * math.sin(l.phase * math.pi)
+	end
+end
+
 -- Écran des éclaboussures (en dessous du reste)
 local ecranEau = Instance.new("Frame")
 ecranEau.Name = "Eclaboussures"
@@ -296,9 +336,9 @@ end
 remotes:WaitForChild("ProfilMisAJour").OnClientEvent:Connect(afficherProfil)
 task.spawn(function()
 	afficherProfil(remotes:WaitForChild("ObtenirProfil"):InvokeServer())
-	-- On attend la fin de l'intro cinématique avant d'afficher les conseils
+	-- On attend la fin du tuto avant d'afficher les conseils
 	local debut = os.clock()
-	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 12 do
+	while not joueur:GetAttribute("IntroFinie") and os.clock() - debut < 300 do
 		task.wait(0.2)
 	end
 	if TYPE_PLACE == "Lobby" or TYPE_PLACE == "ToutEnUn" then
@@ -725,7 +765,7 @@ local function sortirDuKart()
 	if drift.actif then
 		terminerDrift(true)
 	end
-	for _, nom in ipairs({ "TracePneu", "Fumee", "Eclaboussures" }) do
+	for _, nom in ipairs({ "TracePneu", "Fumee", "Eclaboussures", "Etincelles", "FlammeBoost", "LumiereBoost" }) do
 		for _, e in ipairs(effets(nom)) do
 			(e :: any).Enabled = false
 		end
@@ -745,6 +785,7 @@ local function sortirDuKart()
 	end
 	arreterCamera()
 	camera.FieldOfView = 70
+	majLignesVitesse(0, 0)
 	driftAppuye = false
 	hud.Visible = false
 	kart = nil
@@ -772,6 +813,9 @@ local function entrerDansKart(siege: Seat)
 	kart.trails = effets("TracePneu")
 	kart.fumees = effets("Fumee")
 	kart.eaux = effets("Eclaboussures")
+	kart.etincelles = effets("Etincelles")
+	kart.flammes = effets("FlammeBoost")
+	kart.lumieresBoost = effets("LumiereBoost")
 	kart.sons.moteur = creerSon(Config.Sons.Moteur, true)
 	kart.sons.drift = creerSon(Config.Sons.Drift, true)
 	kart.sons.eau = creerSon(Config.Sons.Eclaboussure, false)
@@ -1141,6 +1185,22 @@ RunService.Heartbeat:Connect(function(dt: number)
 	for _, e in ipairs(kart.eaux) do
 		e.Enabled = gerbes
 	end
+	-- Étincelles : bleues, puis orange (2 étoiles), puis violettes (3 étoiles)
+	local etoilesDrift = if drift.actif then nombreEtoiles(math.floor(drift.points)) else 0
+	local couleurEtincelles = if etoilesDrift >= 3 then Color3.fromRGB(200, 90, 255)
+		elseif etoilesDrift >= 2 then Color3.fromRGB(255, 150, 40)
+		else Color3.fromRGB(90, 170, 255)
+	for _, e in ipairs(kart.etincelles) do
+		e.Enabled = drift.actif and auSol and vitesse > 20
+		e.Color = ColorSequence.new(couleurEtincelles)
+	end
+	for _, f in ipairs(kart.flammes) do
+		f.Enabled = tempsBoost > 0
+	end
+	for _, l in ipairs(kart.lumieresBoost) do
+		l.Enabled = tempsBoost > 0
+	end
+	majLignesVitesse(math.clamp((vitesse - 45) / 40, 0, 0.7) + (if tempsBoost > 0 then 0.3 else 0), dt)
 
 	local maintenant = os.clock()
 	if mouille and vitesse > 10 then
@@ -1198,7 +1258,7 @@ end)
 ---------------------------------------------------------------------
 -- NÉONS ARC-EN-CIEL : ils changent de couleur en continu
 ---------------------------------------------------------------------
-local kartsArcEnCiel: { { parties: { BasePart }, lumieres: { PointLight } } } = {}
+local kartsArcEnCiel: { { parties: { BasePart }, lumieres: { PointLight }, pastel: boolean? } } = {}
 local gyrosPolice: { BasePart } = {}
 local prochainScan = 0
 
@@ -1216,6 +1276,27 @@ local function scannerArcEnCiel()
 	if apercuGarage then
 		table.insert(candidats, apercuGarage)
 	end
+	-- Les karts exposés dans le garage (dont le kart exclusif) et son socle lumineux
+	local carteMall = workspace:FindFirstChild("GoldenMall")
+	local garageVIP = carteMall and carteMall:FindFirstChild("GarageVIP")
+	if garageVIP then
+		local socles = { parties = {}, lumieres = {} }
+		for _, m in ipairs(garageVIP:GetChildren()) do
+			if m:IsA("Model") and string.sub(m.Name, 1, 8) == "Vitrine_" then
+				table.insert(candidats, m)
+			elseif m:IsA("BasePart") and m:GetAttribute("ArcEnCiel") then
+				table.insert(socles.parties, m)
+				for _, l in ipairs(m:GetChildren()) do
+					if l:IsA("PointLight") then
+						table.insert(socles.lumieres, l)
+					end
+				end
+			end
+		end
+		if #socles.parties > 0 then
+			table.insert(kartsArcEnCiel, socles)
+		end
+	end
 	for _, m in ipairs(candidats) do
 		if m:GetAttribute("Police") then
 			for _, d in ipairs(m:GetDescendants()) do
@@ -1225,13 +1306,23 @@ local function scannerArcEnCiel()
 			end
 		end
 		if m:GetAttribute("CarrosserieArcEnCiel") then
-			local entree = { parties = {}, lumieres = {} }
+			local entree = { parties = {}, lumieres = {}, pastel = m:GetAttribute("ArcEnCielPastel") == true }
 			for _, d in ipairs(m:GetDescendants()) do
 				if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Carrosserie" then
 					table.insert(entree.parties, d)
 				end
 			end
 			table.insert(kartsArcEnCiel, entree)
+		end
+		-- Pièces décoratives toujours arc-en-ciel (ailes du kart exclusif...)
+		local deco = { parties = {}, lumieres = {}, pastel = true }
+		for _, d in ipairs(m:GetDescendants()) do
+			if d:IsA("BasePart") and d:GetAttribute("ArcEnCiel") then
+				table.insert(deco.parties, d)
+			end
+		end
+		if #deco.parties > 0 then
+			table.insert(kartsArcEnCiel, deco)
 		end
 		if m:GetAttribute("NeonArcEnCiel") then
 			local entree = { parties = {}, lumieres = {} }
@@ -1262,11 +1353,14 @@ RunService.Heartbeat:Connect(function()
 	if #kartsArcEnCiel == 0 then
 		return
 	end
-	local couleur = Color3.fromHSV((maintenant * 0.25) % 1, 0.9, 1)
+	-- Une « vague » de couleurs qui parcourt le kart (chaque pièce est un peu décalée)
+	local teinte = maintenant * 0.25
 	for _, k in ipairs(kartsArcEnCiel) do
-		for _, p in ipairs(k.parties) do
-			p.Color = couleur
+		local saturation = if k.pastel then 0.5 else 0.9
+		for i, p in ipairs(k.parties) do
+			p.Color = Color3.fromHSV((teinte + i * 0.06) % 1, saturation, 1)
 		end
+		local couleur = Color3.fromHSV(teinte % 1, 0.9, 1)
 		for _, l in ipairs(k.lumieres) do
 			l.Color = couleur
 		end

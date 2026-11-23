@@ -14,6 +14,19 @@ Ce prototype contient :
   (on voit le volant, les mains et les jambes), elle penche dans les drifts et tremble à pleine
   vitesse ; **néons sous le kart** qui éclairent le sol ; petit écran sur le volant ; plafond blanc
   avec puits de lumière et spots, **grand carrelage brillant**, magasins fermés par des rideaux métalliques
+- **📖 Tuto interactif** (à la toute première partie, à la place de la cinématique) : accélérer, tourner,
+  drifter (il faut vraiment appuyer sur les touches, elles s'allument), étoiles et boost, sol mouillé, police,
+  touches utiles, garage et menu. Le serveur retient qu'il a été vu ; bouton **📖 TUTO** dans le menu pour le revoir
+- **🦄 Kart exclusif « Licorne Galaxie »** : uniquement en Robux (`Config.Karts.Galaxie.ProduitId`, ou l'offre
+  `KartGalaxie` du magasin) : carrosserie arc-en-ciel animée, ailes néon, corne dorée, aileron lumineux,
+  paillettes d'étoiles et traînée arc-en-ciel. Exposé dans le garage sur un socle lumineux
+- **Graphismes poussés** : éclairage *Future* (réglé dans le .rbxlx ; sinon Lighting > Technology = Future),
+  brume de sable de Dubaï, rayons du soleil, halo des néons et des enseignes, sol en marbre poli, spots avec
+  ombres, rubans LED dorés sous les balcons ; sur le kart : phares, étincelles de drift (bleu → orange →
+  violet selon les étoiles), flamme et lumière de boost, lignes de vitesse à l'écran
+- **Garage façon « atelier de course »** : panneau sombre à droite, liseré rouge, un onglet par kart,
+  PEINTURE (carrosserie / jantes / siège / bandes) · FINITIONS · DÉCO, cases avec leur prix, peintures
+  premium et **✦ couleurs exclusives** (Licorne pastel, Galaxie, Lave, Glace polaire, Carbone, Bonbon rose)
 - **💰 Pièces et peintures** : les pièces se gagnent en driftant (1 pour 20 points) et en jouant les modes.
   Au garage, les couleurs s'achètent avec des pièces (5 à 150 💰) et les **💎 peintures premium**
   (Chrome miroir, Or 24 carats, Arc-en-ciel animé, Rouge bonbon, Cyan néon, Vert toxique) en Robux.
@@ -135,7 +148,7 @@ Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et c
 |---|---|
 | `KartController` | [`src/StarterPlayerScripts/KartController.client.luau`](src/StarterPlayerScripts/KartController.client.luau) |
 | `GarageUI` | [`src/StarterPlayerScripts/GarageUI.client.luau`](src/StarterPlayerScripts/GarageUI.client.luau) |
-| `Intro` | [`src/StarterPlayerScripts/Intro.client.luau`](src/StarterPlayerScripts/Intro.client.luau) |
+| `Tutoriel` | [`src/StarterPlayerScripts/Tutoriel.client.luau`](src/StarterPlayerScripts/Tutoriel.client.luau) |
 | `SecuriteUI` | [`src/StarterPlayerScripts/SecuriteUI.client.luau`](src/StarterPlayerScripts/SecuriteUI.client.luau) |
 | `PartieUI` | [`src/StarterPlayerScripts/PartieUI.client.luau`](src/StarterPlayerScripts/PartieUI.client.luau) |
 
@@ -260,7 +273,7 @@ mall-drift/
     └── StarterPlayerScripts/
         ├── KartController.client.luau       (LocalScript) conduite, drift, score
         ├── GarageUI.client.luau             (LocalScript) menu du Garage VIP
-        ├── Intro.client.luau                (LocalScript) intro cinématique
+        ├── Tutoriel.client.luau             (LocalScript) tuto de pilotage (1re partie)
         ├── SecuriteUI.client.luau           (LocalScript) alertes de la police
         └── PartieUI.client.luau             (LocalScript) écrans du mode en ligne
 ```

@@ -37,8 +37,9 @@ function KartBuilder.Nettoyer(perso: any, niveau: number, possessions: any?): { 
 		return c and c.Niveau <= niveau and ((c.Prix or 0) == 0 or couleursAchetees[c.Nom] == true)
 	end
 
+	local kartsAchetes = type(achats.Karts) == "table" and achats.Karts or {}
 	local kart = Config.Karts[perso.Kart]
-	if kart and kart.Niveau <= niveau then
+	if kart and kart.Niveau <= niveau and (not kart.Exclusif or kartsAchetes[perso.Kart] == true) then
 		propre.Kart = perso.Kart
 	end
 	for _, champ in ipairs({ "Carrosserie", "Jantes", "Siege", "Bandes" }) do
@@ -81,7 +82,10 @@ function KartBuilder.Peindre(modele: Model, perso: { [string]: any })
 	end
 	local finition = Config.Finition(perso.Finition) or Config.Finitions[1]
 	local premium = type(perso.Premium) == "string" and Config.PeinturePremium(perso.Premium) or nil
-	modele:SetAttribute("CarrosserieArcEnCiel", premium ~= nil and premium.ArcEnCiel == true)
+	-- Arc-en-ciel animé : peinture premium « Arc-en-ciel » / « Licorne pastel », ou le kart exclusif Galaxie
+	local kartGalaxie = perso.Kart == "Galaxie" and not perso.Police
+	modele:SetAttribute("CarrosserieArcEnCiel", (premium ~= nil and premium.ArcEnCiel == true) or (kartGalaxie and premium == nil))
+	modele:SetAttribute("ArcEnCielPastel", premium ~= nil and premium.Pastel == true)
 	local neon = Config.Neon(perso.Neon) or Config.Neons[2]
 	local sansNeon = neon.Nom == "Aucun"
 	modele:SetAttribute("NeonArcEnCiel", neon.Nom == "Arc-en-ciel")
@@ -312,6 +316,72 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 		end
 	end
 
+	-- ✨ KART EXCLUSIF « Licorne Galaxie » : ailes néon, corne dorée, grand aileron,
+	-- étoile qui brille, paillettes et traînée arc-en-ciel
+	if typeKart == "Galaxie" then
+		for _, cote in ipairs({ -1, 1 }) do
+			for i, decal in ipairs({ 0, 0.55, 1.1 }) do
+				local aile = piece("AileGalaxie", Vector3.new(0.08, 0.35, 2.4 - decal), CFrame.new(cote * (1.95 + decal * 0.5), 0.55 + decal * 0.45, 0.6 + decal * 0.3) * CFrame.Angles(math.rad(-12), 0, math.rad(cote * -(35 + i * 8))), Color3.fromRGB(255, 140, 230), nil, Enum.Material.Neon)
+				aile.Transparency = 0.15
+				aile:SetAttribute("ArcEnCiel", true)
+			end
+		end
+		local corne = arrondi("CorneLicorne", Vector3.new(0.32, 1.5, 0.32), CFrame.new(0, 1.05, -2.55) * CFrame.Angles(math.rad(-30), 0, 0), OR, nil, Enum.Material.Foil)
+		corne.Reflectance = 0.4
+		for _, cote in ipairs({ -1, 1 }) do
+			piece("SupportAileron", Vector3.new(0.18, 1.6, 0.35), CFrame.new(cote * 1.2, 1.7, 3.05), Color3.fromRGB(250, 250, 255), nil, Enum.Material.SmoothPlastic)
+		end
+		local aileron = piece("AileronGalaxie", Vector3.new(4.4, 0.18, 1.1), CFrame.new(0, 2.55, 3.15) * CFrame.Angles(math.rad(8), 0, 0), Color3.fromRGB(150, 90, 255), nil, Enum.Material.Neon)
+		aileron:SetAttribute("ArcEnCiel", true)
+		local etoile = arrondi("EtoileGalaxie", Vector3.new(0.7, 0.7, 0.7), CFrame.new(0, 2.95, 3.15), Color3.fromRGB(255, 240, 150), nil, Enum.Material.Neon)
+		local lumiereEtoile = Instance.new("PointLight")
+		lumiereEtoile.Color = Color3.fromRGB(255, 160, 240)
+		lumiereEtoile.Range = 10
+		lumiereEtoile.Brightness = 2
+		lumiereEtoile.Parent = etoile
+		local paillettes = Instance.new("ParticleEmitter")
+		paillettes.Name = "PaillettesGalaxie"
+		paillettes.LightEmission = 1
+		paillettes.LightInfluence = 0
+		paillettes.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 220)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(140, 220, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 240, 140)),
+		})
+		paillettes.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		paillettes.Lifetime = NumberRange.new(0.6, 1.2)
+		paillettes.Speed = NumberRange.new(1, 3)
+		paillettes.SpreadAngle = Vector2.new(180, 180)
+		paillettes.RotSpeed = NumberRange.new(-180, 180)
+		paillettes.Rate = 25
+		paillettes.Parent = etoile
+		if not apercu then
+			local a0 = Instance.new("Attachment")
+			a0.Position = Vector3.new(-1.6, 0.4, 3.2)
+			a0.Parent = chassis
+			local a1 = Instance.new("Attachment")
+			a1.Position = Vector3.new(1.6, 0.4, 3.2)
+			a1.Parent = chassis
+			local trainee = Instance.new("Trail")
+			trainee.Name = "TraineeArcEnCiel"
+			trainee.Attachment0 = a0
+			trainee.Attachment1 = a1
+			trainee.LightEmission = 0.8
+			trainee.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 120)),
+				ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 200, 60)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 230, 120)),
+				ColorSequenceKeypoint.new(0.75, Color3.fromRGB(80, 170, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+			})
+			trainee.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+			trainee.Lifetime = 0.7
+			trainee.MinLength = 0.2
+			trainee.FaceCamera = true
+			trainee.Parent = chassis
+		end
+	end
+
 	-- Kart de police (mode en ligne) : mât + gyrophare rouge et bleu
 	if perso.Police then
 		piece("MatGyrophare", Vector3.new(0.2, 1.8, 0.2), CFrame.new(0, 1.3, 2.7), Color3.fromRGB(40, 40, 45), nil, Enum.Material.Metal)
@@ -405,7 +475,69 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 			eau.Rate = 80
 			eau.Enabled = false
 			eau.Parent = attEffet
+
+			-- Étincelles du drift (la couleur change avec le niveau : bleu, orange, violet)
+			local etincelles = Instance.new("ParticleEmitter")
+			etincelles.Name = "Etincelles"
+			etincelles.LightEmission = 1
+			etincelles.LightInfluence = 0
+			etincelles.Color = ColorSequence.new(Color3.fromRGB(90, 170, 255))
+			etincelles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.22), NumberSequenceKeypoint.new(1, 0) })
+			etincelles.Lifetime = NumberRange.new(0.15, 0.35)
+			etincelles.Speed = NumberRange.new(10, 20)
+			etincelles.SpreadAngle = Vector2.new(35, 35)
+			etincelles.Acceleration = Vector3.new(0, -40, 0)
+			etincelles.EmissionDirection = Enum.NormalId.Back
+			etincelles.Drag = 3
+			etincelles.Rate = 90
+			etincelles.Enabled = false
+			etincelles.Parent = attEffet
 		end
+
+		-- Flamme et lumière du BOOST (derrière le kart)
+		local attBoost = Instance.new("Attachment")
+		attBoost.Name = "Echappement"
+		attBoost.Position = Vector3.new(0, 0.3, 3.3)
+		attBoost.Parent = chassis
+		local flamme = Instance.new("ParticleEmitter")
+		flamme.Name = "FlammeBoost"
+		flamme.LightEmission = 1
+		flamme.LightInfluence = 0
+		flamme.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 220, 255)),
+			ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 160, 40)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 20)),
+		})
+		flamme.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0.1) })
+		flamme.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+		flamme.Lifetime = NumberRange.new(0.12, 0.25)
+		flamme.Speed = NumberRange.new(14, 20)
+		flamme.SpreadAngle = Vector2.new(8, 8)
+		flamme.EmissionDirection = Enum.NormalId.Back
+		flamme.Rate = 140
+		flamme.Enabled = false
+		flamme.Parent = attBoost
+		local lumiereBoost = Instance.new("PointLight")
+		lumiereBoost.Name = "LumiereBoost"
+		lumiereBoost.Color = Color3.fromRGB(255, 150, 50)
+		lumiereBoost.Range = 14
+		lumiereBoost.Brightness = 3
+		lumiereBoost.Enabled = false
+		lumiereBoost.Parent = attBoost
+
+		-- Phares : éclairent la piste devant le kart (surtout la nuit)
+		local attPhares = Instance.new("Attachment")
+		attPhares.Name = "Phares"
+		attPhares.Position = Vector3.new(0, 0.4, -3.4)
+		attPhares.Parent = chassis
+		local phare = Instance.new("SpotLight")
+		phare.Name = "Phare"
+		phare.Face = Enum.NormalId.Front
+		phare.Angle = 55
+		phare.Range = 40
+		phare.Brightness = 2
+		phare.Color = Color3.fromRGB(235, 245, 255)
+		phare.Parent = attPhares
 	end
 
 	KartBuilder.Peindre(modele, perso)

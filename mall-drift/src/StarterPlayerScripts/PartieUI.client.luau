@@ -472,8 +472,8 @@ end
 -- La carte promo (Pack de démarrage)
 local offrePromo = nil
 for _, offre in ipairs(Config.Boutique or {}) do
-	if offre.Promo then
-		offrePromo = offre
+	if offre.Promo and not offrePromo then
+		offrePromo = offre -- (la 1re offre « Promo » : le kart exclusif)
 	end
 end
 local cartePromo = Instance.new("TextButton")
@@ -542,7 +542,7 @@ Instance.new("UICorner", boutonFermerMenu).CornerRadius = UDim.new(0, 12)
 local MarketplaceService = game:GetService("MarketplaceService")
 local panneauMagasin = Instance.new("Frame")
 panneauMagasin.AnchorPoint = Vector2.new(0.5, 0.5)
-panneauMagasin.Size = UDim2.new(0, 520, 0, 380)
+panneauMagasin.Size = UDim2.new(0, 520, 0, 460)
 panneauMagasin.Position = UDim2.fromScale(0.62, 0.5)
 panneauMagasin.BackgroundColor3 = Color3.fromRGB(16, 16, 22)
 panneauMagasin.Visible = false
@@ -643,6 +643,24 @@ local function ouvrirMagasin()
 	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 end
 carteMagasin.Activated:Connect(ouvrirMagasin)
+
+-- Bouton « 📖 TUTO » (en haut à droite) : revoir le tuto de pilotage
+local boutonTuto = Instance.new("TextButton")
+boutonTuto.AnchorPoint = Vector2.new(1, 0)
+boutonTuto.Size = UDim2.new(0, 150, 0, 54)
+boutonTuto.Position = UDim2.new(1, -90, 0, 60)
+boutonTuto.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+boutonTuto.TextColor3 = Color3.new(1, 1, 1)
+boutonTuto.Font = Enum.Font.GothamBlack
+boutonTuto.TextScaled = true
+boutonTuto.Text = "📖 TUTO"
+boutonTuto.ZIndex = 22
+boutonTuto.Parent = fondMenu
+Instance.new("UICorner", boutonTuto).CornerRadius = UDim.new(0, 12)
+local margeTuto = Instance.new("UIPadding")
+margeTuto.PaddingTop = UDim.new(0, 12)
+margeTuto.PaddingBottom = UDim.new(0, 12)
+margeTuto.Parent = boutonTuto
 cartePromo.Activated:Connect(ouvrirMagasin)
 
 -- EN FOND DU MENU : la partie EN DIRECT. La caméra suit un kart qui roule
@@ -1073,4 +1091,9 @@ Partie.OnClientEvent:Connect(function(info)
 			montrerClassement(if info.roi then ("👑 ROI DU DRIFT : %s"):format(info.roi) else "🏆 CLASSEMENT DES DRIFTS", info.classement, 5.5)
 		end
 	end
+end)
+
+boutonTuto.Activated:Connect(function()
+	ouvrirMenu(false)
+	joueur:SetAttribute("RevoirTuto", true) -- le script Tutoriel s'en occupe
 end)
