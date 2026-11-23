@@ -1041,7 +1041,7 @@ Config.Partie = {
 	DureeBattle = 60, -- 1 minute (mets 30 pour des parties encore plus courtes)
 	-- BOTS DE TEST : s'il manque des joueurs, des bots complètent la partie
 	-- (pratique pour tester seul). Mets 0 pour les désactiver.
-	BotsTest = 1,
+	BotsTest = 1, -- (seulement dans Studio : dans le jeu publié, jamais de bots en ligne)
 	VitesseBotPolice = 40, -- vitesse d'un bot policier (ton kart Basique monte à 50)
 	VitesseBotFugitif = 36, -- vitesse d'un bot fugitif
 }
@@ -4122,7 +4122,9 @@ local INTERMISSION = P.Intermission or 20
 local DUREE = P.DureeManche or 300
 local AVANCE = P.AvanceFugitifs or 8
 local DISTANCE_ARRESTATION = P.DistanceArrestation or 8
-local BOTS_TEST = P.BotsTest or 0
+-- Bots de test : SEULEMENT dans Studio. Dans le jeu publié, les parties en ligne
+-- se jouent uniquement entre vraies personnes.
+local BOTS_TEST = if game:GetService("RunService"):IsStudio() then (P.BotsTest or 0) else 0
 local SOL = 1
 local HAUTEUR_ETAGE = SOL + 25
 
@@ -5452,7 +5454,8 @@ task.spawn(function()
 		end
 		-- Assez de monde ? (ou un joueur seul depuis 8 s, avec les bots de test)
 		local plusAncien = file[1] and entreeDansLaFile[file[1]] or os.clock()
-		local avecBots = (P.BotsTest or 0) > 0 and #file >= 1 and os.clock() - plusAncien >= ATTENTE_BOTS
+		-- (bots de test seulement dans Studio : en ligne, que des vraies personnes)
+		local avecBots = game:GetService("RunService"):IsStudio() and (P.BotsTest or 0) > 0 and #file >= 1 and os.clock() - plusAncien >= ATTENTE_BOTS
 		if #file >= JOUEURS_MIN or avecBots then
 			local groupe = {}
 			for i = 1, math.min(#file, MAX_PAR_PARTIE) do
@@ -5709,6 +5712,20 @@ local random = Random.new()
 local dossierGardes = Instance.new("Folder")
 dossierGardes.Name = "Securite"
 dossierGardes.Parent = workspace
+-- Pendant une manche en ligne : pas d'agents de sécurité (que des vraies personnes)
+workspace:GetAttributeChangedSignal("MancheEnCours"):Connect(function()
+	dossierGardes.Parent = if workspace:GetAttribute("MancheEnCours") then game:GetService("ServerStorage") else workspace
+	if dossierGardes.Parent == workspace then
+		-- (de retour : le serveur reprend le contrôle des gardes)
+		for _, d in ipairs(dossierGardes:GetDescendants()) do
+			if d:IsA("BasePart") and d.Name == "HumanoidRootPart" then
+				pcall(function()
+					d:SetNetworkOwner(nil)
+				end)
+			end
+		end
+	end
+end)
 
 -- Animations Roblox par défaut (R15)
 local ANIMATIONS = {

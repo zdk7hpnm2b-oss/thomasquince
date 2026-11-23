@@ -57,7 +57,9 @@ local INTERMISSION = P.Intermission or 20
 local DUREE = P.DureeManche or 300
 local AVANCE = P.AvanceFugitifs or 8
 local DISTANCE_ARRESTATION = P.DistanceArrestation or 8
-local BOTS_TEST = P.BotsTest or 0
+-- Bots de test : SEULEMENT dans Studio. Dans le jeu publié, les parties en ligne
+-- se jouent uniquement entre vraies personnes.
+local BOTS_TEST = if game:GetService("RunService"):IsStudio() then (P.BotsTest or 0) else 0
 local SOL = 1
 local HAUTEUR_ETAGE = SOL + 25
 

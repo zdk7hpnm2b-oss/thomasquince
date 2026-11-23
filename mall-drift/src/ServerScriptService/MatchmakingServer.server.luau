@@ -138,7 +138,8 @@ task.spawn(function()
 		end
 		-- Assez de monde ? (ou un joueur seul depuis 8 s, avec les bots de test)
 		local plusAncien = file[1] and entreeDansLaFile[file[1]] or os.clock()
-		local avecBots = (P.BotsTest or 0) > 0 and #file >= 1 and os.clock() - plusAncien >= ATTENTE_BOTS
+		-- (bots de test seulement dans Studio : en ligne, que des vraies personnes)
+		local avecBots = game:GetService("RunService"):IsStudio() and (P.BotsTest or 0) > 0 and #file >= 1 and os.clock() - plusAncien >= ATTENTE_BOTS
 		if #file >= JOUEURS_MIN or avecBots then
 			local groupe = {}
 			for i = 1, math.min(#file, MAX_PAR_PARTIE) do

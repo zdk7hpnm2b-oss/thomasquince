@@ -43,6 +43,20 @@ local random = Random.new()
 local dossierGardes = Instance.new("Folder")
 dossierGardes.Name = "Securite"
 dossierGardes.Parent = workspace
+-- Pendant une manche en ligne : pas d'agents de sécurité (que des vraies personnes)
+workspace:GetAttributeChangedSignal("MancheEnCours"):Connect(function()
+	dossierGardes.Parent = if workspace:GetAttribute("MancheEnCours") then game:GetService("ServerStorage") else workspace
+	if dossierGardes.Parent == workspace then
+		-- (de retour : le serveur reprend le contrôle des gardes)
+		for _, d in ipairs(dossierGardes:GetDescendants()) do
+			if d:IsA("BasePart") and d.Name == "HumanoidRootPart" then
+				pcall(function()
+					d:SetNetworkOwner(nil)
+				end)
+			end
+		end
+	end
+end)
 
 -- Animations Roblox par défaut (R15)
 local ANIMATIONS = {

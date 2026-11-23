@@ -388,7 +388,7 @@ Config.Partie = {
 	DureeBattle = 60, -- 1 minute (mets 30 pour des parties encore plus courtes)
 	-- BOTS DE TEST : s'il manque des joueurs, des bots complètent la partie
 	-- (pratique pour tester seul). Mets 0 pour les désactiver.
-	BotsTest = 1,
+	BotsTest = 1, -- (seulement dans Studio : dans le jeu publié, jamais de bots en ligne)
 	VitesseBotPolice = 40, -- vitesse d'un bot policier (ton kart Basique monte à 50)
 	VitesseBotFugitif = 36, -- vitesse d'un bot fugitif
 }
