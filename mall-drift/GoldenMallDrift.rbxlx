@@ -233,7 +233,54 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	piece("BagueColonne", Vector3.new(0.3, 0.3, 0.3), CFrame.new(0, 1.2, -1.38) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(235, 235, 240), nil, Enum.Material.SmoothPlastic, CYL)
 	piece("Volant", Vector3.new(0.14, 1.55, 1.55), CFrame.new(0, 1.85, -1.2) * CFrame.Angles(math.rad(-55), math.rad(90), 0), NOIR_MAT, nil, Enum.Material.SmoothPlastic, CYL)
 	piece("MoyeuVolant", Vector3.new(0.18, 0.5, 0.5), CFrame.new(0, 1.86, -1.18) * CFrame.Angles(math.rad(-55), math.rad(90), 0), Color3.fromRGB(70, 70, 78), nil, Enum.Material.Metal, CYL)
-	piece("EcranVolant", Vector3.new(0.5, 0.32, 0.08), CFrame.new(0, 1.35, -1.55) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(60, 170, 255), nil, Enum.Material.Neon)
+	-- Écran digital sur le volant : vitesse, régime, état de la piste (mis à jour par le pilote)
+	local ecran = piece("EcranVolant", Vector3.new(0.78, 0.46, 0.08), CFrame.new(0, 1.36, -1.58) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(12, 14, 18), nil, Enum.Material.Glass)
+	piece("CadreEcran", Vector3.new(0.86, 0.54, 0.06), CFrame.new(0, 1.36, -1.6) * CFrame.Angles(math.rad(-35), 0, 0), NOIR_MAT, nil, Enum.Material.SmoothPlastic)
+	local tableau = Instance.new("SurfaceGui")
+	tableau.Name = "Tableau"
+	tableau.Face = Enum.NormalId.Back -- tourné vers le pilote
+	tableau.LightInfluence = 0
+	tableau.Brightness = 1.4
+	tableau.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	tableau.PixelsPerStud = 260
+	tableau.Parent = ecran
+	local fondEcran = Instance.new("Frame")
+	fondEcran.Size = UDim2.fromScale(1, 1)
+	fondEcran.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
+	fondEcran.Parent = tableau
+	local function ligne(nom: string, taille: UDim2, position: UDim2, couleur: Color3, texte: string, alignement: Enum.TextXAlignment?): TextLabel
+		local l = Instance.new("TextLabel")
+		l.Name = nom
+		l.Size = taille
+		l.Position = position
+		l.BackgroundTransparency = 1
+		l.Font = Enum.Font.Code
+		l.TextScaled = true
+		l.TextColor3 = couleur
+		l.TextXAlignment = alignement or Enum.TextXAlignment.Left
+		l.Text = texte
+		l.Parent = fondEcran
+		return l
+	end
+	ligne("Marque", UDim2.new(0.6, 0, 0.13, 0), UDim2.new(0.05, 0, 0.05, 0), Color3.fromRGB(90, 200, 255), "GOLDEN MALL DRIFT")
+	ligne("Piste", UDim2.new(0.32, 0, 0.13, 0), UDim2.new(0.63, 0, 0.05, 0), Color3.fromRGB(255, 200, 60), "SEC", Enum.TextXAlignment.Right)
+	ligne("Vitesse", UDim2.new(0.45, 0, 0.46, 0), UDim2.new(0.05, 0, 0.22, 0), Color3.new(1, 1, 1), "000")
+	ligne("Unite", UDim2.new(0.3, 0, 0.12, 0), UDim2.new(0.05, 0, 0.68, 0), Color3.fromRGB(150, 150, 160), "KM/H")
+	ligne("Regime", UDim2.new(0.45, 0, 0.2, 0), UDim2.new(0.5, 0, 0.26, 0), Color3.fromRGB(230, 230, 235), "1500 TR/MIN", Enum.TextXAlignment.Right)
+	ligne("Etat", UDim2.new(0.45, 0, 0.14, 0), UDim2.new(0.5, 0, 0.52, 0), Color3.fromRGB(120, 255, 140), "", Enum.TextXAlignment.Right)
+	local barre = Instance.new("Frame")
+	barre.Name = "BarreRegime"
+	barre.Size = UDim2.new(0.9, 0, 0.08, 0)
+	barre.Position = UDim2.new(0.05, 0, 0.86, 0)
+	barre.BackgroundColor3 = Color3.fromRGB(35, 38, 45)
+	barre.BorderSizePixel = 0
+	barre.Parent = fondEcran
+	local remplissage = Instance.new("Frame")
+	remplissage.Name = "Remplissage"
+	remplissage.Size = UDim2.fromScale(0, 1)
+	remplissage.BackgroundColor3 = Color3.fromRGB(90, 200, 255)
+	remplissage.BorderSizePixel = 0
+	remplissage.Parent = barre
 
 	-- Siège baquet (couleur du siège) : dossier + petits rebords
 	piece("Dossier", Vector3.new(2.1, 1.3, 0.3), CFrame.new(0, 1.05, 2.15) * CFrame.Angles(math.rad(-15), 0, 0), Color3.new(1, 1, 1), "Siege", Enum.Material.SmoothPlastic)
@@ -2926,6 +2973,83 @@ local function asseoir(joueur: Player, kart: Model)
 			task.wait(0.25)
 		end
 	end)
+end
+
+-- CASQUE DE PILOTE : il apparaît quand on monte dans un kart (couleur du kart)
+-- et disparaît quand on en descend. Soudé à la tête : marche en R6 et en R15.
+local function mettreCasque(perso: Model, couleur: Color3)
+	local tete = perso:FindFirstChild("Head") :: BasePart?
+	if not tete or perso:FindFirstChild("CasquePilote") then
+		return
+	end
+	local casque = Instance.new("Model")
+	casque.Name = "CasquePilote"
+	local function partie(nom: string, taille: Vector3, decalage: CFrame, c: Color3, matiere: Enum.Material, sphere: boolean): Part
+		local p = Instance.new("Part")
+		p.Name = nom
+		p.Size = taille
+		p.CFrame = tete.CFrame * decalage
+		p.Color = c
+		p.Material = matiere
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		if sphere then
+			local m = Instance.new("SpecialMesh")
+			m.MeshType = Enum.MeshType.Sphere
+			m.Parent = p
+		end
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = tete
+		w.Part1 = p
+		w.Parent = p
+		p.Parent = casque
+		return p
+	end
+	partie("Coque", Vector3.new(1.55, 1.6, 1.65), CFrame.new(0, 0.12, 0.02), couleur, Enum.Material.SmoothPlastic, true).Reflectance = 0.15
+	partie("Visiere", Vector3.new(1.15, 0.5, 0.5), CFrame.new(0, 0.08, -0.62), Color3.fromRGB(25, 30, 40), Enum.Material.Glass, true).Reflectance = 0.5
+	partie("Bande", Vector3.new(0.28, 1.63, 1.68), CFrame.new(0, 0.12, 0.02), Color3.fromRGB(245, 245, 245), Enum.Material.SmoothPlastic, true)
+	partie("Mentonniere", Vector3.new(1.2, 0.35, 0.7), CFrame.new(0, -0.48, -0.4), couleur:Lerp(Color3.new(0, 0, 0), 0.35), Enum.Material.SmoothPlastic, true)
+	casque.Parent = perso
+end
+
+local function couleurDuKart(kart: Instance): Color3
+	for _, d in ipairs(kart:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Carrosserie" then
+			return d.Color
+		end
+	end
+	return Color3.fromRGB(215, 35, 40)
+end
+
+local function surveillerCasque(perso: Model)
+	local humanoide = perso:WaitForChild("Humanoid", 10) :: Humanoid?
+	if not humanoide then
+		return
+	end
+	humanoide:GetPropertyChangedSignal("SeatPart"):Connect(function()
+		local siege = humanoide.SeatPart
+		local kart = siege and siege.Parent
+		if kart and kart:GetAttribute("KartType") then
+			mettreCasque(perso, couleurDuKart(kart))
+		else
+			local ancien = perso:FindFirstChild("CasquePilote")
+			if ancien then
+				ancien:Destroy()
+			end
+		end
+	end)
+end
+local function suivreJoueurCasque(j: Player)
+	j.CharacterAdded:Connect(surveillerCasque)
+	if j.Character then
+		task.spawn(surveillerCasque, j.Character)
+	end
+end
+Players.PlayerAdded:Connect(suivreJoueurCasque)
+for _, j in ipairs(Players:GetPlayers()) do
+	suivreJoueurCasque(j)
 end
 
 local function creerKart(joueur: Player, cf: CFrame, persoForce: { [string]: any }?): Model
@@ -5918,7 +6042,7 @@ end)
 
 etiquette(panneau, "Garage", UDim2.new(0.5, 0, 0, 16), UDim2.new(0, 18, 0, 16), GRIS_TEXTE, Enum.Font.GothamMedium)
 local titre = etiquette(panneau, "PERSONNALISER", UDim2.new(1, -90, 0, 40), UDim2.new(0, 18, 0, 32), Color3.new(1, 1, 1))
-titre.Font = Enum.Font.Oswald
+titre.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic) -- gras italique, style course
 local sousTitre = etiquette(panneau, "", UDim2.new(0.6, 0, 0, 18), UDim2.new(0, 18, 0, 76), Color3.fromRGB(230, 230, 235))
 local soldePieces = etiquette(panneau, "💰 0", UDim2.new(0.35, 0, 0, 18), UDim2.new(0.65, -18, 0, 76), OR)
 soldePieces.TextXAlignment = Enum.TextXAlignment.Right
@@ -7462,6 +7586,9 @@ local function entrerDansKart(siege: Seat)
 	kart.trails = effets("TracePneu")
 	kart.fumees = effets("Fumee")
 	kart.eaux = effets("Eclaboussures")
+	local ecranVolant = modele:FindFirstChild("EcranVolant")
+	local tableau = ecranVolant and ecranVolant:FindFirstChild("Tableau")
+	kart.tableau = tableau and tableau:FindFirstChildOfClass("Frame")
 	kart.etincelles = effets("Etincelles")
 	kart.flammes = effets("FlammeBoost")
 	kart.lumieresBoost = effets("LumiereBoost")
@@ -7882,6 +8009,38 @@ RunService.Heartbeat:Connect(function(dt: number)
 	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
+
+	-- L'écran digital du volant (bien visible en caméra GoPro, touche V)
+	local ecran = kart.tableau
+	if ecran then
+		local ratio = math.clamp(vitesse / s.VitesseMax, 0, 1.4)
+		local regime = 1500 + ratio * 6300 + (if drift.actif then 600 else 0) + math.random(-40, 40)
+		local lVitesse = ecran:FindFirstChild("Vitesse") :: TextLabel?
+		local lRegime = ecran:FindFirstChild("Regime") :: TextLabel?
+		local lPiste = ecran:FindFirstChild("Piste") :: TextLabel?
+		local lEtat = ecran:FindFirstChild("Etat") :: TextLabel?
+		local barreR = ecran:FindFirstChild("BarreRegime")
+		local rempli = barreR and barreR:FindFirstChild("Remplissage") :: Frame?
+		if lVitesse then
+			lVitesse.Text = ("%03d"):format(math.floor(vitesse + 0.5))
+		end
+		if lRegime then
+			lRegime.Text = ("%d TR/MIN"):format(math.floor(regime / 100) * 100)
+		end
+		if lPiste then
+			lPiste.Text = if mouille then "MOUILLÉ" else "SEC"
+			lPiste.TextColor3 = if mouille then Color3.fromRGB(90, 190, 255) else Color3.fromRGB(255, 200, 60)
+		end
+		if lEtat then
+			lEtat.Text = if tempsBoost > 0 then "BOOST !" elseif drift.actif then ("DRIFT x%.1f"):format(drift.combo) else ""
+			lEtat.TextColor3 = if tempsBoost > 0 then Color3.fromRGB(255, 150, 40) else Color3.fromRGB(120, 255, 140)
+		end
+		if rempli then
+			local r = math.clamp((regime - 1500) / 7000, 0, 1)
+			rempli.Size = UDim2.fromScale(r, 1)
+			rempli.BackgroundColor3 = if r > 0.85 then Color3.fromRGB(255, 60, 60) elseif r > 0.6 then Color3.fromRGB(255, 190, 50) else Color3.fromRGB(90, 200, 255)
+		end
+	end
 
 	-- Diagnostic : on accélère depuis 2,5 s mais le kart ne bouge pas
 	if math.abs(gaz) > 0.5 and vitesse < 1.5 and not (depart and depart.etape < 4) then
@@ -8502,7 +8661,8 @@ bienvenue.Text = "BIENVENUE AU"
 bienvenue.TextXAlignment = Enum.TextXAlignment.Left
 bienvenue.ZIndex = 22
 local titreMenu = texte(colonne, UDim2.new(1, 0, 0, 64), UDim2.new(0, 0, 0.17, 24), Color3.new(1, 1, 1))
-titreMenu.Text = Config.NomDuJeu
+titreMenu.Text = string.upper(Config.NomDuJeu)
+titreMenu.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic) -- gras italique, style course
 titreMenu.TextXAlignment = Enum.TextXAlignment.Left
 titreMenu.ZIndex = 22
 local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 24), UDim2.new(0, 0, 0.17, 90), Color3.fromRGB(255, 205, 70), Enum.Font.GothamBold)
@@ -9564,7 +9724,7 @@ local icone = texte(carte, UDim2.new(0, 84, 0, 84), UDim2.new(0, 22, 0, 52), Col
 local echelleIcone = Instance.new("UIScale")
 echelleIcone.Parent = icone
 local titre = texte(carte, UDim2.new(1, -140, 0, 44), UDim2.new(0, 118, 0, 58), Color3.new(1, 1, 1))
-titre.Font = Enum.Font.Oswald
+titre.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic) -- gras italique, style course
 titre.TextXAlignment = Enum.TextXAlignment.Left
 local explication = texte(carte, UDim2.new(1, -140, 0, 44), UDim2.new(0, 118, 0, 102), Color3.fromRGB(215, 215, 222), Enum.Font.GothamMedium)
 explication.TextXAlignment = Enum.TextXAlignment.Left

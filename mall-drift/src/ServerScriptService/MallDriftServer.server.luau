@@ -1935,6 +1935,83 @@ local function asseoir(joueur: Player, kart: Model)
 	end)
 end
 
+-- CASQUE DE PILOTE : il apparaît quand on monte dans un kart (couleur du kart)
+-- et disparaît quand on en descend. Soudé à la tête : marche en R6 et en R15.
+local function mettreCasque(perso: Model, couleur: Color3)
+	local tete = perso:FindFirstChild("Head") :: BasePart?
+	if not tete or perso:FindFirstChild("CasquePilote") then
+		return
+	end
+	local casque = Instance.new("Model")
+	casque.Name = "CasquePilote"
+	local function partie(nom: string, taille: Vector3, decalage: CFrame, c: Color3, matiere: Enum.Material, sphere: boolean): Part
+		local p = Instance.new("Part")
+		p.Name = nom
+		p.Size = taille
+		p.CFrame = tete.CFrame * decalage
+		p.Color = c
+		p.Material = matiere
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		if sphere then
+			local m = Instance.new("SpecialMesh")
+			m.MeshType = Enum.MeshType.Sphere
+			m.Parent = p
+		end
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = tete
+		w.Part1 = p
+		w.Parent = p
+		p.Parent = casque
+		return p
+	end
+	partie("Coque", Vector3.new(1.55, 1.6, 1.65), CFrame.new(0, 0.12, 0.02), couleur, Enum.Material.SmoothPlastic, true).Reflectance = 0.15
+	partie("Visiere", Vector3.new(1.15, 0.5, 0.5), CFrame.new(0, 0.08, -0.62), Color3.fromRGB(25, 30, 40), Enum.Material.Glass, true).Reflectance = 0.5
+	partie("Bande", Vector3.new(0.28, 1.63, 1.68), CFrame.new(0, 0.12, 0.02), Color3.fromRGB(245, 245, 245), Enum.Material.SmoothPlastic, true)
+	partie("Mentonniere", Vector3.new(1.2, 0.35, 0.7), CFrame.new(0, -0.48, -0.4), couleur:Lerp(Color3.new(0, 0, 0), 0.35), Enum.Material.SmoothPlastic, true)
+	casque.Parent = perso
+end
+
+local function couleurDuKart(kart: Instance): Color3
+	for _, d in ipairs(kart:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("Peinture") == "Carrosserie" then
+			return d.Color
+		end
+	end
+	return Color3.fromRGB(215, 35, 40)
+end
+
+local function surveillerCasque(perso: Model)
+	local humanoide = perso:WaitForChild("Humanoid", 10) :: Humanoid?
+	if not humanoide then
+		return
+	end
+	humanoide:GetPropertyChangedSignal("SeatPart"):Connect(function()
+		local siege = humanoide.SeatPart
+		local kart = siege and siege.Parent
+		if kart and kart:GetAttribute("KartType") then
+			mettreCasque(perso, couleurDuKart(kart))
+		else
+			local ancien = perso:FindFirstChild("CasquePilote")
+			if ancien then
+				ancien:Destroy()
+			end
+		end
+	end)
+end
+local function suivreJoueurCasque(j: Player)
+	j.CharacterAdded:Connect(surveillerCasque)
+	if j.Character then
+		task.spawn(surveillerCasque, j.Character)
+	end
+end
+Players.PlayerAdded:Connect(suivreJoueurCasque)
+for _, j in ipairs(Players:GetPlayers()) do
+	suivreJoueurCasque(j)
+end
+
 local function creerKart(joueur: Player, cf: CFrame, persoForce: { [string]: any }?): Model
 	local profil = profils[joueur]
 	local ancien = kartsJoueurs[joueur]

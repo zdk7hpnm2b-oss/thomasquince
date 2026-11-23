@@ -249,7 +249,7 @@ end)
 
 etiquette(panneau, "Garage", UDim2.new(0.5, 0, 0, 16), UDim2.new(0, 18, 0, 16), GRIS_TEXTE, Enum.Font.GothamMedium)
 local titre = etiquette(panneau, "PERSONNALISER", UDim2.new(1, -90, 0, 40), UDim2.new(0, 18, 0, 32), Color3.new(1, 1, 1))
-titre.Font = Enum.Font.Oswald
+titre.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic) -- gras italique, style course
 local sousTitre = etiquette(panneau, "", UDim2.new(0.6, 0, 0, 18), UDim2.new(0, 18, 0, 76), Color3.fromRGB(230, 230, 235))
 local soldePieces = etiquette(panneau, "💰 0", UDim2.new(0.35, 0, 0, 18), UDim2.new(0.65, -18, 0, 76), OR)
 soldePieces.TextXAlignment = Enum.TextXAlignment.Right

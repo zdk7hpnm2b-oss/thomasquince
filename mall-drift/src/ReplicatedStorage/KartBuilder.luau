@@ -233,7 +233,54 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 	piece("BagueColonne", Vector3.new(0.3, 0.3, 0.3), CFrame.new(0, 1.2, -1.38) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(235, 235, 240), nil, Enum.Material.SmoothPlastic, CYL)
 	piece("Volant", Vector3.new(0.14, 1.55, 1.55), CFrame.new(0, 1.85, -1.2) * CFrame.Angles(math.rad(-55), math.rad(90), 0), NOIR_MAT, nil, Enum.Material.SmoothPlastic, CYL)
 	piece("MoyeuVolant", Vector3.new(0.18, 0.5, 0.5), CFrame.new(0, 1.86, -1.18) * CFrame.Angles(math.rad(-55), math.rad(90), 0), Color3.fromRGB(70, 70, 78), nil, Enum.Material.Metal, CYL)
-	piece("EcranVolant", Vector3.new(0.5, 0.32, 0.08), CFrame.new(0, 1.35, -1.55) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(60, 170, 255), nil, Enum.Material.Neon)
+	-- Écran digital sur le volant : vitesse, régime, état de la piste (mis à jour par le pilote)
+	local ecran = piece("EcranVolant", Vector3.new(0.78, 0.46, 0.08), CFrame.new(0, 1.36, -1.58) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(12, 14, 18), nil, Enum.Material.Glass)
+	piece("CadreEcran", Vector3.new(0.86, 0.54, 0.06), CFrame.new(0, 1.36, -1.6) * CFrame.Angles(math.rad(-35), 0, 0), NOIR_MAT, nil, Enum.Material.SmoothPlastic)
+	local tableau = Instance.new("SurfaceGui")
+	tableau.Name = "Tableau"
+	tableau.Face = Enum.NormalId.Back -- tourné vers le pilote
+	tableau.LightInfluence = 0
+	tableau.Brightness = 1.4
+	tableau.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	tableau.PixelsPerStud = 260
+	tableau.Parent = ecran
+	local fondEcran = Instance.new("Frame")
+	fondEcran.Size = UDim2.fromScale(1, 1)
+	fondEcran.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
+	fondEcran.Parent = tableau
+	local function ligne(nom: string, taille: UDim2, position: UDim2, couleur: Color3, texte: string, alignement: Enum.TextXAlignment?): TextLabel
+		local l = Instance.new("TextLabel")
+		l.Name = nom
+		l.Size = taille
+		l.Position = position
+		l.BackgroundTransparency = 1
+		l.Font = Enum.Font.Code
+		l.TextScaled = true
+		l.TextColor3 = couleur
+		l.TextXAlignment = alignement or Enum.TextXAlignment.Left
+		l.Text = texte
+		l.Parent = fondEcran
+		return l
+	end
+	ligne("Marque", UDim2.new(0.6, 0, 0.13, 0), UDim2.new(0.05, 0, 0.05, 0), Color3.fromRGB(90, 200, 255), "GOLDEN MALL DRIFT")
+	ligne("Piste", UDim2.new(0.32, 0, 0.13, 0), UDim2.new(0.63, 0, 0.05, 0), Color3.fromRGB(255, 200, 60), "SEC", Enum.TextXAlignment.Right)
+	ligne("Vitesse", UDim2.new(0.45, 0, 0.46, 0), UDim2.new(0.05, 0, 0.22, 0), Color3.new(1, 1, 1), "000")
+	ligne("Unite", UDim2.new(0.3, 0, 0.12, 0), UDim2.new(0.05, 0, 0.68, 0), Color3.fromRGB(150, 150, 160), "KM/H")
+	ligne("Regime", UDim2.new(0.45, 0, 0.2, 0), UDim2.new(0.5, 0, 0.26, 0), Color3.fromRGB(230, 230, 235), "1500 TR/MIN", Enum.TextXAlignment.Right)
+	ligne("Etat", UDim2.new(0.45, 0, 0.14, 0), UDim2.new(0.5, 0, 0.52, 0), Color3.fromRGB(120, 255, 140), "", Enum.TextXAlignment.Right)
+	local barre = Instance.new("Frame")
+	barre.Name = "BarreRegime"
+	barre.Size = UDim2.new(0.9, 0, 0.08, 0)
+	barre.Position = UDim2.new(0.05, 0, 0.86, 0)
+	barre.BackgroundColor3 = Color3.fromRGB(35, 38, 45)
+	barre.BorderSizePixel = 0
+	barre.Parent = fondEcran
+	local remplissage = Instance.new("Frame")
+	remplissage.Name = "Remplissage"
+	remplissage.Size = UDim2.fromScale(0, 1)
+	remplissage.BackgroundColor3 = Color3.fromRGB(90, 200, 255)
+	remplissage.BorderSizePixel = 0
+	remplissage.Parent = barre
 
 	-- Siège baquet (couleur du siège) : dossier + petits rebords
 	piece("Dossier", Vector3.new(2.1, 1.3, 0.3), CFrame.new(0, 1.05, 2.15) * CFrame.Angles(math.rad(-15), 0, 0), Color3.new(1, 1, 1), "Siege", Enum.Material.SmoothPlastic)

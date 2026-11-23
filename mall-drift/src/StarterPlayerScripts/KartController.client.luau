@@ -813,6 +813,9 @@ local function entrerDansKart(siege: Seat)
 	kart.trails = effets("TracePneu")
 	kart.fumees = effets("Fumee")
 	kart.eaux = effets("Eclaboussures")
+	local ecranVolant = modele:FindFirstChild("EcranVolant")
+	local tableau = ecranVolant and ecranVolant:FindFirstChild("Tableau")
+	kart.tableau = tableau and tableau:FindFirstChildOfClass("Frame")
 	kart.etincelles = effets("Etincelles")
 	kart.flammes = effets("FlammeBoost")
 	kart.lumieresBoost = effets("LumiereBoost")
@@ -1233,6 +1236,38 @@ RunService.Heartbeat:Connect(function(dt: number)
 	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
+
+	-- L'écran digital du volant (bien visible en caméra GoPro, touche V)
+	local ecran = kart.tableau
+	if ecran then
+		local ratio = math.clamp(vitesse / s.VitesseMax, 0, 1.4)
+		local regime = 1500 + ratio * 6300 + (if drift.actif then 600 else 0) + math.random(-40, 40)
+		local lVitesse = ecran:FindFirstChild("Vitesse") :: TextLabel?
+		local lRegime = ecran:FindFirstChild("Regime") :: TextLabel?
+		local lPiste = ecran:FindFirstChild("Piste") :: TextLabel?
+		local lEtat = ecran:FindFirstChild("Etat") :: TextLabel?
+		local barreR = ecran:FindFirstChild("BarreRegime")
+		local rempli = barreR and barreR:FindFirstChild("Remplissage") :: Frame?
+		if lVitesse then
+			lVitesse.Text = ("%03d"):format(math.floor(vitesse + 0.5))
+		end
+		if lRegime then
+			lRegime.Text = ("%d TR/MIN"):format(math.floor(regime / 100) * 100)
+		end
+		if lPiste then
+			lPiste.Text = if mouille then "MOUILLÉ" else "SEC"
+			lPiste.TextColor3 = if mouille then Color3.fromRGB(90, 190, 255) else Color3.fromRGB(255, 200, 60)
+		end
+		if lEtat then
+			lEtat.Text = if tempsBoost > 0 then "BOOST !" elseif drift.actif then ("DRIFT x%.1f"):format(drift.combo) else ""
+			lEtat.TextColor3 = if tempsBoost > 0 then Color3.fromRGB(255, 150, 40) else Color3.fromRGB(120, 255, 140)
+		end
+		if rempli then
+			local r = math.clamp((regime - 1500) / 7000, 0, 1)
+			rempli.Size = UDim2.fromScale(r, 1)
+			rempli.BackgroundColor3 = if r > 0.85 then Color3.fromRGB(255, 60, 60) elseif r > 0.6 then Color3.fromRGB(255, 190, 50) else Color3.fromRGB(90, 200, 255)
+		end
+	end
 
 	-- Diagnostic : on accélère depuis 2,5 s mais le kart ne bouge pas
 	if math.abs(gaz) > 0.5 and vitesse < 1.5 and not (depart and depart.etape < 4) then
