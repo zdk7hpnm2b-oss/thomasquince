@@ -151,31 +151,46 @@ carteGroupe.Visible = false
 ---------------------------------------------------------------------
 local panneau = Instance.new("Frame")
 panneau.AnchorPoint = Vector2.new(0.5, 0.5)
-panneau.Size = UDim2.new(0, 460, 0, 420)
-panneau.Position = UDim2.fromScale(0.6, 0.5)
-panneau.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+panneau.Size = UDim2.fromScale(1, 1) -- page entière
+panneau.Position = UDim2.fromScale(0.5, 0.5)
+panneau.BackgroundColor3 = Color3.new(1, 1, 1)
+panneau.BackgroundTransparency = 0.03
 panneau.Visible = false
 panneau.ZIndex = 40
 panneau.Parent = menu
-coins(panneau, 6)
+local degradePage = Instance.new("UIGradient")
+degradePage.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 14)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(16, 14, 20)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 12, 20)),
+})
+degradePage.Rotation = 25
+degradePage.Parent = panneau
+local margesPage = Instance.new("UIPadding")
+margesPage.PaddingLeft = UDim.new(0.12, 0)
+margesPage.PaddingRight = UDim.new(0.12, 0)
+margesPage.PaddingTop = UDim.new(0, 40)
+margesPage.PaddingBottom = UDim.new(0, 30)
+margesPage.Parent = panneau
 local lisere = Instance.new("Frame")
-lisere.Size = UDim2.new(1, 0, 0, 5)
+lisere.Size = UDim2.new(0, 140, 0, 5)
+lisere.Position = UDim2.new(0, 20, 0, 62)
 lisere.BackgroundColor3 = ROUGE
 lisere.BorderSizePixel = 0
 lisere.ZIndex = 41
 lisere.Parent = panneau
-local titrePanneau = texte(panneau, UDim2.new(1, -90, 0, 34), UDim2.new(0, 20, 0, 18), Color3.new(1, 1, 1))
+local titrePanneau = texte(panneau, UDim2.new(1, -220, 0, 50), UDim2.new(0, 20, 0, 6), Color3.new(1, 1, 1))
 titrePanneau.FontFace = POLICE
 titrePanneau.ZIndex = 41
 local fermer = Instance.new("TextButton")
 fermer.AnchorPoint = Vector2.new(1, 0)
-fermer.Size = UDim2.fromOffset(38, 38)
-fermer.Position = UDim2.new(1, -14, 0, 16)
+fermer.Size = UDim2.fromOffset(150, 46)
+fermer.Position = UDim2.new(1, -10, 0, 8)
 fermer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
 fermer.TextColor3 = Color3.new(1, 1, 1)
 fermer.Font = Enum.Font.GothamBlack
-fermer.TextSize = 18
-fermer.Text = "X"
+fermer.TextSize = 20
+fermer.Text = "← RETOUR"
 fermer.ZIndex = 42
 fermer.Parent = panneau
 coins(fermer, 6)
@@ -183,8 +198,8 @@ fermer.Activated:Connect(function()
 	panneau.Visible = false
 end)
 local liste = Instance.new("Frame")
-liste.Size = UDim2.new(1, -40, 1, -80)
-liste.Position = UDim2.new(0, 20, 0, 66)
+liste.Size = UDim2.new(1, -40, 1, -110)
+liste.Position = UDim2.new(0, 20, 0, 96)
 liste.BackgroundTransparency = 1
 liste.ZIndex = 41
 liste.Parent = panneau
@@ -211,7 +226,7 @@ local function remplir()
 	end
 	if vue == "temps" then
 		titrePanneau.Text = "🎁 CADEAUX DE TEMPS DE JEU"
-		dispoListe.CellSize = UDim2.new(1, 0, 0, 58)
+		dispoListe.CellSize = UDim2.new(1, 0, 0, 70)
 		for i, c in ipairs(etat.temps or {}) do
 			local b = Instance.new("TextButton")
 			b.LayoutOrder = i
@@ -241,7 +256,7 @@ local function remplir()
 		end
 	else
 		titrePanneau.Text = ("📅 SÉRIE DU JOUR · JOUR %d"):format(etat.serieJour or 1)
-		dispoListe.CellSize = UDim2.new(0.25, -6, 0, 120)
+		dispoListe.CellSize = UDim2.new(0.25, -6, 0, 170)
 		for i, c in ipairs(Config.Cadeaux.Serie or {}) do
 			local aujourdhui = i == etat.serieJour
 			local passe = i < (etat.serieJour or 1) or (aujourdhui and not etat.seriePrete)
@@ -280,10 +295,11 @@ end
 local function ouvrir(v: string)
 	vue = v
 	panneau.Visible = true
-	local e = panneau:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-	e.Parent = panneau
-	e.Scale = 0.6
-	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	-- La page arrive en glissant depuis la droite
+	panneau.Position = UDim2.fromScale(1.5, 0.5)
+	TweenService:Create(panneau, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+	lisere.Size = UDim2.new(0, 0, 0, 5)
+	TweenService:Create(lisere, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.new(0, 140, 0, 5) }):Play()
 	task.spawn(function()
 		etat = Cadeaux:InvokeServer("etat")
 		remplir()

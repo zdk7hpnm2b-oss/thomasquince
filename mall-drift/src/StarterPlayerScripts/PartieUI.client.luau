@@ -646,71 +646,158 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local profilMenu: any = nil -- (le profil, pour savoir ce qui est déjà acheté)
 local majMagasin: { () -> () } = {}
 
-local function fenetre(nom: string, titreFenetre: string, largeur: number, hauteur: number, couleurBord: Color3): (Frame, TextLabel)
+-- Une PAGE ENTIÈRE (magasin, roue…) : fond animé, grand titre, arrivée en glissant.
+-- (largeur / hauteur ne servent plus : la page prend tout l'écran)
+local flouPages = Instance.new("BlurEffect")
+flouPages.Name = "FlouPages"
+flouPages.Size = 0
+flouPages.Parent = camera
+local pagesOuvertes = 0
+local function fenetre(nom: string, titreFenetre: string, _largeur: number, _hauteur: number, couleurBord: Color3): (Frame, TextLabel)
 	local f = Instance.new("Frame")
 	f.Name = nom
 	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Size = UDim2.new(0, largeur, 0, hauteur)
-	f.Position = UDim2.fromScale(0.62, 0.5)
-	f.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+	f.Size = UDim2.fromScale(1, 1)
+	f.Position = UDim2.fromScale(0.5, 0.5)
+	f.BackgroundColor3 = Color3.new(1, 1, 1)
+	f.BackgroundTransparency = 0.03
 	f.Visible = false
 	f.ZIndex = 30
 	f.Parent = fondMenu
-	Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
-	local bord = Instance.new("UIStroke")
-	bord.Thickness = 1
-	bord.Color = Color3.fromRGB(60, 60, 70)
-	bord.Parent = f
-	local lisere = Instance.new("Frame")
-	lisere.Size = UDim2.new(1, 0, 0, 5)
-	lisere.BackgroundColor3 = couleurBord
-	lisere.BorderSizePixel = 0
-	lisere.ZIndex = 31
-	lisere.Parent = f
-	local t = texte(f, UDim2.new(1, -90, 0, 36), UDim2.new(0, 20, 0, 18), Color3.new(1, 1, 1))
+	local degradeFond = Instance.new("UIGradient")
+	degradeFond.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 14)),
+		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(16, 14, 20)),
+		ColorSequenceKeypoint.new(1, couleurBord:Lerp(Color3.new(0, 0, 0), 0.72)),
+	})
+	degradeFond.Rotation = 25
+	degradeFond.Parent = f
+	-- Décor : grand titre en filigrane + traits lumineux qui défilent en diagonale
+	local filigrane = Instance.new("TextLabel")
+	filigrane.AnchorPoint = Vector2.new(1, 1)
+	filigrane.Size = UDim2.new(0.9, 0, 0.32, 0)
+	filigrane.Position = UDim2.new(1, 40, 1, 30)
+	filigrane.BackgroundTransparency = 1
+	filigrane.Text = string.upper((titreFenetre:gsub("^[^%w]+ ", "")))
+	filigrane.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	filigrane.TextScaled = true
+	filigrane.TextColor3 = Color3.new(1, 1, 1)
+	filigrane.TextTransparency = 0.95
+	filigrane.TextXAlignment = Enum.TextXAlignment.Right
+	filigrane.ZIndex = 30
+	filigrane.Parent = f
+	local traits = {}
+	for k = 1, 7 do
+		local t = Instance.new("Frame")
+		t.AnchorPoint = Vector2.new(0.5, 0.5)
+		t.Size = UDim2.new(0, 6 + (k % 3) * 4, 2.2, 0)
+		t.Rotation = 28
+		t.BackgroundColor3 = if k % 2 == 0 then couleurBord else Color3.new(1, 1, 1)
+		t.BackgroundTransparency = 0.9
+		t.BorderSizePixel = 0
+		t.ZIndex = 30
+		t.Parent = f
+		traits[k] = { cadre = t, x = k / 7, vitesse = 0.04 + (k % 4) * 0.015 }
+	end
+	task.spawn(function()
+		while f.Parent do
+			if f.Visible then
+				for _, t in ipairs(traits) do
+					t.x = (t.x + t.vitesse * 0.03) % 1.4
+					t.cadre.Position = UDim2.new(t.x - 0.2, 0, 0.5, 0)
+				end
+			end
+			task.wait(0.03)
+		end
+	end)
+	-- Le contenu est dans une zone centrée (marges autour)
+	local marges = Instance.new("UIPadding")
+	marges.PaddingLeft = UDim.new(0.07, 0)
+	marges.PaddingRight = UDim.new(0.07, 0)
+	marges.PaddingTop = UDim.new(0, 40)
+	marges.PaddingBottom = UDim.new(0, 30)
+	marges.Parent = f
+	-- Barre de couleur sous le titre
+	local soulignement = Instance.new("Frame")
+	soulignement.Name = "Soulignement"
+	soulignement.Size = UDim2.new(0, 140, 0, 5)
+	soulignement.Position = UDim2.new(0, 20, 0, 62)
+	soulignement.BackgroundColor3 = couleurBord
+	soulignement.BorderSizePixel = 0
+	soulignement.ZIndex = 31
+	soulignement.Parent = f
+	local t = texte(f, UDim2.new(1, -220, 0, 50), UDim2.new(0, 20, 0, 6), Color3.new(1, 1, 1))
 	t.Text = titreFenetre
 	t.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 31
 	local fermer = Instance.new("TextButton")
 	fermer.AnchorPoint = Vector2.new(1, 0)
-	fermer.Size = UDim2.new(0, 40, 0, 40)
-	fermer.Position = UDim2.new(1, -14, 0, 16)
-	fermer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+	fermer.Size = UDim2.new(0, 150, 0, 46)
+	fermer.Position = UDim2.new(1, -10, 0, 8)
+	fermer.BackgroundColor3 = Color3.fromRGB(34, 34, 42)
 	fermer.TextColor3 = Color3.new(1, 1, 1)
 	fermer.Font = Enum.Font.GothamBlack
 	fermer.TextScaled = true
-	fermer.Text = "X"
+	fermer.Text = "← RETOUR"
 	fermer.ZIndex = 33
 	fermer.Parent = f
 	Instance.new("UICorner", fermer).CornerRadius = UDim.new(0, 6)
 	local marge = Instance.new("UIPadding")
-	marge.PaddingTop = UDim.new(0, 10)
-	marge.PaddingBottom = UDim.new(0, 10)
+	marge.PaddingTop = UDim.new(0, 12)
+	marge.PaddingBottom = UDim.new(0, 12)
 	marge.Parent = fermer
 	fermer.Activated:Connect(function()
 		f.Visible = false
 	end)
+	-- Flou de l'arrière-plan tant qu'une page est ouverte
+	f:GetPropertyChangedSignal("Visible"):Connect(function()
+		pagesOuvertes += if f.Visible then 1 else -1
+		pagesOuvertes = math.max(pagesOuvertes, 0)
+		TweenService:Create(flouPages, TweenInfo.new(0.35), { Size = if pagesOuvertes > 0 then 14 else 0 }):Play()
+	end)
 	return f, t
 end
 
+-- Arrivée de la page : elle glisse depuis la droite, un éclair de couleur la balaie,
+-- le titre et la barre arrivent juste après
 local function apparaitre(f: Frame)
 	f.Visible = true
-	local e = f:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-	e.Parent = f
-	e.Scale = 0.6
-	TweenService:Create(e, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	f.Position = UDim2.fromScale(1.5, 0.5)
+	TweenService:Create(f, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+	local eclair = Instance.new("Frame")
+	eclair.AnchorPoint = Vector2.new(0.5, 0.5)
+	eclair.Size = UDim2.new(0, 160, 3, 0)
+	eclair.Position = UDim2.fromScale(-0.2, 0.5)
+	eclair.Rotation = 20
+	eclair.BackgroundColor3 = Color3.new(1, 1, 1)
+	eclair.BackgroundTransparency = 0.75
+	eclair.BorderSizePixel = 0
+	eclair.ZIndex = 60
+	eclair.Parent = f
+	local tw = TweenService:Create(eclair, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.fromScale(1.3, 0.5), BackgroundTransparency = 1 })
+	task.delay(0.25, function()
+		tw:Play()
+	end)
+	tw.Completed:Connect(function()
+		eclair:Destroy()
+	end)
+	local soulignement = f:FindFirstChild("Soulignement") :: Frame?
+	if soulignement then
+		soulignement.Size = UDim2.new(0, 0, 0, 5)
+		TweenService:Create(soulignement, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.new(0, 140, 0, 5) }):Play()
+	end
 end
 
 local panneauMagasin = fenetre("Magasin", "🛒 MAGASIN", 560, 520, Color3.fromRGB(225, 30, 45))
-local soldeMagasin = texte(panneauMagasin, UDim2.new(0, 200, 0, 22), UDim2.new(1, -270, 0, 26), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+local soldeMagasin = texte(panneauMagasin, UDim2.new(0, 220, 0, 28), UDim2.new(1, -400, 0, 16), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
 soldeMagasin.TextXAlignment = Enum.TextXAlignment.Right
 soldeMagasin.ZIndex = 31
 
 -- Onglets
 local ongletsMagasin = Instance.new("Frame")
-ongletsMagasin.Size = UDim2.new(1, -40, 0, 38)
-ongletsMagasin.Position = UDim2.new(0, 20, 0, 66)
+ongletsMagasin.Size = UDim2.new(1, -40, 0, 48)
+ongletsMagasin.Position = UDim2.new(0, 20, 0, 86)
 ongletsMagasin.BackgroundTransparency = 1
 ongletsMagasin.ZIndex = 31
 ongletsMagasin.Parent = panneauMagasin
@@ -720,8 +807,8 @@ dispoOnglets.Padding = UDim.new(0, 6)
 dispoOnglets.Parent = ongletsMagasin
 
 local listeMagasin = Instance.new("ScrollingFrame")
-listeMagasin.Size = UDim2.new(1, -30, 1, -126)
-listeMagasin.Position = UDim2.new(0, 20, 0, 114)
+listeMagasin.Size = UDim2.new(1, -30, 1, -156)
+listeMagasin.Position = UDim2.new(0, 20, 0, 150)
 listeMagasin.BackgroundTransparency = 1
 listeMagasin.BorderSizePixel = 0
 listeMagasin.ScrollBarThickness = 5
@@ -730,8 +817,9 @@ listeMagasin.AutomaticCanvasSize = Enum.AutomaticSize.Y
 listeMagasin.CanvasSize = UDim2.new()
 listeMagasin.ZIndex = 31
 listeMagasin.Parent = panneauMagasin
-local dispoMagasin = Instance.new("UIListLayout")
-dispoMagasin.Padding = UDim.new(0, 8)
+local dispoMagasin = Instance.new("UIGridLayout") -- 2 colonnes de grandes cartes
+dispoMagasin.CellSize = UDim2.new(0.5, -10, 0, 132)
+dispoMagasin.CellPadding = UDim2.fromOffset(12, 12)
 dispoMagasin.SortOrder = Enum.SortOrder.LayoutOrder
 dispoMagasin.Parent = listeMagasin
 
@@ -940,14 +1028,14 @@ do
 ---------------------------------------------------------------------
 local panneauRoue = fenetre("RoueDuJour", "🎡 ROUE DU JOUR", 560, 600, Color3.fromRGB(255, 200, 40))
 do -- (bloc de la roue : ses variables restent ici)
-local TAILLE_ROUE = 360
+local TAILLE_ROUE = 430
 local N = #Config.Roue
 local ANGLE = 360 / N
 
 local cadreRoue = Instance.new("Frame") -- l'anneau doré autour
-cadreRoue.AnchorPoint = Vector2.new(0.5, 0)
+cadreRoue.AnchorPoint = Vector2.new(0.5, 0.5)
 cadreRoue.Size = UDim2.fromOffset(TAILLE_ROUE + 24, TAILLE_ROUE + 24)
-cadreRoue.Position = UDim2.new(0.5, 0, 0, 70)
+cadreRoue.Position = UDim2.new(0.3, 0, 0.55, 0) -- (la roue à gauche, les infos à droite)
 cadreRoue.BackgroundColor3 = Color3.fromRGB(255, 200, 60)
 cadreRoue.ZIndex = 31
 cadreRoue.Parent = panneauRoue
@@ -1003,8 +1091,8 @@ for i, case in ipairs(Config.Roue) do
 	reflet.Parent = part
 	local nom = Instance.new("TextLabel")
 	nom.AnchorPoint = Vector2.new(0.5, 0)
-	nom.Size = UDim2.new(0, 96, 0, 22)
-	nom.Position = UDim2.new(0.5, 0, 0, 30)
+	nom.Size = UDim2.new(0, 116, 0, 26)
+	nom.Position = UDim2.new(0.5, 0, 0, 36)
 	nom.BackgroundTransparency = 1
 	nom.TextColor3 = Color3.new(1, 1, 1)
 	nom.Font = Enum.Font.GothamBlack
@@ -1035,7 +1123,7 @@ end
 -- Le centre (bouton TOURNER)
 local boutonTourner = Instance.new("TextButton")
 boutonTourner.AnchorPoint = Vector2.new(0.5, 0.5)
-boutonTourner.Size = UDim2.fromOffset(110, 110)
+boutonTourner.Size = UDim2.fromOffset(130, 130)
 boutonTourner.Position = UDim2.fromScale(0.5, 0.5)
 boutonTourner.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 boutonTourner.TextColor3 = Color3.new(1, 1, 1)
@@ -1050,8 +1138,8 @@ bordCentre.Thickness = 5
 bordCentre.Color = Color3.fromRGB(255, 215, 90)
 bordCentre.Parent = boutonTourner
 local margeCentre = Instance.new("UIPadding")
-margeCentre.PaddingTop = UDim.new(0, 38)
-margeCentre.PaddingBottom = UDim.new(0, 38)
+margeCentre.PaddingTop = UDim.new(0, 46)
+margeCentre.PaddingBottom = UDim.new(0, 46)
 margeCentre.PaddingLeft = UDim.new(0, 10)
 margeCentre.PaddingRight = UDim.new(0, 10)
 margeCentre.Parent = boutonTourner
@@ -1061,22 +1149,22 @@ echelleCentre.Parent = boutonTourner
 local fleche = Instance.new("TextLabel")
 fleche.AnchorPoint = Vector2.new(0.5, 0)
 fleche.Size = UDim2.fromOffset(50, 50)
-fleche.Position = UDim2.new(0.5, 0, 0, 52)
+fleche.Position = UDim2.new(0.5, 0, 0, -34)
 fleche.BackgroundTransparency = 1
 fleche.TextColor3 = Color3.fromRGB(255, 255, 255)
 fleche.Font = Enum.Font.GothamBlack
 fleche.TextScaled = true
 fleche.Text = "▼"
 fleche.ZIndex = 70
-fleche.Parent = panneauRoue
+fleche.Parent = cadreRoue
 local contourFleche = Instance.new("UIStroke")
 contourFleche.Thickness = 3
 contourFleche.Color = Color3.fromRGB(225, 30, 45)
 contourFleche.Parent = fleche
 
-local infoRoue = texte(panneauRoue, UDim2.new(1, -40, 0, 22), UDim2.new(0, 20, 0, 470), Color3.new(1, 1, 1), Enum.Font.GothamBold)
+local infoRoue = texte(panneauRoue, UDim2.new(0.42, 0, 0, 34), UDim2.new(0.58, 0, 0.3, 0), Color3.new(1, 1, 1), Enum.Font.GothamBold)
 infoRoue.ZIndex = 31
-local resultatRoue = texte(panneauRoue, UDim2.new(1, -40, 0, 30), UDim2.new(0, 20, 0, 496), Color3.fromRGB(255, 215, 80))
+local resultatRoue = texte(panneauRoue, UDim2.new(0.42, 0, 0, 60), UDim2.new(0.58, 0, 0.3, 48), Color3.fromRGB(255, 215, 80))
 resultatRoue.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
 resultatRoue.ZIndex = 31
 -- Les chances de chaque cadeau (obligatoire sur Roblox pour les tours achetés)
@@ -1088,21 +1176,26 @@ local morceaux = {}
 for _, case in ipairs(Config.Roue) do
 	table.insert(morceaux, ("%s %s%%"):format(case.Nom, string.format("%.1f", case.Poids / totalPoids * 100):gsub("%.0$", "")))
 end
-local chances = texte(panneauRoue, UDim2.new(1, -40, 0, 30), UDim2.new(0, 20, 0, 532), Color3.fromRGB(150, 150, 160), Enum.Font.GothamMedium)
+local chances = texte(panneauRoue, UDim2.new(0.42, 0, 0, 80), UDim2.new(0.58, 0, 0.3, 230), Color3.fromRGB(150, 150, 160), Enum.Font.GothamMedium)
 chances.Text = "Chances : " .. table.concat(morceaux, " · ")
 chances.TextWrapped = true
 chances.ZIndex = 31
 local boutonAcheterTours = Instance.new("TextButton")
-boutonAcheterTours.AnchorPoint = Vector2.new(0.5, 1)
-boutonAcheterTours.Size = UDim2.new(0, 260, 0, 30)
-boutonAcheterTours.Position = UDim2.new(0.5, 0, 1, -6)
-boutonAcheterTours.BackgroundTransparency = 1
-boutonAcheterTours.TextColor3 = Color3.fromRGB(255, 120, 130)
+boutonAcheterTours.AnchorPoint = Vector2.new(0, 0)
+boutonAcheterTours.Size = UDim2.new(0, 320, 0, 52)
+boutonAcheterTours.Position = UDim2.new(0.58, 0, 0.3, 130)
+boutonAcheterTours.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
+boutonAcheterTours.TextColor3 = Color3.new(1, 1, 1)
 boutonAcheterTours.Font = Enum.Font.GothamBold
 boutonAcheterTours.TextScaled = true
 boutonAcheterTours.Text = "🛒 Acheter des tours en plus"
 boutonAcheterTours.ZIndex = 31
 boutonAcheterTours.Parent = panneauRoue
+Instance.new("UICorner", boutonAcheterTours).CornerRadius = UDim.new(0, 6)
+local margeTours = Instance.new("UIPadding")
+margeTours.PaddingTop = UDim.new(0, 12)
+margeTours.PaddingBottom = UDim.new(0, 12)
+margeTours.Parent = boutonAcheterTours
 boutonAcheterTours.Activated:Connect(function()
 	panneauRoue.Visible = false
 	ouvrirMagasin("Roue")
@@ -1488,7 +1581,7 @@ local function majMenu()
 	local enManche = joueur:GetAttribute("Role") ~= nil
 	local prete = joueur:GetAttribute("Pret") == true
 	local preteBattle = false
-	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true)
+	boutonMenu.Visible = not enManche and joueur:GetAttribute("IntroFinie") == true and not (joueur:GetAttribute("EnSalle") == true) and not joueur:GetAttribute("MenuGarage")
 	if enManche then
 		fondMenu.Visible = false
 	end
@@ -1499,7 +1592,7 @@ local function majMenu()
 	boutonMenu.Text = if prete or preteBattle then "☰ MENU · ✅ EN FILE" else "☰ MENU"
 	boutonMenu.Size = UDim2.new(0, if prete or preteBattle then 300 else 190, 0, 54)
 end
-for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle" }) do
+for _, nom in ipairs({ "Pret", "Role", "IntroFinie", "EnSalle", "MenuGarage" }) do
 	joueur:GetAttributeChangedSignal(nom):Connect(majMenu)
 end
 majMenu()
@@ -1587,8 +1680,27 @@ carteBattle.Activated:Connect(function()
 	end
 end)
 carteGarage.Activated:Connect(function()
+	-- On va DIRECTEMENT à la personnalisation : ton kart en face, les options à droite
 	ouvrirMenu(false)
-	Partie:FireServer({ type = "garage" })
+	joueur:SetAttribute("OuvrirGarage", true) -- (le script GarageUI s'en occupe)
+end)
+-- Quand on ferme le garage : retour au menu
+joueur:GetAttributeChangedSignal("RetourMenu"):Connect(function()
+	if joueur:GetAttribute("RetourMenu") then
+		joueur:SetAttribute("RetourMenu", false)
+		task.wait(0.6)
+		ouvrirMenu(true)
+	end
+end)
+-- « ROULER » depuis le garage du lobby : direction l'entraînement
+joueur:GetAttributeChangedSignal("ModeDemande"):Connect(function()
+	local mode = joueur:GetAttribute("ModeDemande")
+	if mode then
+		joueur:SetAttribute("ModeDemande", nil)
+		if EN_LOBBY and Voyage then
+			Voyage:FireServer({ mode = mode })
+		end
+	end
 end)
 
 -- (En arrivant, on visite le garage : le menu s'ouvre avec le bouton « ☰ MENU »)

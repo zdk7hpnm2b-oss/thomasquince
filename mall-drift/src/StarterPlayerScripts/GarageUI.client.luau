@@ -899,6 +899,16 @@ end
 
 boutonFermer.Activated:Connect(function()
 	fermer(false)
+	joueur:SetAttribute("RetourMenu", true) -- on revient au menu
+end)
+
+-- Bouton GARAGE du menu : on ouvre la personnalisation directement
+joueur:GetAttributeChangedSignal("OuvrirGarage"):Connect(function()
+	if joueur:GetAttribute("OuvrirGarage") then
+		joueur:SetAttribute("OuvrirGarage", false)
+		task.wait(0.05)
+		ouvrir()
+	end
 end)
 
 boutonEnregistrer.Activated:Connect(function()
@@ -910,7 +920,11 @@ boutonSortir.Activated:Connect(function()
 	remotes.Personnaliser:FireServer(persoEdite)
 	fermer(true) -- la cinématique de départ prend le relais
 	task.wait(0.35) -- laisse le serveur enregistrer avant de sortir le kart
-	remotes.SortirKart:FireServer()
+	if Config.TypeDePlace() == "Lobby" then
+		joueur:SetAttribute("ModeDemande", "Entrainement") -- au lobby : direction l'entraînement
+	else
+		remotes.SortirKart:FireServer()
+	end
 end)
 
 ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt)
