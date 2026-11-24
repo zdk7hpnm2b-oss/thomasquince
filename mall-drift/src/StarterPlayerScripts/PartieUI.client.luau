@@ -565,88 +565,10 @@ carteJouer.Activated:Connect(function()
 end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
--- GARAGE, ROUE, MAGASIN, TUTO : une grille 2 x 2 de grosses tuiles colorées
--- (une grande icône + un mot : moins chargé, plus attirant, comme les jeux Roblox populaires)
-local grilleTuiles = Instance.new("Frame")
-ordreMenu += 1
-grilleTuiles.LayoutOrder = ordreMenu
-grilleTuiles.Size = UDim2.new(1, 0, 0, 0)
-grilleTuiles.AutomaticSize = Enum.AutomaticSize.Y
-grilleTuiles.BackgroundTransparency = 1
-grilleTuiles.ZIndex = 21
-grilleTuiles.Parent = listeBoutons
-local dispositionTuiles = Instance.new("UIGridLayout")
-dispositionTuiles.CellSize = UDim2.new(0.5, -6, 0, 118)
-dispositionTuiles.CellPadding = UDim2.fromOffset(12, 12)
-dispositionTuiles.SortOrder = Enum.SortOrder.LayoutOrder
-dispositionTuiles.Parent = grilleTuiles
-local function tuile(ordre: number, icone: string, titre: string, couleur: Color3): TextButton
-	local b = Instance.new("TextButton")
-	b.LayoutOrder = ordre
-	b.BackgroundColor3 = Color3.new(1, 1, 1)
-	b.AutoButtonColor = false
-	b.Text = ""
-	b.ZIndex = 22
-	b.Parent = grilleTuiles
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 14)
-	local degrade = Instance.new("UIGradient") -- couleur vive, style bonbon
-	degrade.Color = ColorSequence.new(couleur:Lerp(Color3.new(1, 1, 1), 0.3), couleur:Lerp(Color3.new(0, 0, 0), 0.1))
-	degrade.Rotation = 90
-	degrade.Parent = b
-	local bord = Instance.new("UIStroke")
-	bord.Color = Color3.new(1, 1, 1)
-	bord.Thickness = 3
-	bord.Transparency = 0.35
-	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	bord.Parent = b
-	-- Relief en bas (bouton « épais »)
-	local relief = Instance.new("Frame")
-	relief.AnchorPoint = Vector2.new(0, 1)
-	relief.Size = UDim2.new(1, 0, 0, 7)
-	relief.Position = UDim2.new(0, 0, 1, 0)
-	relief.BackgroundColor3 = couleur:Lerp(Color3.new(0, 0, 0), 0.45)
-	relief.BorderSizePixel = 0
-	relief.ZIndex = 23
-	relief.Parent = b
-	Instance.new("UICorner", relief).CornerRadius = UDim.new(0, 14)
-	-- Grande icône au centre
-	local image = Config.ImageIcone(icone)
-	if image then
-		local img = Instance.new("ImageLabel")
-		img.AnchorPoint = Vector2.new(0.5, 0)
-		img.Size = UDim2.fromOffset(56, 56)
-		img.Position = UDim2.new(0.5, 0, 0, 12)
-		img.BackgroundTransparency = 1
-		img.Image = image
-		img.ZIndex = 24
-		img.Parent = b
-	else
-		local i = texte(b, UDim2.fromOffset(60, 56), UDim2.new(0.5, -30, 0, 12), Color3.new(1, 1, 1))
-		i.Text = icone
-		i.ZIndex = 24
-	end
-	local t = texte(b, UDim2.new(1, -16, 0, 30), UDim2.new(0, 8, 1, -44), Color3.new(1, 1, 1))
-	t.Text = titre
-	t.FontFace = POLICE_COURSE
-	t.ZIndex = 24
-	-- Survol : la tuile grossit et penche un peu
-	local echelle = Instance.new("UIScale")
-	echelle.Parent = b
-	b.MouseEnter:Connect(function()
-		TweenService:Create(echelle, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = 1.06 }):Play()
-		TweenService:Create(b, TweenInfo.new(0.15), { Rotation = -2 }):Play()
-	end)
-	b.MouseLeave:Connect(function()
-		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1 }):Play()
-		TweenService:Create(b, TweenInfo.new(0.15), { Rotation = 0 }):Play()
-	end)
-	table.insert(boutonsMenu, b)
-	return b
-end
-local carteGarage = tuile(1, "🔧", "GARAGE", Color3.fromRGB(255, 130, 20))
-local carteRoue = tuile(2, "🎡", "ROUE", Color3.fromRGB(255, 185, 0))
-local carteMagasin = tuile(3, "🛒", "MAGASIN", Color3.fromRGB(240, 50, 200))
-local carteTuto = tuile(4, "📖", "TUTO", Color3.fromRGB(0, 190, 230))
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart", Color3.fromRGB(255, 130, 20))
+local carteRoue = carteMode("🎡", "ROUE DU JOUR", "1 tour gratuit par jour", Color3.fromRGB(255, 195, 0))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Karts, traînées, packs", Color3.fromRGB(240, 50, 200))
+local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter", Color3.fromRGB(0, 200, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
 carteLobby.Visible = false
@@ -1662,7 +1584,7 @@ end)
 local pastilleRoue = Instance.new("TextLabel")
 pastilleRoue.AnchorPoint = Vector2.new(0.5, 0.5)
 pastilleRoue.Size = UDim2.fromOffset(22, 22)
-pastilleRoue.Position = UDim2.new(1, -14, 0, 14) -- (en haut à droite de la tuile ROUE)
+pastilleRoue.Position = UDim2.new(0, 48, 0, 14)
 pastilleRoue.BackgroundColor3 = Color3.fromRGB(235, 40, 50)
 pastilleRoue.TextColor3 = Color3.new(1, 1, 1)
 pastilleRoue.Font = Enum.Font.FredokaOne
@@ -1797,7 +1719,7 @@ end
 
 local dossierDemo: Folder? = nil
 local kartsDemo: { { modele: Model, decalage: number, vitesse: number, angle: number, fumee: ParticleEmitter } } = {}
-local COULEURS_DEMO = { { "Rouge", "Rose" }, { "Bleu", "Cyan" }, { "Jaune", "Vert" }, { "Violet", "Violet" }, { "Orange", "Rouge" }, { "Blanc", "Bleu" } }
+local COULEURS_DEMO = { { "Rouge", "Rose" }, { "Bleu", "Cyan" }, { "Jaune", "Vert" }, { "Violet", "Violet" } } -- (4 : plus léger)
 
 local function creerKartsDemo()
 	if dossierDemo then
@@ -1884,9 +1806,64 @@ local function animerKartsDemo(dt: number)
 	end
 end
 
--- LA CAMÉRA DU MENU : elle tourne en continu autour de l'action. Elle suit
--- un vrai kart en jeu s'il y en a (🔴 EN DIRECT), sinon le peloton de démo.
+-- LA CAMÉRA DU MENU, façon retransmission TV : elle suit un kart DE DERRIÈRE / DE CÔTÉ
+-- en balayant doucement, ne traverse jamais les murs ni le plafond, et change de
+-- pilote toutes les 12 s avec un fondu (pas de grand travelling à travers le mall).
+-- Elle suit un vrai joueur s'il y en a (🔴 EN DIRECT), sinon le peloton de démo.
 local pointVise: Vector3? = nil
+local dernierPoint: Vector3? = nil
+local directionLisse = Vector3.new(0, 0, -1)
+local tempsCamera = 0
+local SOL_MENU = 1
+local rayonMenu = RaycastParams.new()
+rayonMenu.FilterType = Enum.RaycastFilterType.Exclude
+-- Fondu noir (seulement sur le fond : les boutons du menu restent visibles)
+local fonduMenu = Instance.new("Frame")
+fonduMenu.Size = UDim2.fromScale(1, 1)
+fonduMenu.BackgroundColor3 = Color3.new(0, 0, 0)
+fonduMenu.BackgroundTransparency = 1
+fonduMenu.BorderSizePixel = 0
+fonduMenu.ZIndex = 20
+fonduMenu.Parent = fondMenu
+local enFondu = false
+
+local function choisirCible()
+	local liste = kartsEnJeu()
+	-- On préfère un kart qui roule vraiment (plus spectaculaire)
+	local rapides = {}
+	for _, choix in ipairs(liste) do
+		local piece = choix[1] :: BasePart
+		if piece.AssemblyLinearVelocity.Magnitude > 12 then
+			table.insert(rapides, choix)
+		end
+	end
+	local source = if #rapides > 0 then rapides else liste
+	if #source > 0 then
+		local choix = source[math.random(1, #source)]
+		cibleDirect = choix[1] :: BasePart
+		nomDirect = choix[2] :: string
+	else
+		cibleDirect = nil
+	end
+	pointVise = nil
+	dernierPoint = nil
+	cfCamera = nil
+end
+
+local function changerAvecFondu()
+	if enFondu then
+		return
+	end
+	enFondu = true
+	local entree = TweenService:Create(fonduMenu, TweenInfo.new(0.25), { BackgroundTransparency = 0 })
+	entree:Play()
+	entree.Completed:Wait()
+	choisirCible()
+	task.wait(0.05)
+	TweenService:Create(fonduMenu, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+	enFondu = false
+end
+
 RunService.RenderStepped:Connect(function(dt)
 	if not cameraMenu then
 		badgeDirect.Visible = false
@@ -1896,16 +1873,15 @@ RunService.RenderStepped:Connect(function(dt)
 		return
 	end
 	local maintenant = os.clock()
-	if not cibleDirect or not cibleDirect.Parent or maintenant > prochainChangement then
-		local liste = kartsEnJeu()
-		if #liste > 0 then
-			local choix = liste[math.random(1, #liste)]
-			cibleDirect = choix[1] :: BasePart
-			nomDirect = choix[2] :: string
-		else
-			cibleDirect = nil
+	tempsCamera += dt
+	if not cibleDirect or not cibleDirect.Parent then
+		if maintenant > prochainChangement then
+			prochainChangement = maintenant + 12
+			choisirCible() -- (première cible ou cible perdue : sans fondu)
 		end
-		prochainChangement = maintenant + 10
+	elseif maintenant > prochainChangement then
+		prochainChangement = maintenant + 12
+		task.spawn(changerAvecFondu)
 	end
 
 	local cible: Vector3
@@ -1923,13 +1899,46 @@ RunService.RenderStepped:Connect(function(dt)
 		cible = if premier then premier.modele:GetPivot().Position else Vector3.new(0, 5, 0)
 		badgeDirect.Visible = false
 	end
-	pointVise = if pointVise then pointVise:Lerp(cible, math.clamp(dt * 2.5, 0, 1)) else cible
-	-- Orbite qui tourne tout le temps, assez haute pour voir les karts et le mall
-	angleMenu += dt * 0.16
+
+	-- Direction de la course (d'après le mouvement, lissée : pas de tremblement)
+	if dernierPoint and dt > 0 then
+		local mouvement = Vector3.new(cible.X - dernierPoint.X, 0, cible.Z - dernierPoint.Z)
+		if mouvement.Magnitude > 0.05 then
+			directionLisse = directionLisse:Lerp(mouvement.Unit, math.clamp(dt * 2, 0, 1))
+			if directionLisse.Magnitude > 0.01 then
+				directionLisse = directionLisse.Unit
+			end
+		end
+	end
+	dernierPoint = cible
+	pointVise = if pointVise then pointVise:Lerp(cible, math.clamp(dt * 4, 0, 1)) else cible
 	local centre = pointVise :: Vector3
-	local pos = centre + Vector3.new(math.cos(angleMenu) * 30, 14 + math.sin(angleMenu * 0.7) * 3, math.sin(angleMenu) * 30)
-	local voulu = CFrame.lookAt(pos, centre + Vector3.new(0, 1.5, 0))
-	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 4, 0, 1)) else voulu
+
+	-- Position : derrière le kart, avec un balayage lent de côté à côté (±50°)
+	local balayage = math.sin(tempsCamera * 0.18) * math.rad(50)
+	local derriere = CFrame.fromAxisAngle(Vector3.yAxis, balayage):VectorToWorldSpace(-directionLisse)
+	local pos = centre + derriere * 17 + Vector3.new(0, 6.5, 0)
+	-- Jamais sous le plafond du rez-de-chaussée (le mall fait 24 de haut)
+	if centre.Y < SOL_MENU + 20 then
+		pos = Vector3.new(pos.X, math.min(pos.Y, SOL_MENU + 21), pos.Z)
+	end
+	-- Jamais à travers un mur : si quelque chose cache le kart, la caméra se rapproche
+	local exclus = { joueur.Character }
+	for _, nom in ipairs({ "KartsJoueurs", "BotsManche", "KartsDemoMenu", "Securite" }) do
+		local d = workspace:FindFirstChild(nom)
+		if d then
+			table.insert(exclus, d)
+		end
+	end
+	rayonMenu.FilterDescendantsInstances = exclus
+	local depart = centre + Vector3.new(0, 2, 0)
+	local obstacle = workspace:Raycast(depart, pos - depart, rayonMenu)
+	if obstacle then
+		pos = obstacle.Position + (depart - pos).Unit * 1.5
+	end
+
+	local voulu = CFrame.lookAt(pos, centre + directionLisse * 6 + Vector3.new(0, 1.5, 0))
+	cfCamera = if cfCamera then cfCamera:Lerp(voulu, math.clamp(dt * 3, 0, 1)) else voulu
 	if camera.CameraType ~= Enum.CameraType.Scriptable then
 		camera.CameraType = Enum.CameraType.Scriptable -- (au cas où un autre script l'a remise)
 	end
