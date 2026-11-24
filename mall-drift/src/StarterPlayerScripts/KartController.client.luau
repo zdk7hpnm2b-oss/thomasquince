@@ -187,8 +187,23 @@ local comboLabel = label("Combo", blocDrift, UDim2.new(1, 0, 0, 28), UDim2.new(0
 comboLabel.TextColor3 = Color3.fromRGB(120, 220, 255)
 
 -- Messages qui apparaissent au milieu (« SUPER DRIFT ★★ », « 360° ! »…)
+local emplacementsMessages: { [number]: TextLabel } = {} -- 3 lignes, l'une sous l'autre
 local function message(texte: string, couleur: Color3?, duree: number?)
-	local m = label("Message", gui, UDim2.new(0, 600, 0, 60), UDim2.new(0.5, -300, 0.3, 0)) -- (sous les feux et la carte du tuto)
+	-- Première ligne libre ; si les 3 sont prises, la 1re est remplacée : jamais deux textes l'un sur l'autre
+	local ligne = nil
+	for i = 1, 3 do
+		local occupe = emplacementsMessages[i]
+		if not (occupe and occupe.Parent) then
+			ligne = i
+			break
+		end
+	end
+	if not ligne then
+		ligne = 1
+		emplacementsMessages[1]:Destroy()
+	end
+	local m = label("Message", gui, UDim2.new(0, 600, 0, 46), UDim2.new(0.5, -300, 0.3, (ligne - 1) * 50)) -- (sous les feux et la carte du tuto)
+	emplacementsMessages[ligne] = m
 	m.Text = texte
 	m.TextColor3 = couleur or Color3.new(1, 1, 1)
 	m.ZIndex = 10

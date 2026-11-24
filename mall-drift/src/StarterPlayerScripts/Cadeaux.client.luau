@@ -143,6 +143,7 @@ carteGroupe.Visible = false
 -- Le panneau qui détaille les cadeaux
 ---------------------------------------------------------------------
 local panneau = Instance.new("Frame")
+panneau.Name = "PageCadeaux"
 panneau.AnchorPoint = Vector2.new(0.5, 0.5)
 panneau.Size = UDim2.fromScale(1, 1) -- page entière
 panneau.Position = UDim2.fromScale(0.5, 0.5)
@@ -287,6 +288,13 @@ end
 
 local function ouvrir(v: string)
 	vue = v
+	-- Une seule page à la fois : on ferme le magasin, la roue, l'aperçu
+	for _, nom in ipairs({ "Magasin", "RoueDuJour", "Apercu" }) do
+		local autre = menu:FindFirstChild(nom)
+		if autre and autre:IsA("GuiObject") then
+			autre.Visible = false
+		end
+	end
 	panneau.Visible = true
 	-- La page arrive en glissant depuis la droite
 	panneau.Position = UDim2.fromScale(1.5, 0.5)

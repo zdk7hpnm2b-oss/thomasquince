@@ -62,8 +62,13 @@ margeBarre.PaddingBottom = UDim.new(0, 6)
 margeBarre.Parent = barre
 
 -- Grand message au centre
+local grandMessageActuel: TextLabel? = nil
 local function grandMessage(texte: string, couleur: Color3, duree: number)
+	if grandMessageActuel then
+		grandMessageActuel:Destroy() -- (un seul grand message à la fois)
+	end
 	local l = Instance.new("TextLabel")
+	grandMessageActuel = l
 	l.AnchorPoint = Vector2.new(0.5, 0.5)
 	l.Size = UDim2.new(0.8, 0, 0, 70)
 	l.Position = UDim2.fromScale(0.5, 0.42) -- (sous les messages de drift)

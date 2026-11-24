@@ -820,6 +820,15 @@ end
 -- Arrivée de la page : elle glisse depuis la droite, un éclair de couleur la balaie,
 -- le titre et la barre arrivent juste après
 local function apparaitre(f: Frame)
+	for _, autre in ipairs(pagesListe) do
+		if autre ~= f and not (f.Name == "Apercu" and autre.Name == "Magasin") then
+			autre.Visible = false -- (une seule page à la fois)
+		end
+	end
+	local pageCadeaux = fondMenu:FindFirstChild("PageCadeaux")
+	if pageCadeaux and pageCadeaux:IsA("GuiObject") then
+		pageCadeaux.Visible = false
+	end
 	f.Visible = true
 	f.Position = UDim2.fromScale(1.5, 0.5)
 	TweenService:Create(f, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) }):Play()

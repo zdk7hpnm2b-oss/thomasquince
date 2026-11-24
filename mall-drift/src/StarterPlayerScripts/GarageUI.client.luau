@@ -1062,7 +1062,10 @@ task.spawn(function()
 		if racine and joueur:GetAttribute("IntroFinie") then
 			local p = racine.Position
 			local maintenantDedans = math.abs(p.X) < GARAGE_X and p.Z > GARAGE_Z1 and p.Z < GARAGE_Z2
-			if maintenantDedans and not dedans then
+			local hud = joueur.PlayerGui:FindFirstChild("PartieHUD")
+			local menuDuJeu = hud and hud:FindFirstChild("Menu")
+			local menuOuvertAilleurs = (menuDuJeu and (menuDuJeu :: Frame).Visible) or menuOuvert or joueur:GetAttribute("EnTuto")
+			if maintenantDedans and not dedans and not menuOuvertAilleurs then
 				montrerBanniere()
 			end
 			dedans = maintenantDedans
