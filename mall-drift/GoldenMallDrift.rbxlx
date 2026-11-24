@@ -3007,6 +3007,35 @@ do
 	local rayonSol = RaycastParams.new()
 	rayonSol.FilterType = Enum.RaycastFilterType.Exclude
 
+	-- 0) LE MALL EST FERMÉ : on ne voit plus le parking ni le garage depuis l'intérieur.
+	--    Les portes vitrées ouvertes sont remplacées par de grandes portes teintées, fermées.
+	for _, d in ipairs(carte:GetChildren()) do
+		if d:IsA("BasePart") and (d.Name == "PorteOuverte" or d.Name == "BarriereManche") then
+			d:Destroy() -- (l'entrée est fermée pour de bon : plus besoin de la barrière des manches)
+		end
+	end
+	local zPorte = DZ + 1
+	-- Fond opaque (rien ne se voit au travers) + deux grands battants de verre fumé
+	local fond = bloc("FondPortes", Vector3.new(largeurPortes, 16, 0.6), CFrame.new(0, SOL + 8, zPorte + 0.6), Color3.fromRGB(18, 20, 26), Enum.Material.SmoothPlastic, decor)
+	fond.CastShadow = false
+	for _, cote in ipairs({ -1, 1 }) do
+		local battant = bloc("PorteFermee", Vector3.new(largeurPortes / 2 - 0.6, 15.4, 0.5), CFrame.new(cote * largeurPortes / 4, SOL + 7.7, zPorte), Color3.fromRGB(45, 60, 82), Enum.Material.Glass, decor)
+		battant.Transparency = 0.1
+		battant.Reflectance = 0.35
+		-- Poignée dorée verticale, près du centre
+		deco(bloc("Poignee", Vector3.new(0.4, 5, 0.6), CFrame.new(cote * 2.2, SOL + 7.5, zPorte - 0.5), OR, Enum.Material.Foil, decor))
+		-- Lettres dorées sur chaque battant
+		local plaque = deco(bloc("LettresPorte", Vector3.new(largeurPortes / 2 - 6, 3, 0.1), CFrame.new(cote * largeurPortes / 4, SOL + 11.5, zPorte - 0.32), Color3.new(0, 0, 0), Enum.Material.SmoothPlastic, decor))
+		plaque.Transparency = 1
+		texte(plaque, Enum.NormalId.Front, if cote < 0 then "GOLDEN" else "MALL", OR)
+	end
+	-- Cadre doré autour de l'entrée
+	deco(bloc("CadrePorte", Vector3.new(largeurPortes + 1.2, 0.8, 1), CFrame.new(0, SOL + 15.8, zPorte - 0.4), OR, Enum.Material.Foil, decor))
+	deco(bloc("CadrePorte", Vector3.new(0.6, 16, 1), CFrame.new(0, SOL + 8, zPorte - 0.4), OR, Enum.Material.Foil, decor))
+	for _, cote in ipairs({ -1, 1 }) do
+		deco(bloc("CadrePorte", Vector3.new(0.8, 16, 1), CFrame.new(cote * (largeurPortes / 2 + 0.2), SOL + 8, zPorte - 0.4), OR, Enum.Material.Foil, decor))
+	end
+
 	-- 1) Rayons de lumière (lumière du jour qui tombe des verrières)
 	local dossierPuits = carte:FindFirstChild("PuitsDeLumiere")
 	if dossierPuits then
