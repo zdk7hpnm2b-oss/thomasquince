@@ -36,8 +36,10 @@ Ce prototype contient :
 - **📸 Mode photo** (touche P) : l'interface disparaît, caméra libre autour du kart (Q/E, clic droit,
   molette, T/G), O = rotation automatique. Parfait pour les TikTok
 - **Titres au-dessus des joueurs** : 👑 VIP, 🔥 ROI DU DRIFT (record ≥ 3 000), ⭐ PILOTE PRO (niveau 10), + niveau
-- **Carte** : rayons de lumière sous les verrières, écrans géants animés au-dessus de l'atrium,
-  grandes bannières rouge et or suspendues
+- **Carte** : mall fermé (portes teintées), rayons de lumière sous les verrières, écrans géants animés,
+  bannières rouge et or, 2 lustres géants dorés, enseignes néon animées, décor de course aux virages
+  (pneus, bordures, chevrons, banderoles de sponsors), sol de luxe (lignes dorées, rosaces aux croisements),
+  jardinières fleuries sur les balustrades, ballons qui flottent, affiches « SOLDES » sur les vitrines
 - **🎡 Roue du jour** (menu) : 1 tour GRATUIT par jour (2 avec le Pass VIP) + tours achetables. Cadeaux :
   pièces, XP, couleur, traînée, et le JACKPOT (kart Licorne Galaxie). Tirage fait par le serveur, chances
   affichées sous la roue (obligatoire sur Roblox pour un tirage au sort payant). Réglages : `Config.Roue`

@@ -3190,6 +3190,94 @@ do
 		end
 	end
 
+	-- 2 quater) SOL DE LUXE : lignes dorées le long des grandes allées + rosaces aux croisements
+	local MARBRE_BLANC = Color3.fromRGB(246, 243, 236)
+	for _, z in ipairs({ -137, 137 }) do
+		for _, cote in ipairs({ -1, 1 }) do
+			local ligne = deco(bloc("IncrustationOr", Vector3.new(LARGEUR - 20, 0.05, 0.5), CFrame.new(0, SOL + 0.035, z + cote * 10.5), OR, Enum.Material.Foil, decor))
+			ligne.CastShadow = false
+		end
+	end
+	for _, x in ipairs({ -173, -99, 0, 99, 173 }) do
+		for _, z in ipairs({ -137, 137 }) do
+			local centre = Vector3.new(x, SOL + 0.04, z)
+			local disque = deco(bloc("Rosace", Vector3.new(0.06, 15, 15), CFrame.new(centre) * CFrame.Angles(0, 0, math.rad(90)), MARBRE_BLANC, Enum.Material.Marble, decor))
+			disque.Shape = Enum.PartType.Cylinder
+			disque.CastShadow = false
+			local anneau = deco(bloc("RosaceAnneau", Vector3.new(0.07, 13, 13), CFrame.new(centre + Vector3.new(0, 0.005, 0)) * CFrame.Angles(0, 0, math.rad(90)), OR, Enum.Material.Foil, decor))
+			anneau.Shape = Enum.PartType.Cylinder
+			anneau.CastShadow = false
+			local interieur = deco(bloc("RosaceCentre", Vector3.new(0.08, 11.5, 11.5), CFrame.new(centre + Vector3.new(0, 0.01, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(30, 30, 36), Enum.Material.Marble, decor))
+			interieur.Shape = Enum.PartType.Cylinder
+			interieur.CastShadow = false
+			-- Étoile dorée à 8 branches
+			for k = 0, 3 do
+				local branche = deco(bloc("RosaceEtoile", Vector3.new(10, 0.1, 0.6), CFrame.new(centre + Vector3.new(0, 0.02, 0)) * CFrame.Angles(0, math.rad(k * 45), 0), OR, Enum.Material.Foil, decor))
+				branche.CastShadow = false
+			end
+		end
+	end
+
+	-- 2 quinquies) JARDINIÈRES FLEURIES sur les balustrades de verre de l'étage (autour de l'atrium)
+	local FLEURS = { Color3.fromRGB(255, 80, 140), Color3.fromRGB(255, 200, 40), Color3.fromRGB(170, 90, 255), Color3.fromRGB(255, 120, 60), Color3.fromRGB(80, 170, 255) }
+	local nbFleurs = 0
+	for _, x in ipairs({ -ATRIUM_X, ATRIUM_X }) do
+		for _, z in ipairs({ -115, -95, -75, -55, -35, 35, 55, 75, 95, 115 }) do
+			local base = Vector3.new(x, SOL + ETAGE + 3.85, z)
+			deco(bloc("Jardiniere", Vector3.new(1.1, 0.7, 4), CFrame.new(base), Color3.fromRGB(240, 236, 228), Enum.Material.Marble, decor))
+			deco(bloc("Feuillage", Vector3.new(1.3, 0.6, 4.2), CFrame.new(base + Vector3.new(0, 0.55, 0)), Color3.fromRGB(60, 150, 70), Enum.Material.Grass, decor))
+			for f = -1, 1 do
+				nbFleurs += 1
+				local fleur = deco(bloc("Fleur", Vector3.new(0.7, 0.7, 0.7), CFrame.new(base + Vector3.new(0, 1, f * 1.3)), FLEURS[nbFleurs % #FLEURS + 1], Enum.Material.SmoothPlastic, decor))
+				fleur.Shape = Enum.PartType.Ball
+				fleur.CastShadow = false
+			end
+		end
+	end
+
+	-- 2 sexies) GRAPPES DE BALLONS autour de la place centrale (elles flottent, côté joueur)
+	local COULEURS_BALLONS = { Color3.fromRGB(255, 60, 90), Color3.fromRGB(255, 200, 40), Color3.fromRGB(60, 170, 255), Color3.fromRGB(170, 80, 255), Color3.fromRGB(60, 220, 120), Color3.fromRGB(255, 255, 255) }
+	local nbBallons = 0
+	for _, x in ipairs({ -26, 26 }) do
+		for _, z in ipairs({ -22, 22 }) do
+			local pied = Vector3.new(x, SOL, z)
+			deco(bloc("PoidsBallons", Vector3.new(1.2, 1, 1.2), CFrame.new(pied + Vector3.new(0, 0.5, 0)), OR, Enum.Material.Foil, decor))
+			for k = 1, 7 do
+				nbBallons += 1
+				local angle = k * 0.9
+				local tete = pied + Vector3.new(math.cos(angle) * 1.6, 9 + (k % 3) * 1.3, math.sin(angle) * 1.6)
+				local ballon = deco(bloc("Ballon", Vector3.new(2.1, 2.5, 2.1), CFrame.new(tete), COULEURS_BALLONS[nbBallons % #COULEURS_BALLONS + 1], Enum.Material.SmoothPlastic, decor))
+				local mesh = Instance.new("SpecialMesh")
+				mesh.MeshType = Enum.MeshType.Sphere
+				mesh.Parent = ballon
+				ballon.Reflectance = 0.15
+				ballon.CastShadow = false
+				local fil = deco(bloc("FilBallon", Vector3.new(0.05, (tete - pied).Magnitude, 0.05), CFrame.lookAt((tete + pied) / 2, tete) * CFrame.Angles(math.rad(90), 0, 0), Color3.fromRGB(240, 240, 240), Enum.Material.SmoothPlastic, decor))
+				fil.CastShadow = false
+			end
+		end
+	end
+
+	-- 2 septies) AFFICHES « SOLDES » sur une vitrine sur trois (vitrines « vivantes »)
+	local AFFICHES = {
+		{ "SOLDES\n-50%", Color3.fromRGB(230, 30, 40), Color3.fromRGB(255, 230, 60) },
+		{ "NOUVELLE\nCOLLECTION", Color3.fromRGB(20, 20, 24), Color3.new(1, 1, 1) },
+		{ "-30%\nSUR TOUT", Color3.fromRGB(255, 200, 30), Color3.fromRGB(200, 20, 30) },
+		{ "PROMO\nDU JOUR", Color3.fromRGB(40, 120, 255), Color3.new(1, 1, 1) },
+	}
+	local nbVitrines = 0
+	for _, d in ipairs(carte:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name == "Vitrine" and d.Size.X > 6 and d.Size.Y > 6 then
+			nbVitrines += 1
+			if nbVitrines % 3 == 0 then
+				local affiche = AFFICHES[(nbVitrines // 3) % #AFFICHES + 1]
+				local cadre = deco(bloc("AfficheVitrine", Vector3.new(4.5, 3.2, 0.06), d.CFrame * CFrame.new(0, -d.Size.Y / 2 + 3.2, -d.Size.Z / 2 - 0.05), affiche[2], Enum.Material.SmoothPlastic, decor))
+				cadre.CastShadow = false
+				texte(cadre, Enum.NormalId.Front, affiche[1], affiche[3])
+			end
+		end
+	end
+
 	-- 3) Grandes bannières suspendues dans l'atrium (rouge et or, aux couleurs du mall)
 	local n = 0
 	for _, z in ipairs({ -110, -70, -35, 35, 70, 110 }) do
@@ -8936,6 +9024,7 @@ task.spawn(function()
 	task.wait(3) -- (le temps que la carte soit construite)
 	local enseignes: { { texte: TextLabel, mode: number, phase: number, couleur: Color3 } } = {}
 	local fonds: { { part: BasePart, phase: number, base: number } } = {}
+	local ballons: { { part: BasePart, phase: number, cf: CFrame } } = {}
 	local hasard = Random.new(7)
 	for _, d in ipairs(carte:GetDescendants()) do
 		if d:IsA("TextLabel") and d.Parent and d.Parent:IsA("SurfaceGui") then
@@ -8947,6 +9036,8 @@ task.spawn(function()
 			end
 		elseif d:IsA("BasePart") and d.Name == "FondLumineux" then
 			table.insert(fonds, { part = d, phase = hasard:NextNumber(0, 6), base = d.Transparency })
+		elseif d:IsA("BasePart") and d.Name == "Ballon" then
+			table.insert(ballons, { part = d, phase = hasard:NextNumber(0, 6), cf = d.CFrame })
 		end
 	end
 	while true do
@@ -8966,6 +9057,10 @@ task.spawn(function()
 		end
 		for _, f in ipairs(fonds) do
 			f.part.Transparency = math.clamp(f.base + 0.15 * math.sin(t * 1.5 + f.phase), 0, 0.9)
+		end
+		-- Les ballons flottent et se balancent doucement
+		for _, b in ipairs(ballons) do
+			b.part.CFrame = b.cf * CFrame.new(0, 0.35 * math.sin(t * 1.3 + b.phase), 0) * CFrame.Angles(0.06 * math.sin(t * 0.9 + b.phase), 0, 0.06 * math.cos(t * 1.1 + b.phase))
 		end
 		task.wait(if leger then 0.15 else 0.05) -- (moins souvent sur téléphone)
 	end

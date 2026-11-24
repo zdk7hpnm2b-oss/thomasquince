@@ -82,6 +82,7 @@ task.spawn(function()
 	task.wait(3) -- (le temps que la carte soit construite)
 	local enseignes: { { texte: TextLabel, mode: number, phase: number, couleur: Color3 } } = {}
 	local fonds: { { part: BasePart, phase: number, base: number } } = {}
+	local ballons: { { part: BasePart, phase: number, cf: CFrame } } = {}
 	local hasard = Random.new(7)
 	for _, d in ipairs(carte:GetDescendants()) do
 		if d:IsA("TextLabel") and d.Parent and d.Parent:IsA("SurfaceGui") then
@@ -93,6 +94,8 @@ task.spawn(function()
 			end
 		elseif d:IsA("BasePart") and d.Name == "FondLumineux" then
 			table.insert(fonds, { part = d, phase = hasard:NextNumber(0, 6), base = d.Transparency })
+		elseif d:IsA("BasePart") and d.Name == "Ballon" then
+			table.insert(ballons, { part = d, phase = hasard:NextNumber(0, 6), cf = d.CFrame })
 		end
 	end
 	while true do
@@ -112,6 +115,10 @@ task.spawn(function()
 		end
 		for _, f in ipairs(fonds) do
 			f.part.Transparency = math.clamp(f.base + 0.15 * math.sin(t * 1.5 + f.phase), 0, 0.9)
+		end
+		-- Les ballons flottent et se balancent doucement
+		for _, b in ipairs(ballons) do
+			b.part.CFrame = b.cf * CFrame.new(0, 0.35 * math.sin(t * 1.3 + b.phase), 0) * CFrame.Angles(0.06 * math.sin(t * 0.9 + b.phase), 0, 0.06 * math.cos(t * 1.1 + b.phase))
 		end
 		task.wait(if leger then 0.15 else 0.05) -- (moins souvent sur téléphone)
 	end
