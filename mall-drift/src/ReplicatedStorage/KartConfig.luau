@@ -485,8 +485,9 @@ Config.Score = {
 	BoostProgressif = {
 		PuissanceMax = 2,
 		DureeMin = 0.5, DureeParPuissance = 1.9, -- durée (s) = 0,5 + 1,9 x puissance
-		ForceMin = 0.4, ForceParPuissance = 1.0, -- force = 0,4 + 1,0 x puissance (x le Boost du kart)
-		PousseeMin = 4, PousseeParPuissance = 10, -- coup de pied au déclenchement
+		ForceMin = 0.7, ForceParPuissance = 1.4, -- force = 0,7 + 1,4 x puissance (x le Boost du kart) : BRUTAL
+		PousseeMin = 10, PousseeParPuissance = 18, -- coup de pied au déclenchement (vitesse ajoutée d'un coup)
+		AccelerationBoost = 3.5, -- pendant le boost, le kart accélère 3,5x plus fort
 	},
 	BoostEvasion = 1.5, -- si la police te poursuit, le boost est multiplié par 1,5
 	MaxParDrift = 8000, -- sécurité anti-triche côté serveur
@@ -521,8 +522,8 @@ Config.Camera = {
 	ReculAcceleration = 0.03, -- la caméra recule quand on accélère fort (et avance au freinage)
 	RoulisDrift = 0.005, -- la caméra penche dans les drifts
 	TremblementVitesse = 0.05, -- petit tremblement à pleine vitesse
-	TremblementBoost = 0.3, -- tremblement pendant le boost
-	ChampBoost = 14, -- le champ de vision « s'ouvre » au boost (effet de vitesse)
+	TremblementBoost = 0.45, -- tremblement pendant le boost
+	ChampBoost = 22, -- le champ de vision « s'ouvre » au boost (effet de vitesse)
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)

@@ -1138,8 +1138,9 @@ Config.Score = {
 	BoostProgressif = {
 		PuissanceMax = 2,
 		DureeMin = 0.5, DureeParPuissance = 1.9, -- durée (s) = 0,5 + 1,9 x puissance
-		ForceMin = 0.4, ForceParPuissance = 1.0, -- force = 0,4 + 1,0 x puissance (x le Boost du kart)
-		PousseeMin = 4, PousseeParPuissance = 10, -- coup de pied au déclenchement
+		ForceMin = 0.7, ForceParPuissance = 1.4, -- force = 0,7 + 1,4 x puissance (x le Boost du kart) : BRUTAL
+		PousseeMin = 10, PousseeParPuissance = 18, -- coup de pied au déclenchement (vitesse ajoutée d'un coup)
+		AccelerationBoost = 3.5, -- pendant le boost, le kart accélère 3,5x plus fort
 	},
 	BoostEvasion = 1.5, -- si la police te poursuit, le boost est multiplié par 1,5
 	MaxParDrift = 8000, -- sécurité anti-triche côté serveur
@@ -1174,8 +1175,8 @@ Config.Camera = {
 	ReculAcceleration = 0.03, -- la caméra recule quand on accélère fort (et avance au freinage)
 	RoulisDrift = 0.005, -- la caméra penche dans les drifts
 	TremblementVitesse = 0.05, -- petit tremblement à pleine vitesse
-	TremblementBoost = 0.3, -- tremblement pendant le boost
-	ChampBoost = 14, -- le champ de vision « s'ouvre » au boost (effet de vitesse)
+	TremblementBoost = 0.45, -- tremblement pendant le boost
+	ChampBoost = 22, -- le champ de vision « s'ouvre » au boost (effet de vitesse)
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)
@@ -8269,6 +8270,16 @@ local function majLignesVitesse(force: number, dt: number)
 	end
 end
 
+-- Flash orange au déclenchement du boost
+local flashBoost = Instance.new("Frame")
+flashBoost.Name = "FlashBoost"
+flashBoost.Size = UDim2.fromScale(1, 1)
+flashBoost.BackgroundColor3 = Color3.fromRGB(255, 180, 80)
+flashBoost.BackgroundTransparency = 1
+flashBoost.BorderSizePixel = 0
+flashBoost.ZIndex = 2
+flashBoost.Parent = gui
+
 -- Flou de vitesse (léger, surtout pendant le boost)
 local flouVitesse = Instance.new("BlurEffect")
 flouVitesse.Name = "FlouVitesse"
@@ -8578,7 +8589,12 @@ local function terminerDrift(reussi: boolean)
 			for _, l in ipairs(kart.lumieresBoost or {}) do
 				(l :: PointLight).Brightness = 2 + 2 * puissance
 			end
-			secousseImpact = math.max(secousseImpact, 0.12 + 0.2 * puissance) -- (secousse selon la puissance)
+			secousseImpact = math.max(secousseImpact, 0.35 + 0.35 * puissance) -- (grosse secousse selon la puissance)
+			-- FLASH : l'écran s'illumine d'un coup, puis s'efface
+			flashBoost.BackgroundTransparency = math.clamp(0.75 - 0.2 * puissance, 0.35, 0.75)
+			TweenService:Create(flashBoost, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { BackgroundTransparency = 1 }):Play()
+			flouVitesse.Size = 10 + 6 * puissance -- (coup de flou, qui retombe tout seul)
+			camera.FieldOfView += 6 + 6 * puissance -- (le champ de vision « claque »)
 			joueur:SetAttribute("TutoBoost", os.clock()) -- (pour le tuto)
 			forceBoost = reglageBoost.Force * multiplicateur
 			message(if poursuivi then ("🚨 BOOST D'ÉVASION x%.1f !"):format(forceBoost) else ("BOOST x%.1f %s"):format(forceBoost, string.rep("🔥", math.clamp(math.ceil(puissance * 1.5), 1, 3))),
@@ -9317,7 +9333,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 	else
 		-- Départ nerveux, qui s'adoucit près de la vitesse max (plus de sensations)
 		local ratio = math.clamp(math.abs(vAvant) / math.max(vMax, 1), 0, 1)
-		taux = s.Acceleration * (1.5 - 0.8 * ratio) * (tempsBoost > 0 and 2 or 1)
+		local accBoost = (Config.Score.BoostProgressif and Config.Score.BoostProgressif.AccelerationBoost) or 3.5
+		taux = s.Acceleration * (1.5 - 0.8 * ratio) * (if tempsBoost > 0 then accBoost else 1)
 	end
 	-- Coup de pied du boost : une vraie poussée au moment où il se déclenche
 	if poussee > 0 and auSol then
@@ -9481,8 +9498,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 	for _, l in ipairs(kart.lumieresBoost) do
 		l.Enabled = tempsBoost > 0
 	end
-	majLignesVitesse(math.clamp((vitesse - 45) / 40, 0, 0.7) + (if tempsBoost > 0 then 0.3 else 0), dt)
-	local flouVoulu = if tempsBoost > 0 then 5 elseif vitesse > 60 then 1.5 else 0
+	majLignesVitesse(math.clamp((vitesse - 45) / 40, 0, 0.7) + (if tempsBoost > 0 then 0.6 else 0), dt)
+	local flouVoulu = if tempsBoost > 0 then 7 elseif vitesse > 60 then 1.5 else 0
 	if workspace:GetAttribute("GraphismesLegers") or joueur:GetAttribute("GraphismesLegers") then
 		flouVoulu = 0
 	end
