@@ -34,6 +34,9 @@ local FOND = Color3.fromRGB(15, 15, 20)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "PartieHUD"
+-- Chaque élément s'affiche AU-DESSUS de son conteneur (sinon une page peut passer
+-- sous son propre fond : contenu délavé, boutons du menu visibles au travers)
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.DisplayOrder = 30
