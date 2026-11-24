@@ -225,6 +225,12 @@ Config.Chrono = {
 	DureeMax = 240, -- secondes maximum pour une course
 	TourMinimum = 14, -- un tour plus rapide que ça est refusé (anti-triche)
 	DistancePorte = 13, -- distance pour valider une porte
+	-- Médailles selon ton MEILLEUR tour (secondes) + pièces gagnées
+	Medailles = {
+		{ Nom = "OR", Icone = "🥇", Temps = 42, Pieces = 300 },
+		{ Nom = "ARGENT", Icone = "🥈", Temps = 52, Pieces = 150 },
+		{ Nom = "BRONZE", Icone = "🥉", Temps = 65, Pieces = 75 },
+	},
 	-- Récompenses du classement de la SEMAINE (Drift Battle) : 1er, 2e, 3e… 10e
 	RecompensesSemaine = { 5000, 3000, 2000, 1000, 1000, 1000, 1000, 1000, 1000, 1000 },
 }

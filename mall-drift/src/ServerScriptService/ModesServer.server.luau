@@ -229,10 +229,22 @@ local function finCourse(joueur: Player, abandon: boolean)
 				joueur.Character:PivotTo(apparition.CFrame + Vector3.new(0, 4, 0))
 			end
 		end)
+		local medaille = nil
 		if not abandon then
 			AjouterXP:Fire(joueur, 100 + c.tours * 40)
+			-- Médaille selon le meilleur tour (et des pièces)
+			for _, m in ipairs(C.Medailles or {}) do
+				if c.meilleur and c.meilleur <= m.Temps * 1000 then
+					medaille = m
+					break
+				end
+			end
+			local donner = ServerStorage:FindFirstChild("AjouterPieces") :: BindableEvent?
+			if medaille and donner then
+				donner:Fire(joueur, medaille.Pieces)
+			end
 		end
-		Chrono:FireClient(joueur, { type = "fin", meilleur = c.meilleur, abandon = abandon })
+		Chrono:FireClient(joueur, { type = "fin", meilleur = c.meilleur, abandon = abandon, medaille = medaille and medaille.Nom or nil })
 	end
 end
 
@@ -244,7 +256,15 @@ Chrono.OnServerEvent:Connect(function(joueur: Player, action: any, valeur: any)
 		joueur:SetAttribute("Pret", false)
 		joueur:SetAttribute("Role", "Chrono")
 		RetirerKart:Invoke(joueur)
-		PlacerKart:Invoke(joueur, true, true) -- (directement sur la ligne : 3, 2, 1)
+		local kart = PlacerKart:Invoke(joueur, true, true) -- (3, 2, 1)
+		-- Départ lancé : juste avant la ligne, face à la première porte
+		local premiere = PORTES[1]
+		local depart = Vector3.new(premiere.X - 55, SOL + 0.6, premiere.Z)
+		local cfDepart = CFrame.lookAt(depart, Vector3.new(premiere.X, depart.Y, premiere.Z))
+		if kart then
+			task.wait(0.1)
+			kart:PivotTo(cfDepart)
+		end
 		enCourse[joueur] = { debut = os.clock(), tours = 0, meilleur = nil }
 		local record = nil
 		pcall(function()
@@ -252,7 +272,7 @@ Chrono.OnServerEvent:Connect(function(joueur: Player, action: any, valeur: any)
 				record = storeChrono:GetAsync(tostring(joueur.UserId))
 			end
 		end)
-		Chrono:FireClient(joueur, { type = "debut", tours = TOURS, portes = #PORTES, record = record })
+		Chrono:FireClient(joueur, { type = "debut", tours = TOURS, portes = #PORTES, record = record, depart = cfDepart })
 		task.delay(DUREE_MAX, function()
 			if enCourse[joueur] then
 				finCourse(joueur, true)

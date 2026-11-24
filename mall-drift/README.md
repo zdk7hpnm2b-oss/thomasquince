@@ -26,9 +26,11 @@ Ce prototype contient :
   et on voit les autres jouer en fond). JOUER lance un autre mode directement, même depuis une place de jeu
 - **👀 Aperçu avant d'acheter** : au magasin, un clic sur une offre montre ton kart équipé de l'objet en 3D
   (qui tourne), avec le bouton ACHETER. Au garage : 1er clic = essayer, 2e clic = acheter
-- **⏱ Course chrono** (JOUER > CHRONO) : 3 tours du mall en passant les portes lumineuses dans l'ordre
-  (la prochaine est verte, une flèche la montre), chrono en direct, meilleur tour enregistré
-  (classement mondial). Script serveur `ModesServer` ; réglages `Config.Chrono`
+- **⏱ Course chrono** (JOUER > CHRONO) : départ lancé, 3 tours du mall en passant les portes lumineuses
+  dans l'ordre (la prochaine en vert, la suivante à moitié visible, flèche au bord de l'écran si elle est
+  hors de vue), chrono en direct, ÉCART avec ton meilleur tour à chaque porte, FANTÔME qui rejoue ton
+  meilleur tour, MÉDAILLES 🥇🥈🥉 (+ pièces) et écran de résultats. Meilleur tour classé mondialement.
+  Script serveur `ModesServer` ; réglages `Config.Chrono` (dont les temps des médailles)
 - **🏆 Classement** (menu) : top 10 de la SEMAINE au Drift Battle (remis à zéro chaque semaine ;
   le top 10 reçoit 5 000 / 3 000 / 2 000 / 1 000 💰 à sa connexion suivante) et top 10 des meilleurs tours chrono
 - **📸 Mode photo** (touche P) : l'interface disparaît, caméra libre autour du kart (Q/E, clic droit,
