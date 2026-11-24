@@ -3073,7 +3073,7 @@ do
 		deco(ecran)
 		local cadre = bloc("CadreEcran", Vector3.new(31.2, 13.2, 0.8), CFrame.new(0, y, z), OR, Enum.Material.Foil, decor)
 		deco(cadre)
-		for _, x in ipairs({ -12, 12 }) do
+		for _, x in ipairs({ -13, 13 }) do
 			deco(bloc("CableEcran", Vector3.new(0.15, HAUT_PLAFOND_2 - (y - SOL) - 6, 0.15), CFrame.new(x, (y + 6 + SOL + HAUT_PLAFOND_2) / 2, z), Color3.fromRGB(40, 40, 45), Enum.Material.Metal, decor))
 		end
 		for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
@@ -3239,8 +3239,9 @@ do
 	-- 2 sexies) GRAPPES DE BALLONS autour de la place centrale (elles flottent, côté joueur)
 	local COULEURS_BALLONS = { Color3.fromRGB(255, 60, 90), Color3.fromRGB(255, 200, 40), Color3.fromRGB(60, 170, 255), Color3.fromRGB(170, 80, 255), Color3.fromRGB(60, 220, 120), Color3.fromRGB(255, 255, 255) }
 	local nbBallons = 0
-	for _, x in ipairs({ -26, 26 }) do
-		for _, z in ipairs({ -22, 22 }) do
+	-- (x ±13, z ±38 : atrium ouvert, loin des rampes x 17..27, des flaques, des panneaux et de la fontaine)
+	for _, x in ipairs({ -13, 13 }) do
+		for _, z in ipairs({ -38, 38 }) do
 			local pied = Vector3.new(x, SOL, z)
 			deco(bloc("PoidsBallons", Vector3.new(1.2, 1, 1.2), CFrame.new(pied + Vector3.new(0, 0.5, 0)), OR, Enum.Material.Foil, decor))
 			for k = 1, 7 do
