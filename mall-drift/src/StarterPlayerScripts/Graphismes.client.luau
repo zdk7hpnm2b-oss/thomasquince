@@ -68,3 +68,51 @@ task.spawn(function()
 	appliquer()
 end)
 reglagesRoblox:GetPropertyChangedSignal("SavedQualityLevel"):Connect(appliquer)
+
+---------------------------------------------------------------------
+-- ✨ ENSEIGNES NÉON ANIMÉES (chez chaque joueur : fluide, sans charger le serveur)
+--   1 enseigne sur 3 « respire », 1 sur 3 change doucement de couleur,
+--   quelques-unes grésillent comme un vieux néon, et les vitrines lumineuses pulsent
+---------------------------------------------------------------------
+task.spawn(function()
+	local carte = workspace:WaitForChild("GoldenMall", 30)
+	if not carte then
+		return
+	end
+	task.wait(3) -- (le temps que la carte soit construite)
+	local enseignes: { { texte: TextLabel, mode: number, phase: number, couleur: Color3 } } = {}
+	local fonds: { { part: BasePart, phase: number, base: number } } = {}
+	local hasard = Random.new(7)
+	for _, d in ipairs(carte:GetDescendants()) do
+		if d:IsA("TextLabel") and d.Parent and d.Parent:IsA("SurfaceGui") then
+			local support = d.Parent.Parent
+			if support and support:IsA("BasePart") and (support.Name == "Enseigne" or support.Name == "EnseigneExterieure") then
+				local tirage = hasard:NextInteger(1, 10)
+				local mode = if tirage <= 4 then 1 elseif tirage <= 8 then 2 else 3 -- 1 respire, 2 couleur, 3 grésille
+				table.insert(enseignes, { texte = d, mode = mode, phase = hasard:NextNumber(0, 6), couleur = d.TextColor3 })
+			end
+		elseif d:IsA("BasePart") and d.Name == "FondLumineux" then
+			table.insert(fonds, { part = d, phase = hasard:NextNumber(0, 6), base = d.Transparency })
+		end
+	end
+	while true do
+		local leger = joueur:GetAttribute("GraphismesLegers") == true
+		local t = os.clock()
+		for _, e in ipairs(enseignes) do
+			if e.mode == 1 then
+				e.texte.TextTransparency = 0.25 * (0.5 + 0.5 * math.sin(t * 2 + e.phase))
+			elseif e.mode == 2 then
+				local h, sat, v = e.couleur:ToHSV()
+				e.texte.TextColor3 = Color3.fromHSV((h + 0.08 * math.sin(t * 0.6 + e.phase)) % 1, math.max(sat, 0.5), math.max(v, 0.9))
+			else
+				-- Vieux néon qui grésille : il s'éteint brièvement de temps en temps
+				local coupure = math.sin(t * 13 + e.phase) > 0.93 or math.sin(t * 7.3 + e.phase * 2) > 0.97
+				e.texte.TextTransparency = if coupure then 0.85 else 0
+			end
+		end
+		for _, f in ipairs(fonds) do
+			f.part.Transparency = math.clamp(f.base + 0.15 * math.sin(t * 1.5 + f.phase), 0, 0.9)
+		end
+		task.wait(if leger then 0.15 else 0.05) -- (moins souvent sur téléphone)
+	end
+end)

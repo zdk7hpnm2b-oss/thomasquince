@@ -1818,6 +1818,104 @@ do
 		end
 	end)
 
+	-- 2 bis) LUSTRES GÉANTS DORÉS au-dessus de l'atrium (la pièce maîtresse du mall)
+	for _, zL in ipairs({ -50, 50 }) do
+		local centre = Vector3.new(0, SOL + HAUT_PLAFOND_2 - 11, zL)
+		local lustre = Instance.new("Model")
+		lustre.Name = "LustreGeant"
+		lustre.Parent = decor
+		-- Tige qui descend du plafond
+		deco(bloc("TigeLustre", Vector3.new(0.5, 8, 0.5), CFrame.new(centre + Vector3.new(0, 7, 0)), OR, Enum.Material.Foil, lustre))
+		-- Trois couronnes dorées de tailles différentes, l'une sous l'autre
+		for etage, info in ipairs({ { 9, 2 }, { 6.5, 0 }, { 4, -2 } }) do
+			local rayonC, hauteurC = info[1], info[2]
+			local nb = math.floor(rayonC * 4)
+			for k = 1, nb do
+				local a1 = (k / nb) * math.pi * 2
+				local a2 = ((k + 1) / nb) * math.pi * 2
+				local p1 = centre + Vector3.new(math.cos(a1) * rayonC, hauteurC, math.sin(a1) * rayonC)
+				local p2 = centre + Vector3.new(math.cos(a2) * rayonC, hauteurC, math.sin(a2) * rayonC)
+				local segment = bloc("CouronneLustre", Vector3.new(0.35, 0.35, (p2 - p1).Magnitude + 0.1), CFrame.lookAt((p1 + p2) / 2, p2), OR, Enum.Material.Foil, lustre)
+				deco(segment)
+				segment.CastShadow = false
+				-- Pampilles de cristal qui pendent (et brillent)
+				if k % 2 == 0 then
+					local cristal = bloc("Cristal", Vector3.new(0.45, 1.6 + etage * 0.3, 0.45), CFrame.new(p1 - Vector3.new(0, 1.1, 0)) * CFrame.Angles(0, math.rad(45), 0), Color3.fromRGB(230, 245, 255), Enum.Material.Neon, lustre)
+					deco(cristal)
+					cristal.Transparency = 0.25
+					cristal.CastShadow = false
+				end
+			end
+		end
+		-- Le cœur lumineux du lustre + sa lumière
+		local coeur = bloc("CoeurLustre", Vector3.new(2.6, 2.6, 2.6), CFrame.new(centre), Color3.fromRGB(255, 235, 190), Enum.Material.Neon, lustre)
+		deco(coeur)
+		coeur.Shape = Enum.PartType.Ball
+		coeur.CastShadow = false
+		local lumiereLustre = Instance.new("PointLight")
+		lumiereLustre.Range = 40
+		lumiereLustre.Brightness = 2.2
+		lumiereLustre.Color = Color3.fromRGB(255, 225, 170)
+		lumiereLustre.Shadows = true
+		lumiereLustre.Parent = coeur
+	end
+
+	-- 2 ter) DÉCOR DE COURSE dans les virages du circuit (pneus, bordures, chevrons)
+	local NOIR_PNEU = Color3.fromRGB(28, 28, 30)
+	local ROUGE_COURSE = Color3.fromRGB(215, 30, 35)
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			local coin = Vector3.new(sx * 173, SOL, sz * 137)
+			-- Piles de pneus dans l'angle extérieur du virage
+			for i = 0, 2 do
+				for j = 0, 2 - i do
+					local pos = coin + Vector3.new(sx * (10 + i * 2.6), 0.6 + j * 1.2, sz * (9 + 0.6 * j))
+					local pneu = bloc("PilePneus", Vector3.new(1.1, 2.4, 2.4), CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)), NOIR_PNEU, Enum.Material.Rubber, decor)
+					pneu.Shape = Enum.PartType.Cylinder
+					pneu.CanCollide = false
+				end
+			end
+			-- Bordure rouge et blanc à l'intérieur du virage (deux branches)
+			for k = 0, 7 do
+				local couleur = if k % 2 == 0 then ROUGE_COURSE else Color3.fromRGB(245, 245, 245)
+				deco(bloc("BordureVirage", Vector3.new(3, 0.12, 1.4), CFrame.new(coin + Vector3.new(-sx * (9 + k * 3), 0.06, -sz * 11)), couleur, Enum.Material.SmoothPlastic, decor))
+				deco(bloc("BordureVirage", Vector3.new(1.4, 0.12, 3), CFrame.new(coin + Vector3.new(-sx * 11, 0.06, -sz * (9 + k * 3))), couleur, Enum.Material.SmoothPlastic, decor))
+			end
+			-- Panneau à chevrons (sens du virage)
+			local panneauV = bloc("Chevrons", Vector3.new(8, 3, 0.3), CFrame.lookAt(coin + Vector3.new(sx * 13, 3, sz * 13), coin + Vector3.new(0, 3, 0)), Color3.fromRGB(245, 245, 245), Enum.Material.SmoothPlastic, decor)
+			deco(panneauV)
+			texte(panneauV, Enum.NormalId.Front, if sx * sz > 0 then "❯❯❯" else "❮❮❮", ROUGE_COURSE)
+		end
+	end
+	-- Banderoles de sponsors (marques inventées) au-dessus des allées
+	local SPONSORS = {
+		{ "TURBO COLA", Color3.fromRGB(215, 30, 35) }, { "DRIFT FUEL", Color3.fromRGB(255, 150, 20) },
+		{ "NEON TIRES", Color3.fromRGB(40, 140, 255) }, { "DUNE ENERGY", Color3.fromRGB(240, 190, 30) },
+		{ "SKY KARTS", Color3.fromRGB(150, 70, 230) }, { "GOLDEN MALL", OR },
+	}
+	local numero = 0
+	local function banderole(position: Vector3, largeur: number, versX: boolean)
+		numero += 1
+		local sponsor = SPONSORS[(numero - 1) % #SPONSORS + 1]
+		local taille = if versX then Vector3.new(0.4, 3.2, largeur) else Vector3.new(largeur, 3.2, 0.4)
+		local b = bloc("Banderole", taille, CFrame.new(position), Color3.fromRGB(20, 20, 24), Enum.Material.Fabric, decor)
+		deco(b)
+		b.CastShadow = false
+		for _, face in ipairs(if versX then { Enum.NormalId.Left, Enum.NormalId.Right } else { Enum.NormalId.Front, Enum.NormalId.Back }) do
+			texte(b, face, sponsor[1], sponsor[2])
+		end
+	end
+	for _, z in ipairs({ -137, 137 }) do
+		for _, x in ipairs({ -100, 0, 100 }) do
+			banderole(Vector3.new(x, SOL + 19.5, z), 22, true) -- (on la voit en roulant le long de l'allée)
+		end
+	end
+	for _, x in ipairs({ -173, 173 }) do
+		for _, z in ipairs({ -60, 60 }) do
+			banderole(Vector3.new(x, SOL + 19.5, z), 18, false)
+		end
+	end
+
 	-- 3) Grandes bannières suspendues dans l'atrium (rouge et or, aux couleurs du mall)
 	local n = 0
 	for _, z in ipairs({ -110, -70, -35, 35, 70, 110 }) do
