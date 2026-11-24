@@ -10682,7 +10682,7 @@ end
 -- le titre et la barre arrivent juste après
 local function apparaitre(f: Frame)
 	for _, autre in ipairs(pagesListe) do
-		if autre ~= f and not (f.Name == "Apercu" and autre.Name == "Magasin") then
+		if autre ~= f then
 			autre.Visible = false -- (une seule page à la fois)
 		end
 	end
@@ -10766,25 +10766,35 @@ local function dejaAchete(offre): boolean
 end
 
 local ouvrirApercu: (any) -> () -- (définie plus bas : la page d'aperçu)
-local function acheterOffre(offre)
+-- Achat d'une offre. Renvoie (réussi ?, message à afficher) : le message est montré
+-- dans la page d'aperçu (le fil en bas à gauche est caché sous le menu).
+local achatEnCours = false
+local function acheterOffre(offre): (boolean?, string)
 	if dejaAchete(offre) then
-		ajouterAuFil("✔ Tu l'as déjà !", Color3.fromRGB(140, 255, 160))
-		return
+		return true, "✔ Tu l'as déjà !"
+	end
+	if achatEnCours then
+		return nil, "Patiente un instant…"
 	end
 	if (offre.ProduitId or 0) ~= 0 then
 		MarketplaceService:PromptProductPurchase(joueur, offre.ProduitId)
-	else
-		local resultat = remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
-		if type(resultat) == "table" then
-			if resultat.profil then
-				profilMenu = resultat.profil
-				for _, f in ipairs(majMagasin) do
-					f()
-				end
-			end
-			ajouterAuFil(resultat.message or "", if resultat.ok then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 140, 140))
+		return nil, "Fenêtre d'achat Roblox ouverte…"
+	end
+	achatEnCours = true
+	local ok, resultat = pcall(function()
+		return remotes:WaitForChild("Acheter"):InvokeServer({ type = "test", nom = offre.Id })
+	end)
+	achatEnCours = false
+	if not ok or type(resultat) ~= "table" then
+		return false, "Oups, réessaie !"
+	end
+	if resultat.profil then
+		profilMenu = resultat.profil
+		for _, f in ipairs(majMagasin) do
+			f()
 		end
 	end
+	return resultat.ok == true, tostring(resultat.message or "")
 end
 
 local cartesParCategorie: { [string]: { GuiObject } } = {}
@@ -10956,6 +10966,14 @@ do
 	local KartBuilderApercu = require(ReplicatedStorage:WaitForChild("KartBuilder"))
 	local pageApercu = fenetre("Apercu", "APERÇU", 0, 0, Color3.fromRGB(225, 30, 45))
 	pageApercu.ZIndex = 35
+	-- « ← RETOUR » de l'aperçu : on revient au magasin (pas au menu)
+	for _, b in ipairs(pageApercu:GetChildren()) do
+		if b:IsA("TextButton") and b.Text == "← RETOUR" then
+			b.Activated:Connect(function()
+				apparaitre(panneauMagasin)
+			end)
+		end
+	end
 
 	-- La scène 3D (à gauche)
 	local scene = Instance.new("ViewportFrame")
@@ -11036,6 +11054,18 @@ do
 	reflet.Rotation = 20
 	reflet.Parent = boutonAcheter
 
+	local statutAchat = texte(pageApercu, UDim2.new(0.38, 0, 0, 30), UDim2.new(0.62, 0, 0, 366), Color3.fromRGB(200, 200, 210), Enum.Font.FredokaOne)
+	statutAchat.TextXAlignment = Enum.TextXAlignment.Left
+	statutAchat.ZIndex = 33
+	statutAchat.Text = ""
+	-- Résultat d'un vrai achat Robux (fenêtre Roblox)
+	MarketplaceService.PromptProductPurchaseFinished:Connect(function(idJoueur, _, achete)
+		if idJoueur == joueur.UserId and pageApercu.Visible then
+			statutAchat.Text = if achete then "✔ Merci ! C'est à toi" else "Achat annulé"
+			statutAchat.TextColor3 = if achete then Color3.fromRGB(140, 255, 160) else Color3.fromRGB(255, 160, 160)
+		end
+	end)
+
 	local kartApercu: Model? = nil
 	local offreAffichee = nil
 	local angle = 0
@@ -11059,6 +11089,7 @@ do
 		end
 		nomApercu.Text = offre.Nom
 		descApercu.Text = offre.Description or ""
+		statutAchat.Text = ""
 		majBouton()
 		-- Le kart du joueur, équipé de l'objet
 		local perso = table.clone(profilMenu and profilMenu.Perso or Config.PersoParDefaut)
@@ -11093,7 +11124,11 @@ do
 
 	boutonAcheter.Activated:Connect(function()
 		if offreAffichee then
-			acheterOffre(offreAffichee)
+			statutAchat.Text = "…"
+			statutAchat.TextColor3 = Color3.fromRGB(200, 200, 210)
+			local ok, message = acheterOffre(offreAffichee)
+			statutAchat.Text = message
+			statutAchat.TextColor3 = if ok == true then Color3.fromRGB(140, 255, 160) elseif ok == false then Color3.fromRGB(255, 160, 160) else Color3.fromRGB(220, 220, 230)
 			majBouton()
 		end
 	end)
