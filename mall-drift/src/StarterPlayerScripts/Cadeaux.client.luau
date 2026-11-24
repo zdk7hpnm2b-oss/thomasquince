@@ -61,43 +61,40 @@ colonne.BackgroundTransparency = 1
 colonne.ZIndex = 22
 colonne.Parent = menu:WaitForChild("ColonneDroite")
 local dispo = Instance.new("UIListLayout")
-dispo.Padding = UDim.new(0, 8)
+dispo.FillDirection = Enum.FillDirection.Horizontal -- une rangée de boutons ronds
+dispo.HorizontalAlignment = Enum.HorizontalAlignment.Right
+dispo.Padding = UDim.new(0, 10)
 dispo.SortOrder = Enum.SortOrder.LayoutOrder
 dispo.Parent = colonne
 
+-- Un BOUTON ROND (icône colorée + un mot dessous) : léger, lisible, ça donne envie de cliquer
 local function carte(ordre: number, icone: string, titre: string, couleur: Color3?): (TextButton, TextLabel, Frame)
 	local b = Instance.new("TextButton")
 	b.LayoutOrder = ordre
-	b.Size = UDim2.new(1, 0, 0, 60)
-	b.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
-	b.BackgroundTransparency = 0.05
+	b.Size = UDim2.fromOffset(62, 96)
+	b.BackgroundTransparency = 1
 	b.AutoButtonColor = false
 	b.Text = ""
 	b.ZIndex = 23
 	b.Parent = colonne
-	coins(b, 4)
-	local bord = Instance.new("UIStroke")
-	bord.Color = Color3.fromRGB(60, 60, 70)
-	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	bord.Parent = b
-	local fondIcone = Instance.new("Frame")
-	fondIcone.Size = UDim2.fromOffset(44, 44)
-	fondIcone.Position = UDim2.new(0, 8, 0.5, -22)
-	fondIcone.BackgroundColor3 = Color3.new(1, 1, 1)
+	local rond = Instance.new("Frame")
+	rond.AnchorPoint = Vector2.new(0.5, 0)
+	rond.Size = UDim2.fromOffset(58, 58)
+	rond.Position = UDim2.new(0.5, 0, 0, 2)
+	rond.BackgroundColor3 = Color3.new(1, 1, 1)
+	rond.ZIndex = 24
+	rond.Parent = b
+	coins(rond, 29)
 	local teinte = couleur or Color3.fromRGB(120, 120, 140)
-	local degradeIcone = Instance.new("UIGradient") -- pastille colorée, style bonbon
-	degradeIcone.Color = ColorSequence.new(teinte:Lerp(Color3.new(1, 1, 1), 0.35), teinte:Lerp(Color3.new(0, 0, 0), 0.15))
-	degradeIcone.Rotation = 90
-	degradeIcone.Parent = fondIcone
-	local contourIcone = Instance.new("UIStroke")
-	contourIcone.Color = Color3.new(1, 1, 1)
-	contourIcone.Transparency = 0.55
-	contourIcone.Thickness = 2
-	contourIcone.Parent = fondIcone
-	fondIcone.ZIndex = 24
-	fondIcone.Parent = b
-	coins(fondIcone, 4)
-	local i = texte(fondIcone, UDim2.new(1, -10, 1, -10), UDim2.new(0, 5, 0, 5), Color3.new(1, 1, 1))
+	local degrade = Instance.new("UIGradient") -- style bonbon : clair en haut, vif en bas
+	degrade.Color = ColorSequence.new(teinte:Lerp(Color3.new(1, 1, 1), 0.4), teinte:Lerp(Color3.new(0, 0, 0), 0.12))
+	degrade.Rotation = 90
+	degrade.Parent = rond
+	local contour = Instance.new("UIStroke")
+	contour.Color = Color3.new(1, 1, 1)
+	contour.Thickness = 3
+	contour.Parent = rond
+	local i = texte(rond, UDim2.new(1, -20, 1, -20), UDim2.fromOffset(10, 10), Color3.new(1, 1, 1))
 	i.TextXAlignment = Enum.TextXAlignment.Center
 	i.Text = icone
 	i.ZIndex = 25
@@ -105,44 +102,57 @@ local function carte(ordre: number, icone: string, titre: string, couleur: Color
 	if image then
 		i.Visible = false
 		local img = Instance.new("ImageLabel")
-		img.Size = UDim2.new(1, -14, 1, -14)
-		img.Position = UDim2.fromOffset(7, 7)
+		img.Size = UDim2.new(1, -22, 1, -22)
+		img.Position = UDim2.fromOffset(11, 11)
 		img.BackgroundTransparency = 1
 		img.Image = image
 		img.ZIndex = 25
-		img.Parent = fondIcone
+		img.Parent = rond
 	end
-	local t = texte(b, UDim2.new(1, -70, 0, 22), UDim2.new(0, 62, 0, 9), Color3.new(1, 1, 1))
+	local t = texte(b, UDim2.new(1, 8, 0, 18), UDim2.new(0, -4, 0, 62), Color3.new(1, 1, 1))
+	t.TextXAlignment = Enum.TextXAlignment.Center
 	t.FontFace = POLICE
 	t.Text = titre
-	local sous = texte(b, UDim2.new(1, -70, 0, 16), UDim2.new(0, 62, 0, 34), Color3.fromRGB(190, 190, 200), Enum.Font.GothamMedium)
-	-- Pastille rouge « ! »
+	local ombreTitre = Instance.new("UIStroke")
+	ombreTitre.Thickness = 2
+	ombreTitre.Color = Color3.fromRGB(10, 10, 14)
+	ombreTitre.Parent = t
+	-- Petit texte (compte à rebours…) sous le mot : seulement quand c'est utile
+	local sous = texte(b, UDim2.new(1, 16, 0, 13), UDim2.new(0, -8, 0, 81), Color3.fromRGB(255, 220, 120), Enum.Font.FredokaOne)
+	sous.TextXAlignment = Enum.TextXAlignment.Center
+	-- Pastille rouge « ! » en haut à droite du rond
 	local pastille = Instance.new("Frame")
 	pastille.AnchorPoint = Vector2.new(0.5, 0.5)
-	pastille.Size = UDim2.fromOffset(16, 16)
-	pastille.Position = UDim2.new(1, -4, 0, 4)
+	pastille.Size = UDim2.fromOffset(18, 18)
+	pastille.Position = UDim2.new(0.5, 24, 0, 6)
 	pastille.BackgroundColor3 = Color3.fromRGB(240, 40, 50)
 	pastille.Visible = false
-	pastille.ZIndex = 26
+	pastille.ZIndex = 27
 	pastille.Parent = b
-	coins(pastille, 8)
+	coins(pastille, 9)
+	local bordPastille = Instance.new("UIStroke")
+	bordPastille.Color = Color3.new(1, 1, 1)
+	bordPastille.Thickness = 2
+	bordPastille.Parent = pastille
 	local e = Instance.new("UIScale")
-	e.Parent = b
+	e.Parent = rond
 	b.MouseEnter:Connect(function()
-		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1.04 }):Play()
-		TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(38, 38, 46) }):Play()
+		TweenService:Create(e, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = 1.12 }):Play()
 	end)
 	b.MouseLeave:Connect(function()
-		TweenService:Create(e, TweenInfo.new(0.12), { Scale = 1 }):Play()
-		TweenService:Create(b, TweenInfo.new(0.12), { BackgroundColor3 = Color3.fromRGB(20, 20, 24) }):Play()
+		TweenService:Create(e, TweenInfo.new(0.15), { Scale = 1 }):Play()
 	end)
-	-- La pastille « respire »
+	-- Quand un cadeau est prêt : la pastille pulse et le rond se balance doucement
 	task.spawn(function()
 		while b.Parent do
 			if pastille.Visible then
-				TweenService:Create(pastille, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Size = UDim2.fromOffset(20, 20) }):Play()
+				TweenService:Create(pastille, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Size = UDim2.fromOffset(22, 22) }):Play()
+				TweenService:Create(rond, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Rotation = 8 }):Play()
 				task.wait(0.5)
-				TweenService:Create(pastille, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Size = UDim2.fromOffset(16, 16) }):Play()
+				TweenService:Create(pastille, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Size = UDim2.fromOffset(18, 18) }):Play()
+				TweenService:Create(rond, TweenInfo.new(0.5, Enum.EasingStyle.Sine), { Rotation = -8 }):Play()
+			else
+				rond.Rotation = 0
 			end
 			task.wait(0.5)
 		end
@@ -150,14 +160,14 @@ local function carte(ordre: number, icone: string, titre: string, couleur: Color
 	return b, sous, pastille
 end
 
-local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit", Color3.fromRGB(170, 70, 255))
-local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour", Color3.fromRGB(0, 200, 170))
-local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis", Color3.fromRGB(50, 140, 255))
-sousAmis.Text = ("+%d pièces chacun"):format(Config.Cadeaux.BonusAmi or 150)
-local carteNotif, sousNotif = carte(4, "🔔", "M'avertir", Color3.fromRGB(255, 190, 0))
-sousNotif.Text = "Ne rate aucune mise à jour"
-local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe", Color3.fromRGB(40, 210, 100))
-sousGroupe.Text = ("+%d 💰 une seule fois"):format(Config.Cadeaux.BonusGroupe or 500)
+local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau", Color3.fromRGB(170, 70, 255))
+local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série", Color3.fromRGB(0, 200, 170))
+local carteAmis, sousAmis = carte(3, "👥", "Amis", Color3.fromRGB(50, 140, 255))
+sousAmis.Text = ("+%d"):format(Config.Cadeaux.BonusAmi or 150)
+local carteNotif, sousNotif = carte(4, "🔔", "Alertes", Color3.fromRGB(255, 190, 0))
+sousNotif.Text = ""
+local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Groupe", Color3.fromRGB(40, 210, 100))
+sousGroupe.Text = ("+%d"):format(Config.Cadeaux.BonusGroupe or 500)
 carteGroupe.Visible = false
 
 ---------------------------------------------------------------------
@@ -346,7 +356,7 @@ carteNotif.Activated:Connect(function()
 			ens:PromptOptIn()
 		end
 	end)
-	sousNotif.Text = if ok then "✔ Merci ! Tu seras averti" else "Pas disponible ici"
+	sousNotif.Text = if ok then "✔" else ""
 end)
 carteGroupe.Activated:Connect(function()
 	if (Config.Cadeaux.GroupeId or 0) ~= 0 then
@@ -395,9 +405,9 @@ task.spawn(function()
 					end
 				end
 				pastilleCadeau.Visible = pret
-				sousCadeau.Text = if pret then "Prêt à récupérer !" elseif prochain then ("Prochain dans %s"):format(formatTemps(prochain.reste)) else "Tout récupéré, bravo !"
+				sousCadeau.Text = if pret then "PRÊT !" elseif prochain then formatTemps(prochain.reste) else "✔"
 				pastilleSerie.Visible = etat.seriePrete == true
-				sousSerie.Text = if etat.seriePrete then ("Jour %d · cadeau prêt !"):format(etat.serieJour or 1) else ("Jour %d · reviens demain"):format(etat.serieJour or 1)
+				sousSerie.Text = if etat.seriePrete then "PRÊT !" else ("Jour %d"):format(etat.serieJour or 1)
 				carteGroupe.Visible = etat.groupe == true
 				pastilleGroupe.Visible = etat.groupe == true
 				if panneau.Visible and vue == "temps" then

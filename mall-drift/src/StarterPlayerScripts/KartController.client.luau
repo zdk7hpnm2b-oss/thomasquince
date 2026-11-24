@@ -662,10 +662,10 @@ local function mettreAJourCamera(dt: number)
 	local accel = (vitesse - vitessePrecCam) / math.max(dt, 1 / 240)
 	vitessePrecCam = vitesse
 	accelLisse += (math.clamp(accel, -60, 60) - accelLisse) * math.clamp(dt * 3, 0, 1)
-	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.06 + math.clamp(accelLisse * (reglages.ReculAcceleration or 0.06), -1.5, 3)
+	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.03 + math.clamp(accelLisse * (reglages.ReculAcceleration or 0.03), -1, 1.5)
 	local pivot = ch.Position + Vector3.new(0, 2.5, 0)
-	-- À grande vitesse la caméra descend un peu (on se sent plus près du sol, plus rapide)
-	local hauteur = reglages.Hauteur - math.clamp(vitesse, 0, 70) * 0.012
+	-- (hauteur fixe : on voit bien la piste devant, même à pleine vitesse)
+	local hauteur = reglages.Hauteur
 	local voulu = ch.Position - directionCamera * distance + Vector3.new(0, hauteur, 0)
 	-- Si un mur est entre le kart et la caméra, on rapproche la caméra
 	rayonCamera.FilterDescendantsInstances = { kart.modele, joueur.Character }

@@ -496,12 +496,12 @@ Config.NuitParDefaut = false -- le jeu démarre de jour (touche N pour passer en
 Config.Camera = {
 	VueParDefaut = "derriere", -- "derriere" (3e personne, derrière le kart) ou "gopro" (caméra sur la poitrine)
 	ChampGoPro = 100, -- grand angle de la GoPro (degrés)
-	Distance = 13, -- distance derrière le kart
-	Hauteur = 5.5, -- hauteur au-dessus du kart
+	Distance = 9.5, -- distance derrière le kart (plus petit = plus proche)
+	Hauteur = 6.5, -- hauteur au-dessus du kart (plus grand = on voit mieux par-dessus)
 	Souplesse = 4, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
 	SuiviGlisse = 0.5, -- 0 = regarde où pointe le kart, 1 = regarde où il glisse (on voit bien l'angle du drift)
 	-- SENSATIONS : la caméra vit avec le kart
-	ReculAcceleration = 0.06, -- la caméra recule quand on accélère fort (et avance au freinage)
+	ReculAcceleration = 0.03, -- la caméra recule quand on accélère fort (et avance au freinage)
 	RoulisDrift = 0.005, -- la caméra penche dans les drifts
 	TremblementVitesse = 0.05, -- petit tremblement à pleine vitesse
 	TremblementBoost = 0.3, -- tremblement pendant le boost

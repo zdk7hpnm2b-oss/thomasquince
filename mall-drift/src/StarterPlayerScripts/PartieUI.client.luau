@@ -565,10 +565,88 @@ carteJouer.Activated:Connect(function()
 end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
-local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart", Color3.fromRGB(255, 130, 20))
-local carteRoue = carteMode("🎡", "ROUE DU JOUR", "1 tour gratuit par jour", Color3.fromRGB(255, 195, 0))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Karts, traînées, packs", Color3.fromRGB(240, 50, 200))
-local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter", Color3.fromRGB(0, 200, 230))
+-- GARAGE, ROUE, MAGASIN, TUTO : une grille 2 x 2 de grosses tuiles colorées
+-- (une grande icône + un mot : moins chargé, plus attirant, comme les jeux Roblox populaires)
+local grilleTuiles = Instance.new("Frame")
+ordreMenu += 1
+grilleTuiles.LayoutOrder = ordreMenu
+grilleTuiles.Size = UDim2.new(1, 0, 0, 0)
+grilleTuiles.AutomaticSize = Enum.AutomaticSize.Y
+grilleTuiles.BackgroundTransparency = 1
+grilleTuiles.ZIndex = 21
+grilleTuiles.Parent = listeBoutons
+local dispositionTuiles = Instance.new("UIGridLayout")
+dispositionTuiles.CellSize = UDim2.new(0.5, -6, 0, 118)
+dispositionTuiles.CellPadding = UDim2.fromOffset(12, 12)
+dispositionTuiles.SortOrder = Enum.SortOrder.LayoutOrder
+dispositionTuiles.Parent = grilleTuiles
+local function tuile(ordre: number, icone: string, titre: string, couleur: Color3): TextButton
+	local b = Instance.new("TextButton")
+	b.LayoutOrder = ordre
+	b.BackgroundColor3 = Color3.new(1, 1, 1)
+	b.AutoButtonColor = false
+	b.Text = ""
+	b.ZIndex = 22
+	b.Parent = grilleTuiles
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 14)
+	local degrade = Instance.new("UIGradient") -- couleur vive, style bonbon
+	degrade.Color = ColorSequence.new(couleur:Lerp(Color3.new(1, 1, 1), 0.3), couleur:Lerp(Color3.new(0, 0, 0), 0.1))
+	degrade.Rotation = 90
+	degrade.Parent = b
+	local bord = Instance.new("UIStroke")
+	bord.Color = Color3.new(1, 1, 1)
+	bord.Thickness = 3
+	bord.Transparency = 0.35
+	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bord.Parent = b
+	-- Relief en bas (bouton « épais »)
+	local relief = Instance.new("Frame")
+	relief.AnchorPoint = Vector2.new(0, 1)
+	relief.Size = UDim2.new(1, 0, 0, 7)
+	relief.Position = UDim2.new(0, 0, 1, 0)
+	relief.BackgroundColor3 = couleur:Lerp(Color3.new(0, 0, 0), 0.45)
+	relief.BorderSizePixel = 0
+	relief.ZIndex = 23
+	relief.Parent = b
+	Instance.new("UICorner", relief).CornerRadius = UDim.new(0, 14)
+	-- Grande icône au centre
+	local image = Config.ImageIcone(icone)
+	if image then
+		local img = Instance.new("ImageLabel")
+		img.AnchorPoint = Vector2.new(0.5, 0)
+		img.Size = UDim2.fromOffset(56, 56)
+		img.Position = UDim2.new(0.5, 0, 0, 12)
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.ZIndex = 24
+		img.Parent = b
+	else
+		local i = texte(b, UDim2.fromOffset(60, 56), UDim2.new(0.5, -30, 0, 12), Color3.new(1, 1, 1))
+		i.Text = icone
+		i.ZIndex = 24
+	end
+	local t = texte(b, UDim2.new(1, -16, 0, 30), UDim2.new(0, 8, 1, -44), Color3.new(1, 1, 1))
+	t.Text = titre
+	t.FontFace = POLICE_COURSE
+	t.ZIndex = 24
+	-- Survol : la tuile grossit et penche un peu
+	local echelle = Instance.new("UIScale")
+	echelle.Parent = b
+	b.MouseEnter:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = 1.06 }):Play()
+		TweenService:Create(b, TweenInfo.new(0.15), { Rotation = -2 }):Play()
+	end)
+	b.MouseLeave:Connect(function()
+		TweenService:Create(echelle, TweenInfo.new(0.15), { Scale = 1 }):Play()
+		TweenService:Create(b, TweenInfo.new(0.15), { Rotation = 0 }):Play()
+	end)
+	table.insert(boutonsMenu, b)
+	return b
+end
+local carteGarage = tuile(1, "🔧", "GARAGE", Color3.fromRGB(255, 130, 20))
+local carteRoue = tuile(2, "🎡", "ROUE", Color3.fromRGB(255, 185, 0))
+local carteMagasin = tuile(3, "🛒", "MAGASIN", Color3.fromRGB(240, 50, 200))
+local carteTuto = tuile(4, "📖", "TUTO", Color3.fromRGB(0, 190, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
 carteLobby.Visible = false
@@ -1584,7 +1662,7 @@ end)
 local pastilleRoue = Instance.new("TextLabel")
 pastilleRoue.AnchorPoint = Vector2.new(0.5, 0.5)
 pastilleRoue.Size = UDim2.fromOffset(22, 22)
-pastilleRoue.Position = UDim2.new(0, 48, 0, 14)
+pastilleRoue.Position = UDim2.new(1, -14, 0, 14) -- (en haut à droite de la tuile ROUE)
 pastilleRoue.BackgroundColor3 = Color3.fromRGB(235, 40, 50)
 pastilleRoue.TextColor3 = Color3.new(1, 1, 1)
 pastilleRoue.Font = Enum.Font.FredokaOne
