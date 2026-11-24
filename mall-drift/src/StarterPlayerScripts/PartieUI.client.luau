@@ -2628,7 +2628,11 @@ Partie.OnClientEvent:Connect(function(info)
 	elseif info.type == "arrestation" then
 		ajouterAuFil(("🚔 %s a arrêté %s !"):format(info.policier or "?", info.fugitif or "?"), BLEU)
 	elseif info.type == "perdu" then
-		montrerChoix(info)
+		-- D'abord l'animation d'arrestation (SecuriteUI), puis le choix
+		joueur:SetAttribute("AnimArrestation", ("%s|%f"):format(tostring(info.par or "?"), os.clock()))
+		task.delay(1.9, function()
+			montrerChoix(info)
+		end)
 	elseif info.type == "reapparu" then
 		fermerChoix()
 	elseif info.type == "vengeance" then
@@ -2637,9 +2641,13 @@ Partie.OnClientEvent:Connect(function(info)
 		radar(info.duree or 3)
 	elseif info.type == "arrete" then
 		fermerChoix()
-		task.delay(4.2, demarrerSpectateur) -- (après la carte « PLUS DE VIES »)
-		montrerCarte("💀 ÉLIMINÉ PAR " .. string.upper(info.par or "LA POLICE"), "PLUS DE VIES !",
-			"Tu regardes la fin de la manche depuis le garage. Courage à ton équipe !", Color3.fromRGB(255, 70, 70), 4)
+		-- D'abord l'animation d'arrestation, puis la carte « PLUS DE VIES », puis le spectateur
+		joueur:SetAttribute("AnimArrestation", ("%s|%f"):format(tostring(info.par or "?"), os.clock()))
+		task.delay(1.9, function()
+			montrerCarte("💀 ÉLIMINÉ PAR " .. string.upper(info.par or "LA POLICE"), "PLUS DE VIES !",
+				"Tu regardes la fin de la manche depuis le garage. Courage à ton équipe !", Color3.fromRGB(255, 70, 70), 4)
+		end)
+		task.delay(6.1, demarrerSpectateur)
 	elseif info.type == "fin" then
 		arreterSpectateur()
 		local police = info.gagnant == "Police"
