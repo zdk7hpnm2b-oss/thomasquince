@@ -444,6 +444,12 @@ Config.PNJ = {
 Config.Glisse = {
 	PerteAdherenceAFond = 0.45, -- à vitesse max, l'adhérence est multipliée par (1 - 0.45)
 	CoupDeVolant = 1.6, -- l'arrière décroche quand on déclenche le drift en tournant
+	-- DRIFT ARCADE (régulier) : au début du drift, le sens est verrouillé et le kart prend
+	-- un angle de glisse cible. Le volant l'élargit (braquer) ou le resserre (contre-braquer).
+	AngleDrift = 32, -- angle de glisse de base (degrés) — plus grand = ça glisse plus
+	AngleVolant = 16, -- en plus (ou en moins) selon le volant
+	AngleMouille = 10, -- en plus sur le sol mouillé
+	RapiditeDrift = 5, -- vitesse à laquelle le kart prend son angle (plus grand = plus sec)
 }
 
 Config.Mouille = {

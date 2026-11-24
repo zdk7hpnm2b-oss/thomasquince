@@ -1097,6 +1097,12 @@ Config.PNJ = {
 Config.Glisse = {
 	PerteAdherenceAFond = 0.45, -- à vitesse max, l'adhérence est multipliée par (1 - 0.45)
 	CoupDeVolant = 1.6, -- l'arrière décroche quand on déclenche le drift en tournant
+	-- DRIFT ARCADE (régulier) : au début du drift, le sens est verrouillé et le kart prend
+	-- un angle de glisse cible. Le volant l'élargit (braquer) ou le resserre (contre-braquer).
+	AngleDrift = 32, -- angle de glisse de base (degrés) — plus grand = ça glisse plus
+	AngleVolant = 16, -- en plus (ou en moins) selon le volant
+	AngleMouille = 10, -- en plus sur le sol mouillé
+	RapiditeDrift = 5, -- vitesse à laquelle le kart prend son angle (plus grand = plus sec)
 }
 
 Config.Mouille = {
@@ -8454,6 +8460,7 @@ local vitesseRotation = 0
 local tempsBoost = 0
 local poussee = 0 -- vitesse ajoutée d'un coup quand le boost se déclenche
 local volantLisse = 0 -- le volant monte en douceur (au clavier, sinon le kart braque d'un coup)
+local driftSens = 0 -- sens du drift en cours (-1 / 1), verrouillé jusqu'à la fin du drift
 local secousseImpact = 0 -- secousse de caméra (choc, boost), qui retombe toute seule
 local vitessePrecCam = 0
 local accelLisse = 0
@@ -9012,6 +9019,7 @@ local function sortirDuKart()
 	camera.FieldOfView = 70
 	majLignesVitesse(0, 0)
 	flouVitesse.Size = 0
+	driftSens = 0
 	driftAppuye = false
 	hud.Visible = false
 	kart = nil
@@ -9329,25 +9337,26 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local glisse = Config.Glisse or { PerteAdherenceAFond = 0.45, CoupDeVolant = 1.6 }
 	adherence *= 1 - glisse.PerteAdherenceAFond * math.clamp(math.abs(vAvant) / s.VitesseMax, 0, 1)
 	-- Coup de volant : au moment où on déclenche le drift en tournant, l'arrière décroche
-	if driftAppuye and not driftAppuyeAvant and math.abs(volant) > 0.3 and math.abs(vAvant) > 12 then
-		vitesseRotation += -math.sign(volant) * glisse.CoupDeVolant
-		vCote -= math.sign(volant) * math.abs(vAvant) * 0.12 -- l'élan continue tout droit : le kart glisse vers l'extérieur
+	-- Le drift démarre dès qu'on tient SHIFT en tournant (même si SHIFT était appuyé avant)
+	if driftAppuye and driftSens == 0 and math.abs(volant) > 0.25 and math.abs(vAvant) > 12 then
+		driftSens = math.sign(volant)
+		vitesseRotation += -driftSens * glisse.CoupDeVolant -- l'arrière décroche
+	end
+	if not driftAppuye or math.abs(vAvant) < 6 then
+		driftSens = 0
 	end
 	driftAppuyeAvant = driftAppuye
 	if mouille then
 		adherence *= Config.Mouille.Adherence
 	end
-	-- Contre-braquage : braquer à l'opposé de la glisse la rattrape plus vite (comme un vrai drift)
-	if driftAppuye and math.abs(vCote) > 4 and math.sign(volant) == math.sign(vCote) and math.abs(volant) > 0.3 then
-		adherence *= 2.2
-	end
-	if auSol then
+	if auSol and driftSens ~= 0 then
+		-- DRIFT ARCADE : le kart rejoint un angle de glisse cible (toujours le même ressenti)
+		local intention = math.clamp(volantLisse * driftSens, -1, 1) -- 1 = on braque dans le virage, -1 = contre-braquage
+		local angle = (glisse.AngleDrift or 32) + (glisse.AngleVolant or 16) * intention + (if mouille then (glisse.AngleMouille or 10) else 0)
+		local cibleCote = -driftSens * math.abs(vAvant) * math.tan(math.rad(math.clamp(angle, 8, 65)))
+		vCote += (cibleCote - vCote) * math.clamp(dt * (glisse.RapiditeDrift or 5), 0, 1)
+	elseif auSol then
 		vCote *= math.exp(-adherence * dt)
-	end
-	-- Drift contrôlé : l'angle de glisse ne dépasse pas ~50° (pas de toupie involontaire)
-	local glisseMax = math.abs(vAvant) * 1.2
-	if auSol and math.abs(vCote) > glisseMax and math.abs(vAvant) > 8 then
-		vCote = math.sign(vCote) * (glisseMax + (math.abs(vCote) - glisseMax) * math.exp(-6 * dt))
 	end
 
 	-- 3) Tourner (en drift, on tourne beaucoup plus : 360 possibles !)
@@ -9362,6 +9371,12 @@ RunService.Heartbeat:Connect(function(dt: number)
 	end
 	local sens = if vAvant < -1 then -1 else 1
 	local rotationCible = -volantLisse * puissance * facteur * sens
+	if driftSens ~= 0 then
+		-- En drift : le kart tourne toujours dans le sens du drift (arc régulier),
+		-- plus serré si on braque, plus large si on contre-braque
+		local intention = math.clamp(volantLisse * driftSens, -1, 1)
+		rotationCible = -driftSens * puissance * facteur * sens * (0.75 + 0.45 * intention)
+	end
 	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 10, 0, 1)
 
 	local nouvelleVitesse = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
