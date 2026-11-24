@@ -2032,7 +2032,8 @@ do
 			end
 		end
 	end
-	-- c) Suspensions lumineuses (globes dorés) le long des allées de l'étage
+	-- c) Suspensions lumineuses (globes dorés), ALIGNÉES sur la grille du mall :
+	--    au-dessus de chaque rosace et au milieu de chaque bloc de boutiques
 	local function suspension(position: Vector3)
 		deco(bloc("TigeSuspension", Vector3.new(0.15, 5, 0.15), CFrame.new(position + Vector3.new(0, 3.5, 0)), OR, Enum.Material.Foil, decor))
 		local globe = deco(bloc("GlobeSuspension", Vector3.new(2.2, 2.2, 2.2), CFrame.new(position), Color3.fromRGB(255, 236, 200), Enum.Material.Neon, decor))
@@ -2041,16 +2042,18 @@ do
 		deco(bloc("ChapeauSuspension", Vector3.new(2.6, 0.5, 2.6), CFrame.new(position + Vector3.new(0, 1.2, 0)), OR, Enum.Material.Foil, decor)).CastShadow = false
 	end
 	local yGlobe = SOL + HAUT_PLAFOND_2 - 7
-	for x = -190, 190, 38 do
+	local X_GRILLE = { -173, -136, -99, -62, 62, 99, 136, 173 } -- allées et milieux des blocs
+	for _, x in ipairs(X_GRILLE) do
 		suspension(Vector3.new(x, yGlobe, -137))
 		suspension(Vector3.new(x, yGlobe, 137))
 	end
-	for _, x in ipairs({ -173, -99, 99, 173 }) do
-		for _, z in ipairs({ -95, -45, 45, 95 }) do
+	for _, x in ipairs({ -173, -99, 99, 173 }) do -- allées transversales
+		for _, z in ipairs({ -90, -50, 50, 90 }) do
 			suspension(Vector3.new(x, yGlobe, z))
 		end
 	end
-	-- d) Guirlandes de fanions colorés au-dessus des allées de l'étage (ambiance fête)
+	-- d) Guirlandes de fanions, bien DROITES en travers des allées nord et sud,
+	--    à mi-chemin entre deux suspensions
 	local COULEURS_FANIONS = { Color3.fromRGB(255, 60, 90), Color3.fromRGB(255, 200, 40), Color3.fromRGB(60, 170, 255), Color3.fromRGB(80, 220, 120), Color3.fromRGB(190, 90, 255) }
 	local function guirlande(a: Vector3, b: Vector3)
 		local longueur = (b - a).Magnitude
@@ -2063,17 +2066,66 @@ do
 			fanion.CastShadow = false
 		end
 	end
-	local yFanions = SOL + HAUT_PLAFOND_2 - 4
-	for x = -170, 170, 34 do
-		guirlande(Vector3.new(x, yFanions, -150), Vector3.new(x + 12, yFanions, -124))
-		guirlande(Vector3.new(x, yFanions, 124), Vector3.new(x + 12, yFanions, 150))
+	local yFanions = SOL + HAUT_PLAFOND_2 - 3.5
+	for _, x in ipairs({ -154.5, -117.5, -80.5, 0, 80.5, 117.5, 154.5 }) do
+		guirlande(Vector3.new(x, yFanions, -159), Vector3.new(x, yFanions, -124))
+		guirlande(Vector3.new(x, yFanions, 124), Vector3.new(x, yFanions, 159))
 	end
-	-- e) Bancs dorés contre les murs nord et sud (entre les vitrines)
-	for _, z in ipairs({ -DZ + 2.5, DZ - 2.5 }) do
-		for _, x in ipairs({ -125, -85, 85, 125 }) do
-			deco(bloc("AssiseBanc", Vector3.new(7, 0.5, 2), CFrame.new(x, Y1 + 1.6, z), Color3.fromRGB(110, 70, 40), Enum.Material.WoodPlanks, decor))
-			for _, dx in ipairs({ -3, 3 }) do
-				deco(bloc("PiedBanc", Vector3.new(0.4, 1.4, 1.8), CFrame.new(x + dx, Y1 + 0.7, z), OR, Enum.Material.Foil, decor))
+	-- e) Contre les murs nord et sud : un banc doré DEVANT chaque vitrine (centré),
+	--    et un palmier en pot dans chaque espace entre deux vitrines
+	local function palmierEnPot(position: Vector3)
+		deco(bloc("Pot", Vector3.new(3, 2.2, 3), CFrame.new(position + Vector3.new(0, 1.1, 0)), Color3.fromRGB(240, 236, 228), Enum.Material.Marble, decor))
+		deco(bloc("BordPot", Vector3.new(3.3, 0.3, 3.3), CFrame.new(position + Vector3.new(0, 2.25, 0)), OR, Enum.Material.Foil, decor))
+		local tronc = deco(bloc("Tronc", Vector3.new(0.6, 6, 0.6), CFrame.new(position + Vector3.new(0, 5.2, 0)), Color3.fromRGB(120, 85, 50), Enum.Material.Wood, decor))
+		tronc.CastShadow = false
+		for k = 0, 5 do
+			local feuille = deco(bloc("Palme", Vector3.new(0.2, 0.6, 4.5), CFrame.new(position + Vector3.new(0, 8.2, 0)) * CFrame.Angles(0, math.rad(k * 60), 0) * CFrame.new(0, 0, 2) * CFrame.Angles(math.rad(-25), 0, 0), Color3.fromRGB(50, 150, 70), Enum.Material.Grass, decor))
+			feuille.CastShadow = false
+		end
+	end
+	local function banc(position: Vector3, versInterieur: number)
+		deco(bloc("AssiseBanc", Vector3.new(7, 0.5, 2), CFrame.new(position + Vector3.new(0, 1.6, 0)), Color3.fromRGB(110, 70, 40), Enum.Material.WoodPlanks, decor))
+		-- Dossier côté mur (le banc regarde l'allée)
+		deco(bloc("DossierBanc", Vector3.new(7, 1.4, 0.3), CFrame.new(position + Vector3.new(0, 2.5, -versInterieur * 0.85)), Color3.fromRGB(110, 70, 40), Enum.Material.WoodPlanks, decor))
+		for _, dx in ipairs({ -3, 3 }) do
+			deco(bloc("PiedBanc", Vector3.new(0.4, 1.4, 1.8), CFrame.new(position + Vector3.new(dx, 0.7, 0)), OR, Enum.Material.Foil, decor))
+		end
+	end
+	for _, info in ipairs({
+		{ z = -DZ, vitrines = { -185, -145, -105, 105, 145, 185 }, pots = { -165, -125, -85, 85, 125, 165 } },
+		{ z = DZ, vitrines = { -185, -145, -105, -65, 65, 105, 145, 185 }, pots = { -165, -125, -85, 85, 125, 165 } },
+	}) do
+		local versInterieur = if info.z < 0 then 1 else -1
+		for _, x in ipairs(info.vitrines) do
+			banc(Vector3.new(x, Y1, info.z + versInterieur * 4.5), versInterieur)
+		end
+		for _, x in ipairs(info.pots) do
+			palmierEnPot(Vector3.new(x, Y1, info.z + versInterieur * 3))
+		end
+	end
+	-- f) Grands écrans publicitaires au bout de chaque bloc de boutiques (face aux allées)
+	local PUBS = {
+		{ "TURBO COLA", Color3.fromRGB(215, 30, 35) }, { "NEON TIRES", Color3.fromRGB(40, 140, 255) },
+		{ "DRIFT FUEL", Color3.fromRGB(255, 150, 20) }, { "SKY KARTS", Color3.fromRGB(150, 70, 230) },
+		{ "DUNE ENERGY", Color3.fromRGB(240, 190, 30) }, { "GOLDEN MALL", OR },
+	}
+	local numeroPub = 0
+	for _, cx in ipairs(ILOTS_X) do
+		for _, sz in ipairs({ -1, 1 }) do
+			numeroPub += 1
+			local pub = PUBS[(numeroPub - 1) % #PUBS + 1]
+			local cf = CFrame.lookAt(Vector3.new(cx, Y1 + 9, sz * 124.4), Vector3.new(cx, Y1 + 9, sz * 200))
+			deco(bloc("CadrePub", Vector3.new(38, 9, 0.4), cf, OR, Enum.Material.Foil, decor))
+			local ecran = deco(bloc("EcranPub", Vector3.new(37, 8, 0.2), cf * CFrame.new(0, 0, -0.25), Color3.fromRGB(12, 12, 16), Enum.Material.SmoothPlastic, decor))
+			texte(ecran, Enum.NormalId.Front, pub[1], pub[2], Color3.fromRGB(12, 12, 16))
+		end
+	end
+	-- g) Lignes dorées aussi le long des allées transversales de l'étage
+	for _, x in ipairs({ -173, -99, 99, 173 }) do
+		for _, cote in ipairs({ -1, 1 }) do
+			for _, segment in ipairs({ { -124, -13 }, { 13, 124 } }) do
+				local longueur = segment[2] - segment[1]
+				deco(bloc("IncrustationOr", Vector3.new(0.5, 0.05, longueur), CFrame.new(x + cote * 10.5, Y1 + 0.035, (segment[1] + segment[2]) / 2), OR, Enum.Material.Foil, decor)).CastShadow = false
 			end
 		end
 	end
