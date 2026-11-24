@@ -1885,6 +1885,10 @@ ouvrirMenu = function(ouvert: boolean)
 	for _, page in ipairs(pagesListe) do
 		page.Visible = false -- (magasin, roue, aperçu…)
 	end
+	local pageCadeaux = fondMenu:FindFirstChild("PageCadeaux")
+	if pageCadeaux and pageCadeaux:IsA("GuiObject") then
+		pageCadeaux.Visible = false
+	end
 	panneauMagasin.Visible = false
 	panneauRoue.Visible = false
 	majMenu()

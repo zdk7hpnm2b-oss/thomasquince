@@ -491,7 +491,8 @@ local function etiqueter(modele: Instance?, p: Participant)
 	end
 	modele:SetAttribute("Role", p.role)
 	local support = (modele :: Model).PrimaryPart or modele:FindFirstChild("HumanoidRootPart") or modele:FindFirstChildWhichIsA("BasePart")
-	if not support or support:FindFirstChild("NomManche") then
+	-- (les karts des joueurs ont déjà leur étiquette « RepereEquipe » : pas de doublon)
+	if not support or support:FindFirstChild("NomManche") or support:FindFirstChild("RepereEquipe") then
 		return
 	end
 	local panneau = Instance.new("BillboardGui")

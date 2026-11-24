@@ -4589,7 +4589,8 @@ local function etiqueter(modele: Instance?, p: Participant)
 	end
 	modele:SetAttribute("Role", p.role)
 	local support = (modele :: Model).PrimaryPart or modele:FindFirstChild("HumanoidRootPart") or modele:FindFirstChildWhichIsA("BasePart")
-	if not support or support:FindFirstChild("NomManche") then
+	-- (les karts des joueurs ont déjà leur étiquette « RepereEquipe » : pas de doublon)
+	if not support or support:FindFirstChild("NomManche") or support:FindFirstChild("RepereEquipe") then
 		return
 	end
 	local panneau = Instance.new("BillboardGui")
@@ -11579,6 +11580,10 @@ ouvrirMenu = function(ouvert: boolean)
 	barre.Visible = not ouvert -- (la barre d'état du haut passerait par-dessus le menu)
 	for _, page in ipairs(pagesListe) do
 		page.Visible = false -- (magasin, roue, aperçu…)
+	end
+	local pageCadeaux = fondMenu:FindFirstChild("PageCadeaux")
+	if pageCadeaux and pageCadeaux:IsA("GuiObject") then
+		pageCadeaux.Visible = false
 	end
 	panneauMagasin.Visible = false
 	panneauRoue.Visible = false
