@@ -436,7 +436,8 @@ function KartBuilder.Construire(perso: { [string]: any }, cf: CFrame, apercu: bo
 
 	-- 🌈 TRAÎNÉE achetée : un ruban de couleur derrière le kart + des particules
 	local trainee = (not perso.Police) and Config.Trainee(perso.Trainee or "Aucune") or nil
-	if trainee and trainee.Couleurs and not apercu then
+	-- (aussi sur le kart du garage : en tournant sur le plateau, il dessine un cercle de couleur)
+	if trainee and trainee.Couleurs then
 		local t0 = Instance.new("Attachment")
 		t0.Position = Vector3.new(0, 0.1, 3.1)
 		t0.Parent = chassis

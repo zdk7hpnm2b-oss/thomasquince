@@ -57,6 +57,7 @@ local function cameraDerriereJoueur(): CFrame?
 	return CFrame.lookAt(racine.Position - regard * 12 + Vector3.new(0, 5, 0), racine.Position + Vector3.new(0, 2, 0))
 end
 local typeApercu: string? = nil
+local traineeApercu: string? = nil
 local angleApercu = 0
 
 local function trouverPlateau(): BasePart?
@@ -70,7 +71,7 @@ local function majApercu(perso)
 	if not plateau then
 		return
 	end
-	if apercu and typeApercu ~= perso.Kart then
+	if apercu and (typeApercu ~= perso.Kart or traineeApercu ~= perso.Trainee) then
 		apercu:Destroy()
 		apercu = nil
 	end
@@ -79,6 +80,7 @@ local function majApercu(perso)
 		apercu.Name = "ApercuGarage"
 		apercu.Parent = workspace
 		typeApercu = perso.Kart
+		traineeApercu = perso.Trainee
 	else
 		KartBuilder.Peindre(apercu, perso)
 	end
@@ -422,7 +424,7 @@ local function rangeeOnglets(y: number, hauteur: number, noms: { string }, sombr
 	return boutons, f
 end
 
-local ongletsPrincipaux = rangeeOnglets(162, 42, { "PEINTURE", "FINITIONS", "DÉCO" })
+local ongletsPrincipaux = rangeeOnglets(162, 42, { "PEINTURE", "FINITIONS", "DÉCO", "⭐ OFFRES" })
 local sousOnglets, rangeeSous = rangeeOnglets(212, 32, { "CARROSSERIE", "JANTES", "SIÈGE", "BANDES" }, true)
 local ongletActif, sousOngletActif = 1, 1
 
@@ -787,6 +789,126 @@ plus.Activated:Connect(function()
 	rafraichir()
 end)
 
+-- PAGE OFFRES : les objets à acheter, à ESSAYER directement sur ton kart (1er clic),
+-- puis à acheter (2e clic). Kart exclusif, packs, VIP, traînées…
+local pageOffres = page()
+section(pageOffres, "⭐ OFFRES : clique pour ESSAYER sur ton kart", OR)
+local essaiEnCours: string? = nil
+local function offreDejaAchetee(offre): boolean
+	if offre.Kart then
+		return possede("Karts", offre.Kart)
+	end
+	if offre.Categorie == "Traînées" and offre.Trainee then
+		return possede("Trainees", offre.Trainee)
+	end
+	local p = profil and profil.Possessions
+	return p ~= nil and p.Produits ~= nil and p.Produits[offre.Id] == true
+end
+for _, offre in ipairs(Config.Boutique or {}) do
+	if offre.Categorie ~= "Offres" and offre.Categorie ~= "Traînées" then
+		continue
+	end
+	local couleur: Color3 = offre.Couleur or Color3.fromRGB(120, 120, 140)
+	local carte = Instance.new("TextButton")
+	carte.LayoutOrder = suivant()
+	carte.Size = UDim2.new(1, 0, 0, 92)
+	carte.BackgroundColor3 = Color3.fromRGB(26, 26, 32):Lerp(couleur, 0.14)
+	carte.AutoButtonColor = false
+	carte.Text = ""
+	carte.Parent = pageOffres
+	coins(carte, 10)
+	local bord = contour(carte, couleur, 1)
+	animer(carte)
+	-- Grosse icône sur une pastille colorée
+	local tuile = Instance.new("Frame")
+	tuile.AnchorPoint = Vector2.new(0, 0.5)
+	tuile.Size = UDim2.fromOffset(74, 74)
+	tuile.Position = UDim2.new(0, 9, 0.5, 0)
+	tuile.BackgroundColor3 = Color3.new(1, 1, 1)
+	tuile.Parent = carte
+	coins(tuile, 14)
+	local degradeTuile = Instance.new("UIGradient")
+	local trainee = offre.Trainee and Config.Trainee(offre.Trainee)
+	if offre.Categorie == "Traînées" and trainee and trainee.Couleurs then
+		degradeTuile.Color = trainee.Couleurs
+		degradeTuile.Rotation = 45
+	else
+		degradeTuile.Color = ColorSequence.new(couleur:Lerp(Color3.new(1, 1, 1), 0.4), couleur:Lerp(Color3.new(0, 0, 0), 0.2))
+		degradeTuile.Rotation = 90
+	end
+	degradeTuile.Parent = tuile
+	contour(tuile, Color3.new(1, 1, 1), 3)
+	local image = Config.ImageIcone(offre.Icone or "")
+	if image then
+		local img = Instance.new("ImageLabel")
+		img.Size = UDim2.new(1, -20, 1, -20)
+		img.Position = UDim2.fromOffset(10, 10)
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.Parent = tuile
+	else
+		local icone = etiquette(tuile, offre.Icone or "⭐", UDim2.new(1, -18, 1, -18), UDim2.fromOffset(9, 9), Color3.new(1, 1, 1))
+		icone.TextXAlignment = Enum.TextXAlignment.Center
+	end
+	local nom = etiquette(carte, (offre.Nom:gsub("^[^%w%s]+%s*", "")), UDim2.new(1, -230, 0, 22), UDim2.new(0, 94, 0, 12), Color3.new(1, 1, 1))
+	nom.TextWrapped = true
+	local desc = etiquette(carte, offre.Description or "", UDim2.new(1, -110, 0, 30), UDim2.new(0, 94, 0, 38), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
+	desc.TextWrapped = true
+	desc.TextYAlignment = Enum.TextYAlignment.Top
+	local prix = Instance.new("TextLabel")
+	prix.AnchorPoint = Vector2.new(1, 0)
+	prix.Size = UDim2.fromOffset(110, 28)
+	prix.Position = UDim2.new(1, -10, 0, 10)
+	prix.BackgroundColor3 = ROUGE
+	prix.TextColor3 = Color3.new(1, 1, 1)
+	prix.Font = Enum.Font.FredokaOne
+	prix.TextScaled = true
+	prix.Parent = carte
+	coins(prix, 8)
+	local margePrix = Instance.new("UIPadding")
+	margePrix.PaddingTop = UDim.new(0, 5)
+	margePrix.PaddingBottom = UDim.new(0, 5)
+	margePrix.Parent = prix
+	table.insert(miseAJour, function()
+		local achete = offreDejaAchetee(offre)
+		local enEssai = essaiEnCours == offre.Id
+		prix.Text = if achete then "✔ À TOI" elseif enEssai then "ACHETER " .. (offre.PrixAffiche or "") else (offre.PrixAffiche or "R$")
+		prix.BackgroundColor3 = if achete then Color3.fromRGB(40, 140, 70) elseif enEssai then Color3.fromRGB(255, 140, 0) else ROUGE
+		bord.Thickness = if enEssai then 3 else 1
+	end)
+	carte.Activated:Connect(function()
+		local achete = offreDejaAchetee(offre)
+		if not achete and essaiEnCours == offre.Id then
+			-- 2e clic : on achète
+			acheterRobux(offre.ProduitId, offre.Id, function()
+				essaiEnCours = nil
+			end)
+			rafraichir()
+			return
+		end
+		-- 1er clic (ou objet déjà à toi) : on l'ESSAIE / on l'équipe sur le kart
+		if offre.Kart then
+			persoEdite.Kart = offre.Kart
+		end
+		local premium = offre.Premium or (offre.Premiums and offre.Premiums[1])
+		if premium then
+			persoEdite.Premium = premium
+		end
+		if offre.Trainee then
+			persoEdite.Trainee = offre.Trainee
+		end
+		if achete then
+			essaiEnCours = nil
+			afficherStatut(("✔ %s : équipé !"):format(nom.Text), Color3.fromRGB(140, 255, 160))
+		else
+			essaiEnCours = offre.Id
+			local visible = offre.Kart or premium or offre.Trainee
+			afficherStatut(if visible then ("👀 Regarde ton kart ! Reclique pour acheter (%s)"):format(offre.PrixAffiche or "R$") else ("%s · reclique pour acheter (%s)"):format(offre.Description or "", offre.PrixAffiche or "R$"), OR)
+		end
+		rafraichir()
+	end)
+end
+
 -- Affichage des onglets
 local function majOnglets()
 	for i, b in ipairs(ongletsPrincipaux) do
@@ -801,6 +923,8 @@ local function majOnglets()
 	end
 	pageFinitions.Visible = ongletActif == 2
 	pageDeco.Visible = ongletActif == 3
+	pageOffres.Visible = ongletActif == 4
+	ongletsPrincipaux[4].BackgroundColor3 = if ongletActif == 4 then ROUGE else Color3.fromRGB(150, 100, 10) -- (l'onglet OFFRES attire l'œil)
 	-- sans sous-onglets, la zone remonte un peu
 	zone.Position = UDim2.new(0, 12, 0, if ongletActif == 1 then 252 else 214)
 	zone.Size = UDim2.new(1, -24, 1, if ongletActif == 1 then -378 else -340)
