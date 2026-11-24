@@ -8939,8 +8939,14 @@ margeBouton.PaddingTop = UDim.new(0, 10)
 margeBouton.PaddingBottom = UDim.new(0, 10)
 margeBouton.Parent = boutonConduire
 
+-- Le bouton CONDUIRE n'apparaît jamais par-dessus le menu (ni le garage)
+local function menuAffiche(): boolean
+	local hudPartie = joueur.PlayerGui:FindFirstChild("PartieHUD")
+	local menu = hudPartie and hudPartie:FindFirstChild("Menu")
+	return (menu ~= nil and (menu :: GuiObject).Visible) or joueur:GetAttribute("MenuGarage") == true
+end
 local function demanderKart()
-	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") or joueur:GetAttribute("EnSalle") then
+	if kart or not joueur:GetAttribute("IntroFinie") or joueur:GetAttribute("MenuGarage") or joueur:GetAttribute("EnSalle") or menuAffiche() then
 		return -- pas pendant l'intro, le menu du garage ou la page d'attente
 	end
 	boutonConduire.Text = "⏳ ..."
@@ -8951,11 +8957,19 @@ local function demanderKart()
 end
 boutonConduire.Activated:Connect(demanderKart)
 
+local conduireDisponible = false
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		boutonConduire.Visible = conduireDisponible and not menuAffiche()
+	end
+end)
 local function activerToucheConduire(actif: boolean)
 	if TYPE_PLACE == "Lobby" then
 		actif = false -- dans le lobby, on choisit son mode dans le menu (pas de kart)
 	end
-	boutonConduire.Visible = actif
+	conduireDisponible = actif
+	boutonConduire.Visible = actif and not menuAffiche()
 	if actif then
 		ContextActionService:BindAction("MallDrift_Conduire", function(_, etat)
 			if etat == Enum.UserInputState.Begin then
