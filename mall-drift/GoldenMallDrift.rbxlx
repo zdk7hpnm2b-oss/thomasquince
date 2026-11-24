@@ -3278,6 +3278,80 @@ do
 		end
 	end
 
+	-- 2 octies) LE 1er ÉTAGE PREND VIE
+	local Y1 = SOL + ETAGE -- sol du 1er étage
+	-- a) Vitrines lumineuses sur les murs nord et sud (comme au rez-de-chaussée)
+	local NOMS_NORD = { "CINÉMA 4D", "GOLD ROOM", "ARCADE ZONE", "TEA HOUSE", "BEAUTY DUBAI", "KIDS PLANET" }
+	for i, x in ipairs({ -185, -145, -105, 105, 145, 185 }) do
+		facade(Vector3.new(x, ETAGE, -DZ), Vector3.new(0, 0, 1), 36, NOMS_NORD[i], Color3.fromRGB(255, 170, 230))
+	end
+	local NOMS_SUD = { "SPORT ARENA", "VR WORLD", "SUSHI BAR", "TOY CASTLE", "MUSIC BOX", "SNEAKER LAB", "CANDY LAND", "PHOTO STUDIO" }
+	for i, x in ipairs({ -185, -145, -105, -65, 65, 105, 145, 185 }) do
+		facade(Vector3.new(x, ETAGE, DZ), Vector3.new(0, 0, -1), 36, NOMS_SUD[i], Color3.fromRGB(150, 220, 255))
+	end
+	-- b) Sol de luxe aussi à l'étage : lignes dorées + rosaces
+	for _, z in ipairs({ -137, 137 }) do
+		for _, cote in ipairs({ -1, 1 }) do
+			deco(bloc("IncrustationOr", Vector3.new(LARGEUR - 20, 0.05, 0.5), CFrame.new(0, Y1 + 0.035, z + cote * 10.5), OR, Enum.Material.Foil, decor)).CastShadow = false
+		end
+		for _, x in ipairs({ -173, -99, 99, 173 }) do
+			local centre = Vector3.new(x, Y1 + 0.04, z)
+			for k, info in ipairs({ { 15, MARBRE_BLANC, Enum.Material.Marble }, { 13, OR, Enum.Material.Foil }, { 11.5, Color3.fromRGB(30, 30, 36), Enum.Material.Marble } }) do
+				local disque = deco(bloc("Rosace", Vector3.new(0.06 + k * 0.01, info[1], info[1]), CFrame.new(centre + Vector3.new(0, k * 0.005, 0)) * CFrame.Angles(0, 0, math.rad(90)), info[2], info[3], decor))
+				disque.Shape = Enum.PartType.Cylinder
+				disque.CastShadow = false
+			end
+			for k = 0, 3 do
+				deco(bloc("RosaceEtoile", Vector3.new(10, 0.1, 0.6), CFrame.new(centre + Vector3.new(0, 0.02, 0)) * CFrame.Angles(0, math.rad(k * 45), 0), OR, Enum.Material.Foil, decor)).CastShadow = false
+			end
+		end
+	end
+	-- c) Suspensions lumineuses (globes dorés) le long des allées de l'étage
+	local function suspension(position: Vector3)
+		deco(bloc("TigeSuspension", Vector3.new(0.15, 5, 0.15), CFrame.new(position + Vector3.new(0, 3.5, 0)), OR, Enum.Material.Foil, decor))
+		local globe = deco(bloc("GlobeSuspension", Vector3.new(2.2, 2.2, 2.2), CFrame.new(position), Color3.fromRGB(255, 236, 200), Enum.Material.Neon, decor))
+		globe.Shape = Enum.PartType.Ball
+		globe.CastShadow = false
+		deco(bloc("ChapeauSuspension", Vector3.new(2.6, 0.5, 2.6), CFrame.new(position + Vector3.new(0, 1.2, 0)), OR, Enum.Material.Foil, decor)).CastShadow = false
+	end
+	local yGlobe = SOL + HAUT_PLAFOND_2 - 7
+	for x = -190, 190, 38 do
+		suspension(Vector3.new(x, yGlobe, -137))
+		suspension(Vector3.new(x, yGlobe, 137))
+	end
+	for _, x in ipairs({ -173, -99, 99, 173 }) do
+		for _, z in ipairs({ -95, -45, 45, 95 }) do
+			suspension(Vector3.new(x, yGlobe, z))
+		end
+	end
+	-- d) Guirlandes de fanions colorés au-dessus des allées de l'étage (ambiance fête)
+	local COULEURS_FANIONS = { Color3.fromRGB(255, 60, 90), Color3.fromRGB(255, 200, 40), Color3.fromRGB(60, 170, 255), Color3.fromRGB(80, 220, 120), Color3.fromRGB(190, 90, 255) }
+	local function guirlande(a: Vector3, b: Vector3)
+		local longueur = (b - a).Magnitude
+		local cordon = deco(bloc("CordonFanions", Vector3.new(0.08, 0.08, longueur), CFrame.lookAt((a + b) / 2, b), Color3.fromRGB(240, 240, 240), Enum.Material.SmoothPlastic, decor))
+		cordon.CastShadow = false
+		local nb = math.floor(longueur / 2.2)
+		for k = 1, nb - 1 do
+			local pos = a:Lerp(b, k / nb)
+			local fanion = deco(bloc("Fanion", Vector3.new(0.05, 1.2, 1.2), CFrame.lookAt(pos, pos + (b - a).Unit) * CFrame.new(0, -0.7, 0) * CFrame.Angles(0, math.rad(90), math.rad(45)), COULEURS_FANIONS[k % #COULEURS_FANIONS + 1], Enum.Material.Fabric, decor))
+			fanion.CastShadow = false
+		end
+	end
+	local yFanions = SOL + HAUT_PLAFOND_2 - 4
+	for x = -170, 170, 34 do
+		guirlande(Vector3.new(x, yFanions, -150), Vector3.new(x + 12, yFanions, -124))
+		guirlande(Vector3.new(x, yFanions, 124), Vector3.new(x + 12, yFanions, 150))
+	end
+	-- e) Bancs dorés contre les murs nord et sud (entre les vitrines)
+	for _, z in ipairs({ -DZ + 2.5, DZ - 2.5 }) do
+		for _, x in ipairs({ -125, -85, 85, 125 }) do
+			deco(bloc("AssiseBanc", Vector3.new(7, 0.5, 2), CFrame.new(x, Y1 + 1.6, z), Color3.fromRGB(110, 70, 40), Enum.Material.WoodPlanks, decor))
+			for _, dx in ipairs({ -3, 3 }) do
+				deco(bloc("PiedBanc", Vector3.new(0.4, 1.4, 1.8), CFrame.new(x + dx, Y1 + 0.7, z), OR, Enum.Material.Foil, decor))
+			end
+		end
+	end
+
 	-- 3) Grandes bannières suspendues dans l'atrium (rouge et or, aux couleurs du mall)
 	local n = 0
 	for _, z in ipairs({ -110, -70, -35, 35, 70, 110 }) do
