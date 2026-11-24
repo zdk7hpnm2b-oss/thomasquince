@@ -171,24 +171,24 @@ Config.Trainees = {
 -- (tant que c'est 0, l'achat est gratuit dans Studio pour tester).
 Config.Boutique = {
 	-- ⭐ OFFRES
-	{ Id = "KartGalaxie", Categorie = "Offres", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
-	{ Id = "PassVIP", Categorie = "Offres", Nom = "👑 Pass VIP", Description = "Pièces x2 À VIE + 2 tours de roue gratuits par jour + 👑 VIP", ProduitId = 0, PrixAffiche = "R$ 299", Unique = true },
-	{ Id = "PackLegende", Categorie = "Offres", Nom = "🏆 Méga pack Légende", Description = "10 000 💰 + Chrome miroir + Lave + traînée de Feu + 5 tours de roue", Pieces = 10000, Premiums = { "Chrome miroir", "Lave" }, Trainee = "Feu", Tours = 5, ProduitId = 0, PrixAffiche = "R$ 799", Unique = true },
-	{ Id = "PackDemarrage", Categorie = "Offres", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats + 2 tours de roue", Pieces = 1000, Premium = "Or 24 carats", Tours = 2, ProduitId = 0, PrixAffiche = "R$ 45", Unique = true },
+	{ Id = "KartGalaxie", Icone = "🦄", Couleur = Color3.fromRGB(230, 70, 200), Badge = "EXCLUSIF", Categorie = "Offres", Nom = "🦄 Kart Licorne Galaxie", Description = "Le kart EXCLUSIF : arc-en-ciel animé, ailes néon, paillettes !", Kart = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 399", Promo = true },
+	{ Id = "PassVIP", Icone = "👑", Couleur = Color3.fromRGB(255, 185, 0), Badge = "MEILLEURE OFFRE", Categorie = "Offres", Nom = "👑 Pass VIP", Description = "Pièces x2 À VIE + 2 tours de roue gratuits par jour + 👑 VIP", ProduitId = 0, PrixAffiche = "R$ 299", Unique = true },
+	{ Id = "PackLegende", Icone = "🏆", Couleur = Color3.fromRGB(255, 120, 20), Badge = "LÉGENDAIRE", Categorie = "Offres", Nom = "🏆 Méga pack Légende", Description = "10 000 💰 + Chrome miroir + Lave + traînée de Feu + 5 tours de roue", Pieces = 10000, Premiums = { "Chrome miroir", "Lave" }, Trainee = "Feu", Tours = 5, ProduitId = 0, PrixAffiche = "R$ 799", Unique = true },
+	{ Id = "PackDemarrage", Icone = "🎁", Couleur = Color3.fromRGB(150, 70, 255), Badge = "PROMO", Categorie = "Offres", Nom = "🎁 Pack de démarrage", Description = "1 000 💰 + la peinture Or 24 carats + 2 tours de roue", Pieces = 1000, Premium = "Or 24 carats", Tours = 2, ProduitId = 0, PrixAffiche = "R$ 45", Unique = true },
 	-- 🌈 TRAÎNÉES
-	{ Id = "TraineeFeu", Categorie = "Traînées", Nom = "🔥 Traînée de feu", Description = "Des flammes derrière ton kart", Trainee = "Feu", ProduitId = 0, PrixAffiche = "R$ 79", Unique = true },
-	{ Id = "TraineeArcEnCiel", Categorie = "Traînées", Nom = "🌈 Traînée arc-en-ciel", Description = "Un arc-en-ciel qui te suit partout", Trainee = "Arc-en-ciel", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
-	{ Id = "TraineeEtoiles", Categorie = "Traînées", Nom = "✨ Traînée d'étoiles", Description = "Une pluie d'étoiles dorées", Trainee = "Étoiles", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
-	{ Id = "TraineeEclair", Categorie = "Traînées", Nom = "⚡ Traînée éclair", Description = "Des étincelles électriques bleues", Trainee = "Éclair", ProduitId = 0, PrixAffiche = "R$ 69", Unique = true },
-	{ Id = "TraineeCoeurs", Categorie = "Traînées", Nom = "💖 Traînée de cœurs", Description = "Des cœurs roses partout derrière toi", Trainee = "Cœurs", ProduitId = 0, PrixAffiche = "R$ 59", Unique = true },
-	{ Id = "TraineeGalaxie", Categorie = "Traînées", Nom = "🌌 Traînée galaxie", Description = "Le cosmos derrière ton kart", Trainee = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 129", Unique = true },
+	{ Id = "TraineeFeu", Icone = "🔥", Couleur = Color3.fromRGB(255, 100, 20), Categorie = "Traînées", Nom = "🔥 Traînée de feu", Description = "Des flammes derrière ton kart", Trainee = "Feu", ProduitId = 0, PrixAffiche = "R$ 79", Unique = true },
+	{ Id = "TraineeArcEnCiel", Icone = "🌈", Couleur = Color3.fromRGB(255, 80, 160), Categorie = "Traînées", Nom = "🌈 Traînée arc-en-ciel", Description = "Un arc-en-ciel qui te suit partout", Trainee = "Arc-en-ciel", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
+	{ Id = "TraineeEtoiles", Icone = "✨", Couleur = Color3.fromRGB(240, 190, 40), Categorie = "Traînées", Nom = "✨ Traînée d'étoiles", Description = "Une pluie d'étoiles dorées", Trainee = "Étoiles", ProduitId = 0, PrixAffiche = "R$ 99", Unique = true },
+	{ Id = "TraineeEclair", Icone = "⚡", Couleur = Color3.fromRGB(40, 150, 255), Categorie = "Traînées", Nom = "⚡ Traînée éclair", Description = "Des étincelles électriques bleues", Trainee = "Éclair", ProduitId = 0, PrixAffiche = "R$ 69", Unique = true },
+	{ Id = "TraineeCoeurs", Icone = "💖", Couleur = Color3.fromRGB(255, 70, 160), Categorie = "Traînées", Nom = "💖 Traînée de cœurs", Description = "Des cœurs roses partout derrière toi", Trainee = "Cœurs", ProduitId = 0, PrixAffiche = "R$ 59", Unique = true },
+	{ Id = "TraineeGalaxie", Icone = "🌌", Couleur = Color3.fromRGB(110, 60, 230), Categorie = "Traînées", Nom = "🌌 Traînée galaxie", Description = "Le cosmos derrière ton kart", Trainee = "Galaxie", ProduitId = 0, PrixAffiche = "R$ 129", Unique = true },
 	-- 🎡 ROUE
-	{ Id = "Tours3", Categorie = "Roue", Nom = "🎡 3 tours de roue", Description = "3 tours de la roue des cadeaux", Tours = 3, ProduitId = 0, PrixAffiche = "R$ 49" },
-	{ Id = "Tours10", Categorie = "Roue", Nom = "🎡 10 tours de roue", Description = "10 tours : le meilleur prix !", Tours = 10, ProduitId = 0, PrixAffiche = "R$ 129" },
+	{ Id = "Tours3", Icone = "🎡", Couleur = Color3.fromRGB(255, 170, 0), Categorie = "Roue", Nom = "🎡 3 tours de roue", Description = "3 tours de la roue des cadeaux", Tours = 3, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Tours10", Icone = "🎡", Couleur = Color3.fromRGB(255, 120, 0), Badge = "-30%", Categorie = "Roue", Nom = "🎡 10 tours de roue", Description = "10 tours : le meilleur prix !", Tours = 10, ProduitId = 0, PrixAffiche = "R$ 129" },
 	-- 💰 PIÈCES
-	{ Id = "Pieces1000", Categorie = "Pièces", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
-	{ Id = "Pieces5000", Categorie = "Pièces", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
-	{ Id = "Pieces15000", Categorie = "Pièces", Nom = "💰 15 000 pièces", Description = "Le coffre géant : tout le garage pour toi", Pieces = 15000, ProduitId = 0, PrixAffiche = "R$ 499" },
+	{ Id = "Pieces1000", Icone = "💰", Couleur = Color3.fromRGB(40, 190, 90), Categorie = "Pièces", Nom = "💰 1 000 pièces", Description = "De quoi repeindre ton kart plusieurs fois", Pieces = 1000, ProduitId = 0, PrixAffiche = "R$ 49" },
+	{ Id = "Pieces5000", Icone = "💰", Couleur = Color3.fromRGB(20, 170, 120), Badge = "POPULAIRE", Categorie = "Pièces", Nom = "💰 5 000 pièces", Description = "Le meilleur prix par pièce !", Pieces = 5000, ProduitId = 0, PrixAffiche = "R$ 199" },
+	{ Id = "Pieces15000", Icone = "💎", Couleur = Color3.fromRGB(0, 170, 210), Badge = "+ DE VALEUR", Categorie = "Pièces", Nom = "💰 15 000 pièces", Description = "Le coffre géant : tout le garage pour toi", Pieces = 15000, ProduitId = 0, PrixAffiche = "R$ 499" },
 }
 Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
 
