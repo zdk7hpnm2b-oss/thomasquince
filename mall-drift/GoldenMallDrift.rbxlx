@@ -1113,13 +1113,14 @@ Config.PNJ = {
 -- La glisse en fonction de la vitesse : à fond, les pneus accrochent moins
 Config.Glisse = {
 	PerteAdherenceAFond = 0.45, -- à vitesse max, l'adhérence est multipliée par (1 - 0.45)
-	CoupDeVolant = 1.6, -- l'arrière décroche quand on déclenche le drift en tournant
+	CoupDeVolant = 0.8, -- l'arrière décroche quand on déclenche le drift en tournant (plus bas = entrée plus douce)
 	-- DRIFT ARCADE (régulier) : au début du drift, le sens est verrouillé et le kart prend
 	-- un angle de glisse cible. Le volant l'élargit (braquer) ou le resserre (contre-braquer).
 	AngleDrift = 32, -- angle de glisse de base (degrés) — plus grand = ça glisse plus
 	AngleVolant = 16, -- en plus (ou en moins) selon le volant
 	AngleMouille = 10, -- en plus sur le sol mouillé
-	RapiditeDrift = 5, -- vitesse à laquelle le kart prend son angle (plus grand = plus sec)
+	RapiditeDrift = 4, -- vitesse à laquelle le kart prend son angle (plus grand = plus sec)
+	EntreeDrift = 0.5, -- secondes pour passer de 40 % à 100 % de l'angle au début du drift (entrée progressive)
 }
 
 Config.Mouille = {
@@ -9497,6 +9498,7 @@ local tempsBoost = 0
 local poussee = 0 -- vitesse ajoutée d'un coup quand le boost se déclenche
 local volantLisse = 0 -- le volant monte en douceur (au clavier, sinon le kart braque d'un coup)
 local driftSens = 0 -- sens du drift en cours (-1 / 1), verrouillé jusqu'à la fin du drift
+local driftDebut = 0 -- moment où le drift a commencé (pour une entrée progressive)
 local secousseImpact = 0 -- secousse de caméra (choc, boost), qui retombe toute seule
 local vitessePrecCam = 0
 local accelLisse = 0
@@ -10382,7 +10384,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 	-- Le drift démarre dès qu'on tient SHIFT en tournant (même si SHIFT était appuyé avant)
 	if driftAppuye and driftSens == 0 and math.abs(volant) > 0.25 and math.abs(vAvant) > 12 then
 		driftSens = math.sign(volant)
-		vitesseRotation += -driftSens * glisse.CoupDeVolant -- l'arrière décroche
+		driftDebut = os.clock()
+		vitesseRotation += -driftSens * glisse.CoupDeVolant -- l'arrière décroche (en douceur)
 	end
 	if not driftAppuye or math.abs(vAvant) < 6 then
 		driftSens = 0
@@ -10395,6 +10398,9 @@ RunService.Heartbeat:Connect(function(dt: number)
 		-- DRIFT ARCADE : le kart rejoint un angle de glisse cible (toujours le même ressenti)
 		local intention = math.clamp(volantLisse * driftSens, -1, 1) -- 1 = on braque dans le virage, -1 = contre-braquage
 		local angle = (glisse.AngleDrift or 32) + (glisse.AngleVolant or 16) * intention + (if mouille then (glisse.AngleMouille or 10) else 0)
+		-- Entrée progressive : l'angle monte de 40 % à 100 % pendant les premiers instants du drift
+		local entree = math.clamp(0.4 + 0.6 * (os.clock() - driftDebut) / (glisse.EntreeDrift or 0.5), 0.4, 1)
+		angle *= entree
 		local cibleCote = -driftSens * math.abs(vAvant) * math.tan(math.rad(math.clamp(angle, 8, 65)))
 		vCote += (cibleCote - vCote) * math.clamp(dt * (glisse.RapiditeDrift or 5), 0, 1)
 	elseif auSol then
