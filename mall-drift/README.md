@@ -26,6 +26,16 @@ Ce prototype contient :
   et on voit les autres jouer en fond). JOUER lance un autre mode directement, même depuis une place de jeu
 - **👀 Aperçu avant d'acheter** : au magasin, un clic sur une offre montre ton kart équipé de l'objet en 3D
   (qui tourne), avec le bouton ACHETER. Au garage : 1er clic = essayer, 2e clic = acheter
+- **⏱ Course chrono** (JOUER > CHRONO) : 3 tours du mall en passant les portes lumineuses dans l'ordre
+  (la prochaine est verte, une flèche la montre), chrono en direct, meilleur tour enregistré
+  (classement mondial). Script serveur `ModesServer` ; réglages `Config.Chrono`
+- **🏆 Classement** (menu) : top 10 de la SEMAINE au Drift Battle (remis à zéro chaque semaine ;
+  le top 10 reçoit 5 000 / 3 000 / 2 000 / 1 000 💰 à sa connexion suivante) et top 10 des meilleurs tours chrono
+- **📸 Mode photo** (touche P) : l'interface disparaît, caméra libre autour du kart (Q/E, clic droit,
+  molette, T/G), O = rotation automatique. Parfait pour les TikTok
+- **Titres au-dessus des joueurs** : 👑 VIP, 🔥 ROI DU DRIFT (record ≥ 3 000), ⭐ PILOTE PRO (niveau 10), + niveau
+- **Carte** : rayons de lumière sous les verrières, écrans géants animés au-dessus de l'atrium,
+  grandes bannières rouge et or suspendues
 - **🎡 Roue du jour** (menu) : 1 tour GRATUIT par jour (2 avec le Pass VIP) + tours achetables. Cadeaux :
   pièces, XP, couleur, traînée, et le JACKPOT (kart Licorne Galaxie). Tirage fait par le serveur, chances
   affichées sous la roue (obligatoire sur Roblox pour un tirage au sort payant). Réglages : `Config.Roue`
@@ -127,7 +137,7 @@ Ce prototype contient :
 2. **Double-clique** dessus : Roblox Studio l'ouvre (ou dans Studio : **Fichier > Ouvrir depuis un fichier**).
 3. Clique sur **Play** ▶️. C'est tout !
 
-Les 14 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
+Les 17 scripts sont déjà rangés au bon endroit. Pour garder ta progression, fais ensuite
 l'**étape 4** plus bas (publier le jeu et autoriser l'accès API).
 
 ---
@@ -161,6 +171,7 @@ Survole **ServerScriptService**, clique sur **+** et choisis **Script**. Fais-le
 | `PNJServer` | [`src/ServerScriptService/PNJServer.server.luau`](src/ServerScriptService/PNJServer.server.luau) |
 | `ManchesServer` | [`src/ServerScriptService/ManchesServer.server.luau`](src/ServerScriptService/ManchesServer.server.luau) |
 | `MatchmakingServer` | [`src/ServerScriptService/MatchmakingServer.server.luau`](src/ServerScriptService/MatchmakingServer.server.luau) |
+| `ModesServer` | [`src/ServerScriptService/ModesServer.server.luau`](src/ServerScriptService/ModesServer.server.luau) |
 
 ### Étape 3 — Dans StarterPlayer > StarterPlayerScripts : 5 LocalScripts
 Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et choisis
@@ -172,6 +183,8 @@ Ouvre **StarterPlayer**, survole **StarterPlayerScripts**, clique sur **+** et c
 | `GarageUI` | [`src/StarterPlayerScripts/GarageUI.client.luau`](src/StarterPlayerScripts/GarageUI.client.luau) |
 | `Tutoriel` | [`src/StarterPlayerScripts/Tutoriel.client.luau`](src/StarterPlayerScripts/Tutoriel.client.luau) |
 | `Cadeaux` | [`src/StarterPlayerScripts/Cadeaux.client.luau`](src/StarterPlayerScripts/Cadeaux.client.luau) |
+| `Modes` | [`src/StarterPlayerScripts/Modes.client.luau`](src/StarterPlayerScripts/Modes.client.luau) |
+| `ModePhoto` | [`src/StarterPlayerScripts/ModePhoto.client.luau`](src/StarterPlayerScripts/ModePhoto.client.luau) |
 | `Graphismes` | [`src/StarterPlayerScripts/Graphismes.client.luau`](src/StarterPlayerScripts/Graphismes.client.luau) |
 | `SecuriteUI` | [`src/StarterPlayerScripts/SecuriteUI.client.luau`](src/StarterPlayerScripts/SecuriteUI.client.luau) |
 | `PartieUI` | [`src/StarterPlayerScripts/PartieUI.client.luau`](src/StarterPlayerScripts/PartieUI.client.luau) |

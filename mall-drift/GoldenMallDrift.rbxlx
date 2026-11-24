@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Lighting" referent="RBX15"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">true</bool></Properties></Item><Item class="ReplicatedStorage" referent="RBX16"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">KartBuilder</string><ProtectedString name="Source"><![CDATA[--[[
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="Lighting" referent="RBX18"><Properties><string name="Name">Lighting</string><token name="Technology">4</token><bool name="GlobalShadows">true</bool></Properties></Item><Item class="ReplicatedStorage" referent="RBX19"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="ModuleScript" referent="RBX1"><Properties><string name="Name">KartBuilder</string><ProtectedString name="Source"><![CDATA[--[[
 	KartBuilder  (ModuleScript)
 	À placer dans : ReplicatedStorage   — nom exact : KartBuilder
 
@@ -872,6 +872,16 @@ function Config.ImageIcone(emojiOuNom: string): string?
 	return nil
 end
 
+-- ⏱ COURSE CHRONO : 3 tours du mall en passant par les portes lumineuses
+Config.Chrono = {
+	Tours = 3,
+	DureeMax = 240, -- secondes maximum pour une course
+	TourMinimum = 14, -- un tour plus rapide que ça est refusé (anti-triche)
+	DistancePorte = 13, -- distance pour valider une porte
+	-- Récompenses du classement de la SEMAINE (Drift Battle) : 1er, 2e, 3e… 10e
+	RecompensesSemaine = { 5000, 3000, 2000, 1000, 1000, 1000, 1000, 1000, 1000, 1000 },
+}
+
 -- 🎁 CADEAUX GRATUITS (ce qui fait revenir les joueurs chaque jour)
 Config.Cadeaux = {
 	-- Cadeaux de temps de jeu (à chaque partie) : plus on reste, plus c'est gros
@@ -1255,7 +1265,7 @@ function Config.AppliquerAmbiance(nuit: boolean)
 end
 
 return Config
-]]></ProtectedString></Properties></Item></Item><Item class="ServerScriptService" referent="RBX17"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX3"><Properties><string name="Name">MallDriftServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="ServerScriptService" referent="RBX20"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX3"><Properties><string name="Name">MallDriftServer</string><ProtectedString name="Source"><![CDATA[--[[
 	MallDriftServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : MallDriftServer
 
@@ -2979,6 +2989,92 @@ apparition.Material = Enum.Material.Neon
 apparition.Parent = garage
 
 end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
+
+---------------------------------------------------------------------
+-- QUALITÉ DE LA CARTE : rayons de lumière sous les verrières, écrans géants
+-- animés au-dessus de l'atrium, grandes bannières suspendues
+---------------------------------------------------------------------
+do
+	local decor = Instance.new("Folder")
+	decor.Name = "DecorPlus"
+	decor.Parent = carte
+	local rayonSol = RaycastParams.new()
+	rayonSol.FilterType = Enum.RaycastFilterType.Exclude
+
+	-- 1) Rayons de lumière (lumière du jour qui tombe des verrières)
+	local dossierPuits = carte:FindFirstChild("PuitsDeLumiere")
+	if dossierPuits then
+		rayonSol.FilterDescendantsInstances = { dossierPuits }
+		for _, panneau in ipairs(dossierPuits:GetChildren()) do
+			if panneau:IsA("BasePart") and panneau.Name == "PuitsDeLumiere" then
+				local haut = panneau.Position - Vector3.new(0, 0.2, 0)
+				local sol = workspace:Raycast(haut, Vector3.new(0, -60, 0), rayonSol)
+				local bas = if sol then sol.Position.Y else SOL
+				local hauteur = haut.Y - bas
+				if hauteur > 4 then
+					local rayon = bloc("RayonLumiere", Vector3.new(panneau.Size.X * 0.85, hauteur, panneau.Size.Z * 0.85), CFrame.new(haut.X, bas + hauteur / 2, haut.Z), Color3.fromRGB(255, 246, 228), Enum.Material.Neon, decor)
+					deco(rayon)
+					rayon.Transparency = 0.955
+					rayon.CastShadow = false
+				end
+			end
+		end
+	end
+
+	-- 2) Écrans géants suspendus au-dessus de l'atrium (messages qui défilent)
+	local MESSAGES = {
+		{ "GOLDEN MALL DRIFT", Color3.fromRGB(255, 205, 70) },
+		{ "⏱ NOUVEAU : COURSE CHRONO", Color3.fromRGB(90, 200, 255) },
+		{ "🏆 TOP 10 DE LA SEMAINE", Color3.fromRGB(255, 120, 200) },
+		{ "🔥 DRIFT BATTLE : BATS LE RECORD", Color3.fromRGB(255, 120, 60) },
+		{ "🚓 ATTENTION : POLICE DU MALL", Color3.fromRGB(110, 160, 255) },
+	}
+	local textesEcrans = {}
+	for _, z in ipairs({ -80, 80 }) do
+		local y = SOL + HAUT_PLAFOND_2 - 13
+		local ecran = bloc("EcranGeant", Vector3.new(30, 12, 1.2), CFrame.new(0, y, z), Color3.fromRGB(12, 12, 16), Enum.Material.SmoothPlastic, decor)
+		deco(ecran)
+		local cadre = bloc("CadreEcran", Vector3.new(31.2, 13.2, 0.8), CFrame.new(0, y, z), OR, Enum.Material.Foil, decor)
+		deco(cadre)
+		for _, x in ipairs({ -12, 12 }) do
+			deco(bloc("CableEcran", Vector3.new(0.15, HAUT_PLAFOND_2 - (y - SOL) - 6, 0.15), CFrame.new(x, (y + 6 + SOL + HAUT_PLAFOND_2) / 2, z), Color3.fromRGB(40, 40, 45), Enum.Material.Metal, decor))
+		end
+		for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+			local l = texte(ecran, face, MESSAGES[1][1], MESSAGES[1][2], Color3.fromRGB(10, 10, 14))
+			table.insert(textesEcrans, l)
+		end
+	end
+	task.spawn(function()
+		local i = 1
+		while true do
+			task.wait(4)
+			i = i % #MESSAGES + 1
+			for _, l in ipairs(textesEcrans) do
+				l.Text = MESSAGES[i][1]
+				l.TextColor3 = MESSAGES[i][2]
+			end
+		end
+	end)
+
+	-- 3) Grandes bannières suspendues dans l'atrium (rouge et or, aux couleurs du mall)
+	local n = 0
+	for _, z in ipairs({ -110, -70, -35, 35, 70, 110 }) do
+		for _, x in ipairs({ -22, 22 }) do
+			n += 1
+			local couleur = if n % 2 == 0 then Color3.fromRGB(190, 25, 35) else Color3.fromRGB(25, 25, 30)
+			local hautB = SOL + HAUT_PLAFOND_2 - 0.5
+			deco(bloc("TringleBanniere", Vector3.new(0.4, 0.4, 7), CFrame.new(x, hautB, z), OR, Enum.Material.Foil, decor))
+			local banniere = bloc("Banniere", Vector3.new(0.2, 13, 6), CFrame.new(x, hautB - 6.8, z), couleur, Enum.Material.Fabric, decor)
+			deco(banniere)
+			banniere.CastShadow = false
+			for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
+				local l = texte(banniere, face, "✦\nGOLDEN\nMALL\n✦", OR)
+				l.TextScaled = true
+			end
+		end
+	end
+end
+
 ---------------------------------------------------------------------
 -- COMMUNICATION CLIENT ↔ SERVEUR
 ---------------------------------------------------------------------
@@ -3669,6 +3765,92 @@ AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
 end)
 
 do
+-- Donner des pièces depuis un autre script (récompenses du classement de la semaine…)
+do
+	local AjouterPieces = Instance.new("BindableEvent")
+	AjouterPieces.Name = "AjouterPieces"
+	AjouterPieces.Parent = game:GetService("ServerStorage")
+	AjouterPieces.Event:Connect(function(joueur: Player, quantite: number, message: string?)
+		local profil = profils[joueur]
+		if not profil or type(quantite) ~= "number" or quantite <= 0 then
+			return
+		end
+		profil.Pieces += math.floor(quantite)
+		task.spawn(sauvegarder, joueur)
+		ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+		if message then
+			Alerte:FireClient(joueur, { etat = "message", texte = message })
+		end
+	end)
+end
+
+-- TITRES au-dessus des joueurs (donne envie de progresser… et d'avoir le VIP)
+do
+	local function titreDe(joueur: Player, profil: Profil): (string, Color3)
+		if profil.Possessions.Produits.PassVIP then
+			return "👑 VIP", Color3.fromRGB(255, 205, 60)
+		elseif (joueur:GetAttribute("RecordBattle") or 0) >= 3000 then
+			return "🔥 ROI DU DRIFT", Color3.fromRGB(255, 120, 60)
+		elseif niveauDe(profil) >= 10 then
+			return "⭐ PILOTE PRO", Color3.fromRGB(120, 200, 255)
+		end
+		return "PILOTE", Color3.fromRGB(220, 220, 230)
+	end
+	task.spawn(function()
+		while true do
+			for _, joueur in ipairs(Players:GetPlayers()) do
+				local profil = profils[joueur]
+				local tete = joueur.Character and joueur.Character:FindFirstChild("Head")
+				if profil and tete then
+					local panneau = tete:FindFirstChild("TitreJoueur") :: BillboardGui?
+					if not panneau then
+						local p = Instance.new("BillboardGui")
+						p.Name = "TitreJoueur"
+						p.Size = UDim2.fromOffset(160, 40)
+						p.StudsOffset = Vector3.new(0, 3.2, 0)
+						p.MaxDistance = 70
+						p.LightInfluence = 0
+						p.Parent = tete
+						local titre = Instance.new("TextLabel")
+						titre.Name = "Titre"
+						titre.Size = UDim2.new(1, 0, 0.55, 0)
+						titre.BackgroundTransparency = 1
+						titre.Font = Enum.Font.FredokaOne
+						titre.TextScaled = true
+						titre.Parent = p
+						local contour = Instance.new("UIStroke")
+						contour.Thickness = 2
+						contour.Parent = titre
+						local niveau = Instance.new("TextLabel")
+						niveau.Name = "Niveau"
+						niveau.Size = UDim2.new(1, 0, 0.42, 0)
+						niveau.Position = UDim2.fromScale(0, 0.58)
+						niveau.BackgroundTransparency = 1
+						niveau.Font = Enum.Font.FredokaOne
+						niveau.TextScaled = true
+						niveau.TextColor3 = Color3.new(1, 1, 1)
+						niveau.Parent = p
+						local contour2 = Instance.new("UIStroke")
+						contour2.Thickness = 2
+						contour2.Parent = niveau
+						panneau = p
+					end
+					local p = panneau :: BillboardGui
+					local texteTitre, couleur = titreDe(joueur, profil)
+					local titre = p:FindFirstChild("Titre") :: TextLabel
+					titre.Text = texteTitre
+					titre.TextColor3 = couleur
+					local etiquetteNiveau = p:FindFirstChild("Niveau") :: TextLabel
+					etiquetteNiveau.Text = ("NIV. %d"):format(niveauDe(profil))
+					-- (pendant une manche, c'est l'étiquette du kart qui compte)
+					p.Enabled = joueur:GetAttribute("Role") == nil
+				end
+			end
+			task.wait(3)
+		end
+	end)
+end
+
 ---------------------------------------------------------------------
 -- LES ACHATS
 --   • couleurs : avec les pièces 💰 gagnées en jouant
@@ -5154,6 +5336,11 @@ local function lancerBattle(joueur: Player)
 	Partie:FireClient(joueur, { type = "finBattle", total = sc.total, meilleur = sc.meilleur, record = math.max(ancienRecord, sc.total), nouveauRecord = nouveauRecord })
 	-- Le classement mondial (enregistrement + ta place)
 	local record = enregistrerRecord(joueur, sc.total)
+	-- Classement de la semaine (ModesServer)
+	local semaine = ServerStorage:FindFirstChild("ScoreBattleSemaine") :: BindableEvent?
+	if semaine then
+		semaine:Fire(joueur, sc.total)
+	end
 	joueur:SetAttribute("RecordBattle", record)
 	local top, autour, rang = classementAutour(joueur, record)
 	Partie:FireClient(joueur, { type = "classementMondial", top = top, autour = autour, rang = rang, record = record })
@@ -5443,7 +5630,7 @@ if TYPE ~= "Lobby" then
 		elseif (info.mode == "Entrainement" or info.mode == "DriftBattle") and info.mode ~= TYPE then
 			-- Le menu d'accueil marche aussi ici : on part directement vers l'autre mode
 			Voyage:FireClient(joueur, { type = "depart", texte = if info.mode == "Entrainement" then "Direction l'entraînement…" else "Direction le Drift Battle…" })
-			teleporter({ joueur }, Config.Places[info.mode] or 0, { mode = info.mode })
+			teleporter({ joueur }, Config.Places[info.mode] or 0, { mode = info.mode, chrono = info.chrono == true })
 		elseif info.mode == "PoliceFugitifs" then
 			-- La file d'attente est au lobby : on y va, et on entre dans la file tout seul
 			Voyage:FireClient(joueur, { type = "depart", texte = "Recherche d'une partie en ligne…" })
@@ -5478,7 +5665,7 @@ Voyage.OnServerEvent:Connect(function(joueur: Player, info)
 	if info.mode == "Entrainement" or info.mode == "DriftBattle" then
 		retirerDeLaFile(joueur)
 		Voyage:FireClient(joueur, { type = "depart", texte = if info.mode == "Entrainement" then "Direction l'entraînement…" else "Direction le Drift Battle…" })
-		teleporter({ joueur }, Config.Places[info.mode], { mode = info.mode })
+		teleporter({ joueur }, Config.Places[info.mode], { mode = info.mode, chrono = info.chrono == true })
 	elseif info.mode == "PoliceFugitifs" then
 		if joueur:GetAttribute("Pret") then
 			retirerDeLaFile(joueur) -- (recliquer = quitter la file)
@@ -5531,7 +5718,297 @@ task.spawn(function()
 end)
 
 print("[Matchmaking] Lobby prêt : Entraînement, Drift Battle, file Police contre Fugitifs.")
-]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX6"><Properties><string name="Name">PNJServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX6"><Properties><string name="Name">ModesServer</string><ProtectedString name="Source"><![CDATA[--[[
+	ModesServer  (Script)
+	À placer dans : ServerScriptService   — nom conseillé : ModesServer
+
+	  ⏱ COURSE CHRONO : 3 tours du mall en passant par les portes lumineuses,
+	    meilleur tour enregistré (classement mondial des meilleurs tours).
+	  🏆 CLASSEMENT DE LA SEMAINE (Drift Battle) : chaque semaine repart à zéro.
+	    Le top 10 de la semaine passée reçoit des pièces à sa prochaine connexion.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+local DataStoreService = game:GetService("DataStoreService")
+
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
+local TYPE = Config.TypeDePlace()
+local C = Config.Chrono or {}
+local SOL = 1
+
+---------------------------------------------------------------------
+-- Les données (classements)
+---------------------------------------------------------------------
+local function store(nom: string): OrderedDataStore?
+	local ok, s = pcall(function()
+		return DataStoreService:GetOrderedDataStore(nom)
+	end)
+	return if ok then s else nil
+end
+local function semaine(): number
+	return os.time() // 604800
+end
+local function storeSemaine(n: number): OrderedDataStore?
+	return store("DriftBattle_Semaine_" .. n)
+end
+local storeChrono = store("Chrono_MeilleurTour_v1") -- (en millisecondes : plus petit = mieux)
+local paiements = (function()
+	local ok, s = pcall(function()
+		return DataStoreService:GetDataStore("Recompenses_Semaine_v1")
+	end)
+	return if ok then s else nil
+end)()
+
+local nomsCache: { [number]: string } = {}
+local function nomDe(id: number): string
+	if nomsCache[id] then
+		return nomsCache[id]
+	end
+	local j = Players:GetPlayerByUserId(id)
+	local nom = if j then j.DisplayName else nil
+	if not nom then
+		local ok, n = pcall(function()
+			return Players:GetNameFromUserIdAsync(id)
+		end)
+		nom = if ok then n else ("Joueur " .. id)
+	end
+	nomsCache[id] = nom :: string
+	return nom :: string
+end
+
+-- Le Drift Battle signale chaque score de fin de défi (ManchesServer)
+local ScoreBattleSemaine = Instance.new("BindableEvent")
+ScoreBattleSemaine.Name = "ScoreBattleSemaine"
+ScoreBattleSemaine.Parent = ServerStorage
+ScoreBattleSemaine.Event:Connect(function(joueur: Player, score: number)
+	local s = storeSemaine(semaine())
+	if not s or type(score) ~= "number" or score <= 0 then
+		return
+	end
+	pcall(function()
+		s:UpdateAsync(tostring(joueur.UserId), function(ancien)
+			return math.max(tonumber(ancien) or 0, math.floor(score))
+		end)
+	end)
+end)
+
+-- Récompenses du top 10 de la semaine passée (versées à la connexion suivante)
+local RECOMPENSES = C.RecompensesSemaine or { 5000, 3000, 2000, 1000, 1000, 1000, 1000, 1000, 1000, 1000 }
+Players.PlayerAdded:Connect(function(joueur: Player)
+	task.wait(6) -- (le temps que le profil soit chargé)
+	local passee = semaine() - 1
+	local s = storeSemaine(passee)
+	if not s or not paiements or not joueur.Parent then
+		return
+	end
+	local ok, page = pcall(function()
+		return s:GetSortedAsync(false, 10):GetCurrentPage()
+	end)
+	if not ok then
+		return
+	end
+	for rang, entree in ipairs(page) do
+		if tonumber(entree.key) == joueur.UserId then
+			local dejaPaye = false
+			pcall(function()
+				paiements:UpdateAsync("u_" .. joueur.UserId, function(ancien)
+					if ancien == passee then
+						dejaPaye = true
+						return nil
+					end
+					return passee
+				end)
+			end)
+			if not dejaPaye then
+				local gain = RECOMPENSES[rang] or 0
+				local donner = ServerStorage:FindFirstChild("AjouterPieces") :: BindableEvent?
+				if donner and gain > 0 then
+					donner:Fire(joueur, gain, ("🏆 %de DE LA SEMAINE ! +%d 💰"):format(rang, gain))
+				end
+			end
+			break
+		end
+	end
+end)
+
+-- Le client demande les classements (page 🏆 du menu)
+local Classements = Instance.new("RemoteFunction")
+Classements.Name = "Classements"
+Classements.Parent = remotes
+local cache: { [string]: { temps: number, top: { any } } } = {}
+local function top10(nom: string, s: OrderedDataStore?, croissant: boolean): { any }
+	local c = cache[nom]
+	if c and os.clock() - c.temps < 30 then
+		return c.top
+	end
+	local liste = {}
+	if s then
+		pcall(function()
+			for rang, entree in ipairs(s:GetSortedAsync(croissant, 10):GetCurrentPage()) do
+				table.insert(liste, { rang = rang, nom = nomDe(tonumber(entree.key) or 0), score = entree.value, id = tonumber(entree.key) })
+			end
+		end)
+	end
+	cache[nom] = { temps = os.clock(), top = liste }
+	return liste
+end
+Classements.OnServerInvoke = function(joueur: Player)
+	local n = semaine()
+	local s = storeSemaine(n)
+	local monScore, monTour = 0, nil
+	pcall(function()
+		if s then
+			monScore = s:GetAsync(tostring(joueur.UserId)) or 0
+		end
+		if storeChrono then
+			monTour = storeChrono:GetAsync(tostring(joueur.UserId))
+		end
+	end)
+	return {
+		semaine = { top = top10("semaine" .. n, s, false), monScore = monScore, finDans = (n + 1) * 604800 - os.time(), recompenses = RECOMPENSES },
+		chrono = { top = top10("chrono", storeChrono, true), monTour = monTour },
+	}
+end
+
+---------------------------------------------------------------------
+-- ⏱ LA COURSE CHRONO
+---------------------------------------------------------------------
+if TYPE == "Lobby" then
+	return -- (au lobby, on ne roule pas : la course se lance dans la place Entraînement)
+end
+
+-- Les portes lumineuses, dans l'ordre (tour du mall par les allées)
+local PORTES = C.Portes or {
+	Vector3.new(60, 0, 137), Vector3.new(160, 0, 137), Vector3.new(173, 0, 40), Vector3.new(173, 0, -60),
+	Vector3.new(120, 0, -137), Vector3.new(0, 0, -137), Vector3.new(-120, 0, -137), Vector3.new(-173, 0, -60),
+	Vector3.new(-173, 0, 40), Vector3.new(-160, 0, 137), Vector3.new(-40, 0, 137),
+}
+local dossierPortes = Instance.new("Folder")
+dossierPortes.Name = "ChronoPortes"
+dossierPortes.Parent = workspace
+local OR = Color3.fromRGB(255, 200, 60)
+for i, pos in ipairs(PORTES) do
+	local suivante = PORTES[i % #PORTES + 1]
+	local sens = Vector3.new(suivante.X - pos.X, 0, suivante.Z - pos.Z).Unit
+	local cf = CFrame.lookAt(pos + Vector3.new(0, SOL, 0), pos + Vector3.new(0, SOL, 0) + sens)
+	local porte = Instance.new("Model")
+	porte.Name = "Porte" .. i
+	porte:SetAttribute("Ordre", i)
+	local function piece(nom: string, taille: Vector3, decalage: CFrame)
+		local p = Instance.new("Part")
+		p.Name = nom
+		p.Size = taille
+		p.CFrame = cf * decalage
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Material = Enum.Material.Neon
+		p.Color = OR
+		p.Transparency = 1 -- (le client les montre seulement pendant une course)
+		p.CastShadow = false
+		p.Parent = porte
+		return p
+	end
+	-- Une arche : deux piliers + une barre en haut (assez large pour passer en drift)
+	piece("Pilier", Vector3.new(1, 12, 1), CFrame.new(-11, 6, 0))
+	piece("Pilier", Vector3.new(1, 12, 1), CFrame.new(11, 6, 0))
+	piece("Barre", Vector3.new(23, 1, 1), CFrame.new(0, 12, 0))
+	porte.PrimaryPart = porte:FindFirstChild("Barre") :: BasePart
+	porte.Parent = dossierPortes
+end
+
+local Chrono = Instance.new("RemoteEvent")
+Chrono.Name = "Chrono"
+Chrono.Parent = remotes
+local PlacerKart = ServerStorage:WaitForChild("PlacerKart") :: BindableFunction
+local RetirerKart = ServerStorage:WaitForChild("RetirerKart") :: BindableFunction
+local AjouterXP = ServerStorage:WaitForChild("AjouterXP") :: BindableEvent
+local TOURS = C.Tours or 3
+local DUREE_MAX = C.DureeMax or 240
+local TOUR_MIN = C.TourMinimum or 14 -- (un tour plus rapide que ça = triche)
+
+local enCourse: { [Player]: { debut: number, tours: number, meilleur: number? } } = {}
+
+local function finCourse(joueur: Player, abandon: boolean)
+	local c = enCourse[joueur]
+	if not c then
+		return
+	end
+	enCourse[joueur] = nil
+	if joueur.Parent then
+		joueur:SetAttribute("Role", nil)
+		RetirerKart:Invoke(joueur)
+		local garage = workspace:FindFirstChild("GoldenMall") and workspace.GoldenMall:FindFirstChild("GarageVIP")
+		local apparition = garage and garage:FindFirstChild("ApparitionGarage") :: BasePart?
+		task.delay(0.2, function()
+			if apparition and joueur.Character then
+				joueur.Character:PivotTo(apparition.CFrame + Vector3.new(0, 4, 0))
+			end
+		end)
+		if not abandon then
+			AjouterXP:Fire(joueur, 100 + c.tours * 40)
+		end
+		Chrono:FireClient(joueur, { type = "fin", meilleur = c.meilleur, abandon = abandon })
+	end
+end
+
+Chrono.OnServerEvent:Connect(function(joueur: Player, action: any, valeur: any)
+	if action == "lancer" then
+		if enCourse[joueur] or joueur:GetAttribute("Role") ~= nil or joueur:GetAttribute("EnSalle") then
+			return
+		end
+		joueur:SetAttribute("Pret", false)
+		joueur:SetAttribute("Role", "Chrono")
+		RetirerKart:Invoke(joueur)
+		PlacerKart:Invoke(joueur, true, true) -- (directement sur la ligne : 3, 2, 1)
+		enCourse[joueur] = { debut = os.clock(), tours = 0, meilleur = nil }
+		local record = nil
+		pcall(function()
+			if storeChrono then
+				record = storeChrono:GetAsync(tostring(joueur.UserId))
+			end
+		end)
+		Chrono:FireClient(joueur, { type = "debut", tours = TOURS, portes = #PORTES, record = record })
+		task.delay(DUREE_MAX, function()
+			if enCourse[joueur] then
+				finCourse(joueur, true)
+			end
+		end)
+	elseif action == "tour" and type(valeur) == "number" then
+		local c = enCourse[joueur]
+		if not c or valeur ~= valeur or valeur < TOUR_MIN then
+			return -- (temps impossible : ignoré)
+		end
+		c.tours += 1
+		local ms = math.floor(valeur * 1000)
+		if not c.meilleur or ms < c.meilleur then
+			c.meilleur = ms
+		end
+		if storeChrono then
+			pcall(function()
+				storeChrono:UpdateAsync(tostring(joueur.UserId), function(ancien)
+					local a = tonumber(ancien)
+					return if a and a <= ms then nil else ms
+				end)
+			end)
+		end
+		if c.tours >= TOURS then
+			finCourse(joueur, false)
+		end
+	elseif action == "quitter" then
+		finCourse(joueur, true)
+	end
+end)
+Players.PlayerRemoving:Connect(function(joueur)
+	enCourse[joueur] = nil
+end)
+
+print("[Golden Mall] Course chrono et classement de la semaine prêts.")
+]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX7"><Properties><string name="Name">PNJServer</string><ProtectedString name="Source"><![CDATA[--[[
 	PNJServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : PNJServer
 
@@ -5716,7 +6193,7 @@ for _, poste in ipairs(postes) do
 end
 
 print(("[Golden Mall] %d personnes dans le mall."):format(nombre))
-]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX7"><Properties><string name="Name">SecuriteServer</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="Script" referent="RBX8"><Properties><string name="Name">SecuriteServer</string><ProtectedString name="Source"><![CDATA[--[[
 	SecuriteServer  (Script)
 	À placer dans : ServerScriptService   — nom conseillé : SecuriteServer
 
@@ -5766,7 +6243,8 @@ dossierGardes.Parent = workspace
 local function majPresenceGardes()
 	local cacher = workspace:GetAttribute("MancheEnCours") == true
 	for _, j in ipairs(Players:GetPlayers()) do
-		if j:GetAttribute("Role") == "Battle" then
+		local role = j:GetAttribute("Role")
+		if role == "Battle" or role == "Chrono" then
 			cacher = true
 		end
 	end
@@ -6612,7 +7090,7 @@ for i = 1, (R.PoliciersEtage or 0) do
 end
 
 print(("[Golden Mall] Police en place : %d policiers en bas, %d à l'étage."):format(R.Policiers, R.PoliciersEtage or 0))
-]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX19"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX18"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX8"><Properties><string name="Name">Cadeaux</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item></Item><Item class="StarterPlayer" referent="RBX22"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX21"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">Cadeaux</string><ProtectedString name="Source"><![CDATA[--[[
 	Cadeaux  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Cadeaux
 
@@ -6924,7 +7402,7 @@ end
 local function ouvrir(v: string)
 	vue = v
 	-- Une seule page à la fois : on ferme le magasin, la roue, l'aperçu
-	for _, nom in ipairs({ "Magasin", "RoueDuJour", "Apercu" }) do
+	for _, nom in ipairs({ "Magasin", "RoueDuJour", "Apercu", "PageClassement" }) do
 		local autre = menu:FindFirstChild(nom)
 		if autre and autre:IsA("GuiObject") then
 			autre.Visible = false
@@ -7022,7 +7500,7 @@ task.spawn(function()
 		task.wait(1)
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX9"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">GarageUI</string><ProtectedString name="Source"><![CDATA[--[[
 	GarageUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : GarageUI
 
@@ -8096,7 +8574,7 @@ task.spawn(function()
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX10"><Properties><string name="Name">Graphismes</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">Graphismes</string><ProtectedString name="Source"><![CDATA[--[[
 	Graphismes  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Graphismes
 
@@ -8166,7 +8644,7 @@ task.spawn(function()
 	appliquer()
 end)
 reglagesRoblox:GetPropertyChangedSignal("SavedQualityLevel"):Connect(appliquer)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX11"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX12"><Properties><string name="Name">KartController</string><ProtectedString name="Source"><![CDATA[--[[
 	KartController  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : KartController
 
@@ -9820,7 +10298,617 @@ RunService.Stepped:Connect(function()
 		end
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX12"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX13"><Properties><string name="Name">ModePhoto</string><ProtectedString name="Source"><![CDATA[--[[
+	ModePhoto  (LocalScript)
+	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : ModePhoto
+
+	📸 MODE PHOTO (touche P) : pour faire de belles images et vidéos (TikTok !)
+	  • toute l'interface disparaît (image propre)
+	  • la caméra tourne autour de ton kart : souris (clic droit maintenu) ou Q / E,
+	    molette ou I / L pour zoomer, T / G pour monter / descendre
+	  • O : la caméra tourne toute seule (plan cinéma)
+	  • P : on revient au jeu
+	(Roblox ne permet pas de ralentir vraiment le temps : pas de vrai ralenti.)
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local joueur = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local K = Enum.KeyCode
+
+local actif = false
+local etatsInterfaces: { [ScreenGui]: boolean } = {}
+local typeCameraAvant = Enum.CameraType.Custom
+local angleH, angleV, distance = 0, math.rad(18), 16
+local autoRotation = false
+
+-- Petite aide en bas de l'écran (seule chose visible en mode photo)
+local aide = Instance.new("ScreenGui")
+aide.Name = "AideModePhoto"
+aide.ResetOnSpawn = false
+aide.DisplayOrder = 200
+aide.Enabled = false
+aide.Parent = joueur:WaitForChild("PlayerGui")
+local texteAide = Instance.new("TextLabel")
+texteAide.AnchorPoint = Vector2.new(0.5, 1)
+texteAide.Size = UDim2.new(0, 620, 0, 26)
+texteAide.Position = UDim2.new(0.5, 0, 1, -10)
+texteAide.BackgroundTransparency = 1
+texteAide.TextColor3 = Color3.new(1, 1, 1)
+texteAide.TextTransparency = 0.3
+texteAide.Font = Enum.Font.FredokaOne
+texteAide.TextScaled = true
+texteAide.Text = "📸 MODE PHOTO · Q/E ou clic droit : tourner · I/L ou molette : zoom · T/G : hauteur · O : auto · P : quitter"
+texteAide.Parent = aide
+local contour = Instance.new("UIStroke")
+contour.Thickness = 2
+contour.Parent = texteAide
+
+local function cible(): Vector3?
+	local perso = joueur.Character
+	local h = perso and perso:FindFirstChildOfClass("Humanoid")
+	local siege = h and h.SeatPart
+	local chassis = siege and siege.Parent and siege.Parent:FindFirstChild("Chassis") :: BasePart?
+	if chassis then
+		return chassis.Position
+	end
+	local racine = perso and perso:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return racine and racine.Position or nil
+end
+
+local function activer(oui: boolean)
+	if oui == actif then
+		return
+	end
+	actif = oui
+	if oui then
+		-- On cache toute l'interface (on retient ce qui était affiché)
+		etatsInterfaces = {}
+		for _, g in ipairs(joueur.PlayerGui:GetChildren()) do
+			if g:IsA("ScreenGui") and g ~= aide then
+				etatsInterfaces[g] = g.Enabled
+				g.Enabled = false
+			end
+		end
+		aide.Enabled = true
+		typeCameraAvant = camera.CameraType
+		local look = camera.CFrame.LookVector
+		angleH = math.atan2(-look.X, -look.Z)
+		RunService:BindToRenderStep("ModePhoto", Enum.RenderPriority.Camera.Value + 20, function(dt)
+			local c = cible()
+			if not c then
+				return
+			end
+			if autoRotation then
+				angleH += dt * 0.35
+			end
+			if UserInputService:IsKeyDown(K.Q) then
+				angleH += dt * 1.6
+			end
+			if UserInputService:IsKeyDown(K.E) then
+				angleH -= dt * 1.6
+			end
+			if UserInputService:IsKeyDown(K.I) then
+				distance = math.max(distance - dt * 18, 4)
+			end
+			if UserInputService:IsKeyDown(K.L) then
+				distance = math.min(distance + dt * 18, 60)
+			end
+			if UserInputService:IsKeyDown(K.T) then
+				angleV = math.min(angleV + dt * 0.8, math.rad(80))
+			end
+			if UserInputService:IsKeyDown(K.G) then
+				angleV = math.max(angleV - dt * 0.8, math.rad(-5))
+			end
+			local decalage = Vector3.new(math.sin(angleH) * math.cos(angleV), math.sin(angleV), math.cos(angleH) * math.cos(angleV)) * distance
+			camera.CameraType = Enum.CameraType.Scriptable
+			camera.CFrame = CFrame.lookAt(c + Vector3.new(0, 1.5, 0) + decalage, c + Vector3.new(0, 1.5, 0))
+		end)
+	else
+		RunService:UnbindFromRenderStep("ModePhoto")
+		for g, etait in pairs(etatsInterfaces) do
+			if g.Parent then
+				g.Enabled = etait
+			end
+		end
+		etatsInterfaces = {}
+		aide.Enabled = false
+		camera.CameraType = typeCameraAvant
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	end
+end
+
+UserInputService.InputBegan:Connect(function(entree, traite)
+	if traite or UserInputService:GetFocusedTextBox() then
+		return
+	end
+	if entree.KeyCode == K.P then
+		activer(not actif)
+	elseif actif and entree.KeyCode == K.O then
+		autoRotation = not autoRotation
+	elseif actif and entree.UserInputType == Enum.UserInputType.MouseButton2 then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+	end
+end)
+UserInputService.InputEnded:Connect(function(entree)
+	if actif and entree.UserInputType == Enum.UserInputType.MouseButton2 then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	end
+end)
+UserInputService.InputChanged:Connect(function(entree)
+	if not actif then
+		return
+	end
+	if entree.UserInputType == Enum.UserInputType.MouseMovement and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+		angleH -= entree.Delta.X * 0.008
+		angleV = math.clamp(angleV + entree.Delta.Y * 0.006, math.rad(-5), math.rad(80))
+	elseif entree.UserInputType == Enum.UserInputType.MouseWheel then
+		distance = math.clamp(distance - entree.Position.Z * 2, 4, 60)
+	end
+end)
+-- Si le personnage réapparaît, on sort proprement du mode photo
+joueur.CharacterAdded:Connect(function()
+	activer(false)
+end)
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX14"><Properties><string name="Name">Modes</string><ProtectedString name="Source"><![CDATA[--[[
+	Modes  (LocalScript)
+	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Modes
+
+	  ⏱ COURSE CHRONO : chrono en haut de l'écran, portes lumineuses à passer
+	    dans l'ordre (la prochaine brille en vert, une flèche la montre), 3 tours.
+	  🏆 PAGE CLASSEMENT (menu) : top 10 de la semaine au Drift Battle (avec les
+	    récompenses) et top 10 des meilleurs tours chrono.
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+
+local Config = require(ReplicatedStorage:WaitForChild("KartConfig"))
+local remotes = ReplicatedStorage:WaitForChild("MallDriftRemotes")
+
+local joueur = Players.LocalPlayer
+local hudPartie = joueur:WaitForChild("PlayerGui"):WaitForChild("PartieHUD")
+local menu = hudPartie:WaitForChild("Menu") :: Frame
+local POLICE = Font.fromEnum(Enum.Font.FredokaOne)
+local ROUGE = Color3.fromRGB(225, 30, 45)
+local VERT = Color3.fromRGB(70, 230, 120)
+local OR = Color3.fromRGB(255, 200, 60)
+local C = Config.Chrono or {}
+
+local function coins(o: GuiObject, r: number)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = o
+end
+local function texte(parent: Instance, taille: UDim2, position: UDim2, couleur: Color3): TextLabel
+	local t = Instance.new("TextLabel")
+	t.Size = taille
+	t.Position = position
+	t.BackgroundTransparency = 1
+	t.TextColor3 = couleur
+	t.FontFace = POLICE
+	t.TextScaled = true
+	t.Text = ""
+	local contour = Instance.new("UIStroke")
+	contour.Thickness = 2
+	contour.Color = Color3.fromRGB(10, 10, 14)
+	contour.Parent = t
+	t.Parent = parent
+	return t
+end
+local function formatTemps(secondes: number): string
+	secondes = math.max(secondes, 0)
+	return ("%d:%05.2f"):format(secondes // 60, secondes % 60)
+end
+
+---------------------------------------------------------------------
+-- ⏱ LA COURSE CHRONO
+---------------------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "ChronoHUD"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 25
+gui.Enabled = false
+gui.Parent = joueur.PlayerGui
+
+local panneau = Instance.new("Frame")
+panneau.AnchorPoint = Vector2.new(0.5, 0)
+panneau.Size = UDim2.new(0, 460, 0, 74)
+panneau.Position = UDim2.new(0.5, 0, 0, 54)
+panneau.BackgroundColor3 = Color3.fromRGB(14, 14, 18)
+panneau.BackgroundTransparency = 0.15
+panneau.Parent = gui
+coins(panneau, 10)
+local lisere = Instance.new("Frame")
+lisere.Size = UDim2.new(1, 0, 0, 4)
+lisere.BackgroundColor3 = OR
+lisere.BorderSizePixel = 0
+lisere.Parent = panneau
+local texteTour = texte(panneau, UDim2.new(0.25, 0, 0, 26), UDim2.new(0, 12, 0, 12), Color3.new(1, 1, 1))
+local texteTemps = texte(panneau, UDim2.new(0.42, 0, 0, 44), UDim2.new(0.29, 0, 0, 10), OR)
+local texteMeilleur = texte(panneau, UDim2.new(0.27, 0, 0, 20), UDim2.new(0.72, -12, 0, 14), Color3.fromRGB(200, 200, 210))
+local texteRecord = texte(panneau, UDim2.new(0.27, 0, 0, 16), UDim2.new(0.72, -12, 0, 38), Color3.fromRGB(160, 160, 175))
+local textePorte = texte(panneau, UDim2.new(0.25, 0, 0, 18), UDim2.new(0, 12, 0, 42), Color3.fromRGB(170, 230, 180))
+local grandTexte = texte(gui, UDim2.new(0.7, 0, 0, 64), UDim2.new(0.15, 0, 0.36, 0), VERT)
+grandTexte.TextTransparency = 1
+
+local function montrerGrand(t: string, couleur: Color3, duree: number)
+	grandTexte.Text = t
+	grandTexte.TextColor3 = couleur
+	grandTexte.TextTransparency = 0
+	local e = grandTexte:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+	e.Parent = grandTexte
+	e.Scale = 0.5
+	TweenService:Create(e, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(duree, function()
+		if grandTexte.Text == t then
+			TweenService:Create(grandTexte, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+		end
+	end)
+end
+
+-- Les portes (construites par le serveur, invisibles tant qu'on n'est pas en course)
+local function portesDansLOrdre(): { Model }
+	local dossier = workspace:FindFirstChild("ChronoPortes")
+	local liste = {}
+	if dossier then
+		for _, p in ipairs(dossier:GetChildren()) do
+			if p:IsA("Model") then
+				table.insert(liste, p)
+			end
+		end
+	end
+	table.sort(liste, function(a, b)
+		return (a:GetAttribute("Ordre") or 0) < (b:GetAttribute("Ordre") or 0)
+	end)
+	return liste
+end
+local fleche = Instance.new("BillboardGui")
+fleche.Size = UDim2.fromOffset(80, 80)
+fleche.StudsOffset = Vector3.new(0, 6, 0)
+fleche.AlwaysOnTop = true
+fleche.Enabled = false
+fleche.Parent = gui
+local texteFleche = texte(fleche, UDim2.fromScale(1, 1), UDim2.new(), VERT)
+texteFleche.Text = "▼"
+
+local function colorerPortes(portes: { Model }, prochaine: number?)
+	for i, porte in ipairs(portes) do
+		for _, p in ipairs(porte:GetChildren()) do
+			if p:IsA("BasePart") then
+				if not prochaine then
+					p.Transparency = 1
+				elseif i == prochaine then
+					p.Transparency = 0.05
+					p.Color = VERT
+				else
+					p.Transparency = 0.75
+					p.Color = OR
+				end
+			end
+		end
+	end
+	local cible = prochaine and portes[prochaine]
+	fleche.Adornee = if cible then cible.PrimaryPart else nil
+	fleche.Enabled = cible ~= nil
+end
+
+type Course = { depart: number, debutTour: number, tour: number, porte: number, meilleur: number?, record: number?, tours: number, portes: { Model } }
+local course: Course? = nil
+local Chrono = remotes:WaitForChild("Chrono", 15) :: RemoteEvent?
+
+local function chassisDuKart(): BasePart?
+	local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+	local siege = h and h.SeatPart
+	return siege and siege.Parent and siege.Parent:FindFirstChild("Chassis") :: BasePart?
+end
+
+if Chrono then
+	Chrono.OnClientEvent:Connect(function(info)
+		if type(info) ~= "table" then
+			return
+		end
+		if info.type == "debut" then
+			local portes = portesDansLOrdre()
+			local maintenant = os.clock()
+			local depart = maintenant + 3.2 -- (après le 3, 2, 1)
+			course = {
+				depart = depart, debutTour = depart, tour = 1, porte = 1,
+				meilleur = nil, record = if type(info.record) == "number" then info.record / 1000 else nil,
+				tours = info.tours or 3, portes = portes,
+			}
+			colorerPortes(portes, 1)
+			gui.Enabled = true
+			texteRecord.Text = if course.record then ("Record : %s"):format(formatTemps(course.record)) else "Pas encore de record"
+			texteMeilleur.Text = "Meilleur : —"
+			montrerGrand("⏱ COURSE CHRONO", OR, 1.1)
+		elseif info.type == "fin" then
+			local c = course
+			course = nil
+			colorerPortes(portesDansLOrdre(), nil)
+			if info.abandon then
+				gui.Enabled = false
+				return
+			end
+			local meilleur = if type(info.meilleur) == "number" then info.meilleur / 1000 else (c and c.meilleur)
+			montrerGrand(("🏁 TERMINÉ · meilleur tour %s"):format(meilleur and formatTemps(meilleur) or "—"), OR, 3)
+			task.delay(3.4, function()
+				if not course then
+					gui.Enabled = false
+				end
+			end)
+		end
+	end)
+
+	local horsDuKart = 0
+	RunService.RenderStepped:Connect(function(dt)
+		local c = course
+		if not c then
+			return
+		end
+		local maintenant = os.clock()
+		if maintenant < c.depart then
+			texteTemps.Text = "PRÊT ?"
+			texteTour.Text = ("TOUR 1/%d"):format(c.tours)
+			textePorte.Text = ("PORTE 1/%d"):format(#c.portes)
+			return
+		end
+		texteTemps.Text = formatTemps(maintenant - c.debutTour)
+		texteTour.Text = ("TOUR %d/%d"):format(math.min(c.tour, c.tours), c.tours)
+		textePorte.Text = ("PORTE %d/%d"):format(c.porte, #c.portes)
+		local ch = chassisDuKart()
+		if not ch then
+			horsDuKart += dt
+			if horsDuKart > 3 and Chrono then
+				Chrono:FireServer("quitter") -- (descendu du kart : la course s'arrête)
+				course = nil
+				colorerPortes(c.portes, nil)
+				gui.Enabled = false
+			end
+			return
+		end
+		horsDuKart = 0
+		local porte = c.portes[c.porte]
+		if not porte or not porte.PrimaryPart then
+			return
+		end
+		local cible = porte.PrimaryPart.Position
+		local ecart = Vector3.new(ch.Position.X - cible.X, 0, ch.Position.Z - cible.Z).Magnitude
+		if ecart < (C.DistancePorte or 13) then
+			c.porte += 1
+			if c.porte > #c.portes then
+				-- Tour terminé !
+				local temps = maintenant - c.debutTour
+				local estMeilleur = not c.meilleur or temps < (c.meilleur :: number)
+				if estMeilleur then
+					c.meilleur = temps
+					texteMeilleur.Text = ("Meilleur : %s"):format(formatTemps(temps))
+				end
+				local estRecord = not c.record or temps < (c.record :: number)
+				if estRecord then
+					c.record = temps
+					texteRecord.Text = ("Record : %s"):format(formatTemps(temps))
+				end
+				montrerGrand(("TOUR %d · %s%s"):format(c.tour, formatTemps(temps), if estRecord then "  🏆 RECORD !" else ""), if estRecord then OR else VERT, 1.8)
+				if Chrono then
+					Chrono:FireServer("tour", temps)
+				end
+				c.tour += 1
+				c.porte = 1
+				c.debutTour = maintenant
+			end
+			colorerPortes(c.portes, if c.tour <= c.tours then c.porte else nil)
+		end
+	end)
+
+	-- Arrivée dans la place Entraînement en ayant choisi « CHRONO » au lobby
+	task.spawn(function()
+		local donnees = TeleportService:GetLocalPlayerTeleportData()
+		if type(donnees) == "table" and donnees.chrono then
+			local perso = joueur.Character or joueur.CharacterAdded:Wait()
+			perso:WaitForChild("HumanoidRootPart", 10)
+			task.wait(3)
+			Chrono:FireServer("lancer")
+		end
+	end)
+end
+
+---------------------------------------------------------------------
+-- 🏆 LA PAGE CLASSEMENT (dans le menu)
+---------------------------------------------------------------------
+local Classements = remotes:WaitForChild("Classements", 15) :: RemoteFunction?
+
+local page = Instance.new("Frame")
+page.Name = "PageClassement"
+page.AnchorPoint = Vector2.new(0.5, 0.5)
+page.Size = UDim2.fromScale(1, 1)
+page.Position = UDim2.fromScale(0.5, 0.5)
+page.BackgroundColor3 = Color3.new(1, 1, 1)
+page.BackgroundTransparency = 0.03
+page.Visible = false
+page.ZIndex = 40
+page.Parent = menu
+local degrade = Instance.new("UIGradient")
+degrade.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 14)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(18, 15, 10)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 55, 10)),
+})
+degrade.Rotation = 25
+degrade.Parent = page
+local marges = Instance.new("UIPadding")
+marges.PaddingLeft = UDim.new(0.12, 0)
+marges.PaddingRight = UDim.new(0.12, 0)
+marges.PaddingTop = UDim.new(0, 40)
+marges.PaddingBottom = UDim.new(0, 30)
+marges.Parent = page
+local titre = texte(page, UDim2.new(1, -220, 0, 50), UDim2.new(0, 20, 0, 6), Color3.new(1, 1, 1))
+titre.Text = "CLASSEMENT"
+titre.TextXAlignment = Enum.TextXAlignment.Left
+titre.ZIndex = 41
+local barreTitre = Instance.new("Frame")
+barreTitre.Size = UDim2.new(0, 140, 0, 5)
+barreTitre.Position = UDim2.new(0, 20, 0, 62)
+barreTitre.BackgroundColor3 = OR
+barreTitre.BorderSizePixel = 0
+barreTitre.ZIndex = 41
+barreTitre.Parent = page
+local retour = Instance.new("TextButton")
+retour.AnchorPoint = Vector2.new(1, 0)
+retour.Size = UDim2.fromOffset(150, 46)
+retour.Position = UDim2.new(1, -10, 0, 8)
+retour.BackgroundColor3 = Color3.fromRGB(34, 34, 42)
+retour.TextColor3 = Color3.new(1, 1, 1)
+retour.FontFace = POLICE
+retour.TextSize = 20
+retour.Text = "← RETOUR"
+retour.ZIndex = 42
+retour.Parent = page
+coins(retour, 6)
+retour.Activated:Connect(function()
+	page.Visible = false
+end)
+
+-- Onglets
+local onglets = {}
+local ongletActif = "semaine"
+for i, def in ipairs({ { "semaine", "SEMAINE · DRIFT BATTLE" }, { "chrono", "CHRONO · MEILLEUR TOUR" } }) do
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.new(0.5, -6, 0, 44)
+	b.Position = UDim2.new((i - 1) * 0.5, if i == 2 then 6 else 0, 0, 84)
+	b.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.FontFace = POLICE
+	b.TextScaled = true
+	b.Text = def[2]
+	b.ZIndex = 42
+	b.Parent = page
+	coins(b, 6)
+	local marge = Instance.new("UIPadding")
+	marge.PaddingTop = UDim.new(0, 10)
+	marge.PaddingBottom = UDim.new(0, 10)
+	marge.Parent = b
+	onglets[def[1]] = b
+end
+local info = texte(page, UDim2.new(1, -40, 0, 22), UDim2.new(0, 20, 0, 138), Color3.fromRGB(255, 220, 120))
+info.ZIndex = 41
+local liste = Instance.new("Frame")
+liste.Size = UDim2.new(1, -40, 1, -230)
+liste.Position = UDim2.new(0, 20, 0, 170)
+liste.BackgroundTransparency = 1
+liste.ZIndex = 41
+liste.Parent = page
+local dispo = Instance.new("UIListLayout")
+dispo.Padding = UDim.new(0, 6)
+dispo.SortOrder = Enum.SortOrder.LayoutOrder
+dispo.Parent = liste
+local monResultat = texte(page, UDim2.new(1, -40, 0, 26), UDim2.new(0, 20, 1, -50), Color3.new(1, 1, 1))
+monResultat.ZIndex = 41
+
+local donnees: any = nil
+local COULEURS_RANG = { Color3.fromRGB(255, 205, 50), Color3.fromRGB(210, 215, 225), Color3.fromRGB(220, 140, 70) }
+
+local function remplir()
+	for _, e in ipairs(liste:GetChildren()) do
+		if e:IsA("GuiObject") then
+			e:Destroy()
+		end
+	end
+	for nom, b in pairs(onglets) do
+		b.BackgroundColor3 = if nom == ongletActif then ROUGE else Color3.fromRGB(34, 34, 40)
+	end
+	if not donnees then
+		info.Text = "Chargement…"
+		return
+	end
+	local bloc = donnees[ongletActif] or {}
+	local top = bloc.top or {}
+	if ongletActif == "semaine" then
+		local reste = bloc.finDans or 0
+		local r = bloc.recompenses or {}
+		info.Text = ("🏆 1er %s 💰 · 2e %s · 3e %s · 4e à 10e %s  —  fin dans %dj %dh"):format(r[1] or 0, r[2] or 0, r[3] or 0, r[4] or 0, reste // 86400, (reste % 86400) // 3600)
+		monResultat.Text = ("Ton meilleur score de la semaine : %d pts"):format(bloc.monScore or 0)
+	else
+		info.Text = "Les meilleurs tours de tous les joueurs"
+		monResultat.Text = if type(bloc.monTour) == "number" then ("Ton meilleur tour : %s"):format(formatTemps(bloc.monTour / 1000)) else "Fais une course CHRONO pour entrer dans le classement !"
+	end
+	if #top == 0 then
+		local vide = texte(liste, UDim2.new(1, 0, 0, 40), UDim2.new(), Color3.fromRGB(190, 190, 200))
+		vide.Text = "Personne pour l'instant… sois le premier !"
+		vide.ZIndex = 42
+		return
+	end
+	for _, ligne in ipairs(top) do
+		local f = Instance.new("Frame")
+		f.LayoutOrder = ligne.rang
+		f.Size = UDim2.new(1, 0, 0, 40)
+		f.BackgroundColor3 = if ligne.id == joueur.UserId then Color3.fromRGB(80, 30, 40) else Color3.fromRGB(26, 26, 32)
+		f.ZIndex = 42
+		f.Parent = liste
+		coins(f, 6)
+		local rang = texte(f, UDim2.new(0, 50, 1, -10), UDim2.fromOffset(10, 5), COULEURS_RANG[ligne.rang] or Color3.new(1, 1, 1))
+		rang.Text = "#" .. ligne.rang
+		rang.ZIndex = 43
+		local nom = texte(f, UDim2.new(0.6, 0, 1, -12), UDim2.new(0, 70, 0, 6), Color3.new(1, 1, 1))
+		nom.Text = tostring(ligne.nom)
+		nom.TextXAlignment = Enum.TextXAlignment.Left
+		nom.ZIndex = 43
+		local score = texte(f, UDim2.new(0.3, -20, 1, -12), UDim2.new(0.7, 10, 0, 6), OR)
+		score.Text = if ongletActif == "chrono" then formatTemps((tonumber(ligne.score) or 0) / 1000) else ("%d pts"):format(tonumber(ligne.score) or 0)
+		score.TextXAlignment = Enum.TextXAlignment.Right
+		score.ZIndex = 43
+	end
+end
+for nom, b in pairs(onglets) do
+	b.Activated:Connect(function()
+		ongletActif = nom
+		remplir()
+	end)
+end
+
+local function ouvrirPage()
+	-- Une seule page à la fois
+	for _, autre in ipairs({ "Magasin", "RoueDuJour", "Apercu", "PageCadeaux" }) do
+		local p = menu:FindFirstChild(autre)
+		if p and p:IsA("GuiObject") then
+			p.Visible = false
+		end
+	end
+	page.Visible = true
+	page.Position = UDim2.fromScale(1.5, 0.5)
+	TweenService:Create(page, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+	remplir()
+	task.spawn(function()
+		if Classements then
+			local ok, r = pcall(function()
+				return Classements:InvokeServer()
+			end)
+			if ok and type(r) == "table" then
+				donnees = r
+				remplir()
+			end
+		end
+	end)
+end
+joueur:GetAttributeChangedSignal("OuvrirClassement"):Connect(function()
+	if joueur:GetAttribute("OuvrirClassement") then
+		joueur:SetAttribute("OuvrirClassement", false)
+		ouvrirPage()
+	end
+end)
+menu:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not menu.Visible then
+		page.Visible = false
+	end
+end)
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX15"><Properties><string name="Name">PartieUI</string><ProtectedString name="Source"><![CDATA[--[[
 	PartieUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : PartieUI
 
@@ -10233,7 +11321,7 @@ local ordreMenu = 0
 -- Une carte du menu : icône + titre + description + flèche.
 -- principal = le gros bouton rouge (JOUER) ; petit = les modes sous JOUER
 local function carteMode(icone: string, titre: string, description: string, couleur: Color3, principal: boolean?, parent: Instance?, petit: boolean?): (TextButton, TextLabel, TextLabel)
-	local hauteur = if principal then 96 elseif petit then 54 else 64
+	local hauteur = if principal then 90 elseif petit then 48 else 58
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, hauteur)
 	ordreMenu += 1
@@ -10304,12 +11392,12 @@ local function carteMode(icone: string, titre: string, description: string, coul
 		img.ZIndex = 24
 		img.Parent = pastille
 	end
-	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 else 24), UDim2.new(0, decalage, 0, if principal then 14 else 9), Color3.new(1, 1, 1))
+	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 elseif petit then 21 else 24), UDim2.new(0, decalage, 0, if principal then 12 elseif petit then 5 else 8), Color3.new(1, 1, 1))
 	t.Text = titre
 	t.FontFace = POLICE_COURSE
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 23
-	local d = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 18 else 16), UDim2.new(0, decalage, 0, if principal then 62 else 36), Color3.fromRGB(220, 220, 228), Enum.Font.GothamMedium)
+	local d = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 18 elseif petit then 14 else 15), UDim2.new(0, decalage, 0, if principal then 58 elseif petit then 28 else 34), Color3.fromRGB(220, 220, 228), Enum.Font.GothamMedium)
 	d.Text = description
 	d.TextXAlignment = Enum.TextXAlignment.Left
 	d.ZIndex = 23
@@ -10375,7 +11463,8 @@ dispoModes.Parent = listeModes
 local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre", Color3.fromRGB(40, 220, 110), false, listeModes, true)
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "EN LIGNE", "Police contre Fugitifs", Color3.fromRGB(50, 140, 255), false, listeModes, true)
 local carteBattle = carteMode("🔥", "DRIFT BATTLE", "1 minute, meilleur score", Color3.fromRGB(255, 60, 130), false, listeModes, true)
-local HAUTEUR_MODES = 3 * 54 + 2 * 6 + 2
+local carteChrono = carteMode("⏱️", "CHRONO", "3 tours, bats ton record", Color3.fromRGB(255, 200, 40), false, listeModes, true)
+local HAUTEUR_MODES = 4 * 48 + 3 * 6 + 2
 local modesOuverts = false
 local function ouvrirModes(ouvert: boolean)
 	modesOuverts = ouvert
@@ -10390,6 +11479,7 @@ local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnal
 local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart", Color3.fromRGB(255, 130, 20))
 local carteRoue = carteMode("🎡", "ROUE DU JOUR", "1 tour gratuit par jour", Color3.fromRGB(255, 195, 0))
 local carteMagasin = carteMode("🛒", "MAGASIN", "Karts, traînées, packs", Color3.fromRGB(240, 50, 200))
+local carteClassement = carteMode("🏆", "CLASSEMENT", "Top 10 de la semaine", Color3.fromRGB(255, 170, 0))
 local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter", Color3.fromRGB(0, 200, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
@@ -10686,9 +11776,11 @@ local function apparaitre(f: Frame)
 			autre.Visible = false -- (une seule page à la fois)
 		end
 	end
-	local pageCadeaux = fondMenu:FindFirstChild("PageCadeaux")
-	if pageCadeaux and pageCadeaux:IsA("GuiObject") then
-		pageCadeaux.Visible = false
+	for _, nomPage in ipairs({ "PageCadeaux", "PageClassement" }) do
+		local autrePage = fondMenu:FindFirstChild(nomPage)
+		if autrePage and autrePage:IsA("GuiObject") then
+			autrePage.Visible = false
+		end
 	end
 	f.Visible = true
 	f.Position = UDim2.fromScale(1.5, 0.5)
@@ -12473,12 +13565,25 @@ Partie.OnClientEvent:Connect(function(info)
 	end
 end)
 
+carteChrono.Activated:Connect(function()
+	ouvrirMenu(false)
+	local typePlace = Config.TypeDePlace()
+	if (typePlace == "Lobby" or (typePlace ~= "ToutEnUn" and typePlace ~= "Entrainement")) and Voyage then
+		Voyage:FireServer({ mode = "Entrainement", chrono = true }) -- (la course se joue dans la place Entraînement)
+	else
+		remotes:WaitForChild("Chrono"):FireServer("lancer")
+	end
+end)
+carteClassement.Activated:Connect(function()
+	joueur:SetAttribute("OuvrirClassement", true) -- (le script Modes ouvre la page)
+end)
+
 carteTuto.Activated:Connect(function()
 	ouvrirMenu(false)
 	joueur:SetAttribute("RevoirTuto", true) -- le script Tutoriel s'en occupe
 end)
 
-end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX13"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
+end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX16"><Properties><string name="Name">SecuriteUI</string><ProtectedString name="Source"><![CDATA[--[[
 	SecuriteUI  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : SecuriteUI
 
@@ -12646,7 +13751,7 @@ remotes:WaitForChild("Alerte").OnClientEvent:Connect(function(info)
 		end)
 	end
 end)
-]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX14"><Properties><string name="Name">Tutoriel</string><ProtectedString name="Source"><![CDATA[--[[
+]]></ProtectedString></Properties></Item><Item class="LocalScript" referent="RBX17"><Properties><string name="Name">Tutoriel</string><ProtectedString name="Source"><![CDATA[--[[
 	Tutoriel  (LocalScript)
 	À placer dans : StarterPlayer > StarterPlayerScripts   — nom conseillé : Tutoriel
 

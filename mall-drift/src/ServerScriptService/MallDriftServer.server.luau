@@ -1722,6 +1722,92 @@ apparition.Material = Enum.Material.Neon
 apparition.Parent = garage
 
 end -- (bloc : garde le nombre de variables du script sous la limite de Roblox)
+
+---------------------------------------------------------------------
+-- QUALITÉ DE LA CARTE : rayons de lumière sous les verrières, écrans géants
+-- animés au-dessus de l'atrium, grandes bannières suspendues
+---------------------------------------------------------------------
+do
+	local decor = Instance.new("Folder")
+	decor.Name = "DecorPlus"
+	decor.Parent = carte
+	local rayonSol = RaycastParams.new()
+	rayonSol.FilterType = Enum.RaycastFilterType.Exclude
+
+	-- 1) Rayons de lumière (lumière du jour qui tombe des verrières)
+	local dossierPuits = carte:FindFirstChild("PuitsDeLumiere")
+	if dossierPuits then
+		rayonSol.FilterDescendantsInstances = { dossierPuits }
+		for _, panneau in ipairs(dossierPuits:GetChildren()) do
+			if panneau:IsA("BasePart") and panneau.Name == "PuitsDeLumiere" then
+				local haut = panneau.Position - Vector3.new(0, 0.2, 0)
+				local sol = workspace:Raycast(haut, Vector3.new(0, -60, 0), rayonSol)
+				local bas = if sol then sol.Position.Y else SOL
+				local hauteur = haut.Y - bas
+				if hauteur > 4 then
+					local rayon = bloc("RayonLumiere", Vector3.new(panneau.Size.X * 0.85, hauteur, panneau.Size.Z * 0.85), CFrame.new(haut.X, bas + hauteur / 2, haut.Z), Color3.fromRGB(255, 246, 228), Enum.Material.Neon, decor)
+					deco(rayon)
+					rayon.Transparency = 0.955
+					rayon.CastShadow = false
+				end
+			end
+		end
+	end
+
+	-- 2) Écrans géants suspendus au-dessus de l'atrium (messages qui défilent)
+	local MESSAGES = {
+		{ "GOLDEN MALL DRIFT", Color3.fromRGB(255, 205, 70) },
+		{ "⏱ NOUVEAU : COURSE CHRONO", Color3.fromRGB(90, 200, 255) },
+		{ "🏆 TOP 10 DE LA SEMAINE", Color3.fromRGB(255, 120, 200) },
+		{ "🔥 DRIFT BATTLE : BATS LE RECORD", Color3.fromRGB(255, 120, 60) },
+		{ "🚓 ATTENTION : POLICE DU MALL", Color3.fromRGB(110, 160, 255) },
+	}
+	local textesEcrans = {}
+	for _, z in ipairs({ -80, 80 }) do
+		local y = SOL + HAUT_PLAFOND_2 - 13
+		local ecran = bloc("EcranGeant", Vector3.new(30, 12, 1.2), CFrame.new(0, y, z), Color3.fromRGB(12, 12, 16), Enum.Material.SmoothPlastic, decor)
+		deco(ecran)
+		local cadre = bloc("CadreEcran", Vector3.new(31.2, 13.2, 0.8), CFrame.new(0, y, z), OR, Enum.Material.Foil, decor)
+		deco(cadre)
+		for _, x in ipairs({ -12, 12 }) do
+			deco(bloc("CableEcran", Vector3.new(0.15, HAUT_PLAFOND_2 - (y - SOL) - 6, 0.15), CFrame.new(x, (y + 6 + SOL + HAUT_PLAFOND_2) / 2, z), Color3.fromRGB(40, 40, 45), Enum.Material.Metal, decor))
+		end
+		for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+			local l = texte(ecran, face, MESSAGES[1][1], MESSAGES[1][2], Color3.fromRGB(10, 10, 14))
+			table.insert(textesEcrans, l)
+		end
+	end
+	task.spawn(function()
+		local i = 1
+		while true do
+			task.wait(4)
+			i = i % #MESSAGES + 1
+			for _, l in ipairs(textesEcrans) do
+				l.Text = MESSAGES[i][1]
+				l.TextColor3 = MESSAGES[i][2]
+			end
+		end
+	end)
+
+	-- 3) Grandes bannières suspendues dans l'atrium (rouge et or, aux couleurs du mall)
+	local n = 0
+	for _, z in ipairs({ -110, -70, -35, 35, 70, 110 }) do
+		for _, x in ipairs({ -22, 22 }) do
+			n += 1
+			local couleur = if n % 2 == 0 then Color3.fromRGB(190, 25, 35) else Color3.fromRGB(25, 25, 30)
+			local hautB = SOL + HAUT_PLAFOND_2 - 0.5
+			deco(bloc("TringleBanniere", Vector3.new(0.4, 0.4, 7), CFrame.new(x, hautB, z), OR, Enum.Material.Foil, decor))
+			local banniere = bloc("Banniere", Vector3.new(0.2, 13, 6), CFrame.new(x, hautB - 6.8, z), couleur, Enum.Material.Fabric, decor)
+			deco(banniere)
+			banniere.CastShadow = false
+			for _, face in ipairs({ Enum.NormalId.Left, Enum.NormalId.Right }) do
+				local l = texte(banniere, face, "✦\nGOLDEN\nMALL\n✦", OR)
+				l.TextScaled = true
+			end
+		end
+	end
+end
+
 ---------------------------------------------------------------------
 -- COMMUNICATION CLIENT ↔ SERVEUR
 ---------------------------------------------------------------------
@@ -2412,6 +2498,92 @@ AjouterXP.Event:Connect(function(joueur: Player, quantite: number)
 end)
 
 do
+-- Donner des pièces depuis un autre script (récompenses du classement de la semaine…)
+do
+	local AjouterPieces = Instance.new("BindableEvent")
+	AjouterPieces.Name = "AjouterPieces"
+	AjouterPieces.Parent = game:GetService("ServerStorage")
+	AjouterPieces.Event:Connect(function(joueur: Player, quantite: number, message: string?)
+		local profil = profils[joueur]
+		if not profil or type(quantite) ~= "number" or quantite <= 0 then
+			return
+		end
+		profil.Pieces += math.floor(quantite)
+		task.spawn(sauvegarder, joueur)
+		ProfilMisAJour:FireClient(joueur, versionPublique(profil))
+		if message then
+			Alerte:FireClient(joueur, { etat = "message", texte = message })
+		end
+	end)
+end
+
+-- TITRES au-dessus des joueurs (donne envie de progresser… et d'avoir le VIP)
+do
+	local function titreDe(joueur: Player, profil: Profil): (string, Color3)
+		if profil.Possessions.Produits.PassVIP then
+			return "👑 VIP", Color3.fromRGB(255, 205, 60)
+		elseif (joueur:GetAttribute("RecordBattle") or 0) >= 3000 then
+			return "🔥 ROI DU DRIFT", Color3.fromRGB(255, 120, 60)
+		elseif niveauDe(profil) >= 10 then
+			return "⭐ PILOTE PRO", Color3.fromRGB(120, 200, 255)
+		end
+		return "PILOTE", Color3.fromRGB(220, 220, 230)
+	end
+	task.spawn(function()
+		while true do
+			for _, joueur in ipairs(Players:GetPlayers()) do
+				local profil = profils[joueur]
+				local tete = joueur.Character and joueur.Character:FindFirstChild("Head")
+				if profil and tete then
+					local panneau = tete:FindFirstChild("TitreJoueur") :: BillboardGui?
+					if not panneau then
+						local p = Instance.new("BillboardGui")
+						p.Name = "TitreJoueur"
+						p.Size = UDim2.fromOffset(160, 40)
+						p.StudsOffset = Vector3.new(0, 3.2, 0)
+						p.MaxDistance = 70
+						p.LightInfluence = 0
+						p.Parent = tete
+						local titre = Instance.new("TextLabel")
+						titre.Name = "Titre"
+						titre.Size = UDim2.new(1, 0, 0.55, 0)
+						titre.BackgroundTransparency = 1
+						titre.Font = Enum.Font.FredokaOne
+						titre.TextScaled = true
+						titre.Parent = p
+						local contour = Instance.new("UIStroke")
+						contour.Thickness = 2
+						contour.Parent = titre
+						local niveau = Instance.new("TextLabel")
+						niveau.Name = "Niveau"
+						niveau.Size = UDim2.new(1, 0, 0.42, 0)
+						niveau.Position = UDim2.fromScale(0, 0.58)
+						niveau.BackgroundTransparency = 1
+						niveau.Font = Enum.Font.FredokaOne
+						niveau.TextScaled = true
+						niveau.TextColor3 = Color3.new(1, 1, 1)
+						niveau.Parent = p
+						local contour2 = Instance.new("UIStroke")
+						contour2.Thickness = 2
+						contour2.Parent = niveau
+						panneau = p
+					end
+					local p = panneau :: BillboardGui
+					local texteTitre, couleur = titreDe(joueur, profil)
+					local titre = p:FindFirstChild("Titre") :: TextLabel
+					titre.Text = texteTitre
+					titre.TextColor3 = couleur
+					local etiquetteNiveau = p:FindFirstChild("Niveau") :: TextLabel
+					etiquetteNiveau.Text = ("NIV. %d"):format(niveauDe(profil))
+					-- (pendant une manche, c'est l'étiquette du kart qui compte)
+					p.Enabled = joueur:GetAttribute("Role") == nil
+				end
+			end
+			task.wait(3)
+		end
+	end)
+end
+
 ---------------------------------------------------------------------
 -- LES ACHATS
 --   • couleurs : avec les pièces 💰 gagnées en jouant

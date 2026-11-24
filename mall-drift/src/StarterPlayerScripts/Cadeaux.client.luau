@@ -310,7 +310,7 @@ end
 local function ouvrir(v: string)
 	vue = v
 	-- Une seule page à la fois : on ferme le magasin, la roue, l'aperçu
-	for _, nom in ipairs({ "Magasin", "RoueDuJour", "Apercu" }) do
+	for _, nom in ipairs({ "Magasin", "RoueDuJour", "Apercu", "PageClassement" }) do
 		local autre = menu:FindFirstChild(nom)
 		if autre and autre:IsA("GuiObject") then
 			autre.Visible = false

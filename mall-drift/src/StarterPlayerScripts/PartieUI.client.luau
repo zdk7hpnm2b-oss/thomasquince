@@ -411,7 +411,7 @@ local ordreMenu = 0
 -- Une carte du menu : icône + titre + description + flèche.
 -- principal = le gros bouton rouge (JOUER) ; petit = les modes sous JOUER
 local function carteMode(icone: string, titre: string, description: string, couleur: Color3, principal: boolean?, parent: Instance?, petit: boolean?): (TextButton, TextLabel, TextLabel)
-	local hauteur = if principal then 96 elseif petit then 54 else 64
+	local hauteur = if principal then 90 elseif petit then 48 else 58
 	local b = Instance.new("TextButton")
 	b.Size = UDim2.new(1, 0, 0, hauteur)
 	ordreMenu += 1
@@ -482,12 +482,12 @@ local function carteMode(icone: string, titre: string, description: string, coul
 		img.ZIndex = 24
 		img.Parent = pastille
 	end
-	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 else 24), UDim2.new(0, decalage, 0, if principal then 14 else 9), Color3.new(1, 1, 1))
+	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 elseif petit then 21 else 24), UDim2.new(0, decalage, 0, if principal then 12 elseif petit then 5 else 8), Color3.new(1, 1, 1))
 	t.Text = titre
 	t.FontFace = POLICE_COURSE
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 23
-	local d = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 18 else 16), UDim2.new(0, decalage, 0, if principal then 62 else 36), Color3.fromRGB(220, 220, 228), Enum.Font.GothamMedium)
+	local d = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 18 elseif petit then 14 else 15), UDim2.new(0, decalage, 0, if principal then 58 elseif petit then 28 else 34), Color3.fromRGB(220, 220, 228), Enum.Font.GothamMedium)
 	d.Text = description
 	d.TextXAlignment = Enum.TextXAlignment.Left
 	d.ZIndex = 23
@@ -553,7 +553,8 @@ dispoModes.Parent = listeModes
 local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre", Color3.fromRGB(40, 220, 110), false, listeModes, true)
 local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "EN LIGNE", "Police contre Fugitifs", Color3.fromRGB(50, 140, 255), false, listeModes, true)
 local carteBattle = carteMode("🔥", "DRIFT BATTLE", "1 minute, meilleur score", Color3.fromRGB(255, 60, 130), false, listeModes, true)
-local HAUTEUR_MODES = 3 * 54 + 2 * 6 + 2
+local carteChrono = carteMode("⏱️", "CHRONO", "3 tours, bats ton record", Color3.fromRGB(255, 200, 40), false, listeModes, true)
+local HAUTEUR_MODES = 4 * 48 + 3 * 6 + 2
 local modesOuverts = false
 local function ouvrirModes(ouvert: boolean)
 	modesOuverts = ouvert
@@ -568,6 +569,7 @@ local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnal
 local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart", Color3.fromRGB(255, 130, 20))
 local carteRoue = carteMode("🎡", "ROUE DU JOUR", "1 tour gratuit par jour", Color3.fromRGB(255, 195, 0))
 local carteMagasin = carteMode("🛒", "MAGASIN", "Karts, traînées, packs", Color3.fromRGB(240, 50, 200))
+local carteClassement = carteMode("🏆", "CLASSEMENT", "Top 10 de la semaine", Color3.fromRGB(255, 170, 0))
 local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter", Color3.fromRGB(0, 200, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
@@ -864,9 +866,11 @@ local function apparaitre(f: Frame)
 			autre.Visible = false -- (une seule page à la fois)
 		end
 	end
-	local pageCadeaux = fondMenu:FindFirstChild("PageCadeaux")
-	if pageCadeaux and pageCadeaux:IsA("GuiObject") then
-		pageCadeaux.Visible = false
+	for _, nomPage in ipairs({ "PageCadeaux", "PageClassement" }) do
+		local autrePage = fondMenu:FindFirstChild(nomPage)
+		if autrePage and autrePage:IsA("GuiObject") then
+			autrePage.Visible = false
+		end
 	end
 	f.Visible = true
 	f.Position = UDim2.fromScale(1.5, 0.5)
@@ -2649,6 +2653,19 @@ Partie.OnClientEvent:Connect(function(info)
 			montrerClassement(if info.roi then ("👑 ROI DU DRIFT : %s"):format(info.roi) else "🏆 CLASSEMENT DES DRIFTS", info.classement, 5.5)
 		end
 	end
+end)
+
+carteChrono.Activated:Connect(function()
+	ouvrirMenu(false)
+	local typePlace = Config.TypeDePlace()
+	if (typePlace == "Lobby" or (typePlace ~= "ToutEnUn" and typePlace ~= "Entrainement")) and Voyage then
+		Voyage:FireServer({ mode = "Entrainement", chrono = true }) -- (la course se joue dans la place Entraînement)
+	else
+		remotes:WaitForChild("Chrono"):FireServer("lancer")
+	end
+end)
+carteClassement.Activated:Connect(function()
+	joueur:SetAttribute("OuvrirClassement", true) -- (le script Modes ouvre la page)
 end)
 
 carteTuto.Activated:Connect(function()

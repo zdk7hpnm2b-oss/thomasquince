@@ -48,7 +48,8 @@ dossierGardes.Parent = workspace
 local function majPresenceGardes()
 	local cacher = workspace:GetAttribute("MancheEnCours") == true
 	for _, j in ipairs(Players:GetPlayers()) do
-		if j:GetAttribute("Role") == "Battle" then
+		local role = j:GetAttribute("Role")
+		if role == "Battle" or role == "Chrono" then
 			cacher = true
 		end
 	end

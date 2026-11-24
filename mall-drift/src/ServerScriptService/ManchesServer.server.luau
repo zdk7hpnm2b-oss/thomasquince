@@ -1038,6 +1038,11 @@ local function lancerBattle(joueur: Player)
 	Partie:FireClient(joueur, { type = "finBattle", total = sc.total, meilleur = sc.meilleur, record = math.max(ancienRecord, sc.total), nouveauRecord = nouveauRecord })
 	-- Le classement mondial (enregistrement + ta place)
 	local record = enregistrerRecord(joueur, sc.total)
+	-- Classement de la semaine (ModesServer)
+	local semaine = ServerStorage:FindFirstChild("ScoreBattleSemaine") :: BindableEvent?
+	if semaine then
+		semaine:Fire(joueur, sc.total)
+	end
 	joueur:SetAttribute("RecordBattle", record)
 	local top, autour, rang = classementAutour(joueur, record)
 	Partie:FireClient(joueur, { type = "classementMondial", top = top, autour = autour, rang = rang, record = record })
