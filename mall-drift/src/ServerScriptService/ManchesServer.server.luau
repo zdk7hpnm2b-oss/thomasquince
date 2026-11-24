@@ -1001,15 +1001,12 @@ local function lancerBattle(joueur: Player)
 	joueur:SetAttribute("Role", "Battle")
 	joueur.Team = EQUIPE_BATTLE
 	scoresBattle[joueur] = { total = 0, meilleur = 0 }
-	Partie:FireClient(joueur, { type = "battle", duree = DUREE_BATTLE })
-	task.wait(2) -- le petit titre
-	if not joueur.Parent then
-		scoresBattle[joueur] = nil
-		return
-	end
+	-- Directement sur la ligne de départ (pas de passage par le garage) :
+	-- le titre « DRIFT BATTLE » s'affiche pendant le 3, 2, 1
 	RetirerKart:Invoke(joueur)
 	PlacerKart:Invoke(joueur, true, true) -- départ court : juste 3, 2, 1
-	local fin = os.clock() + DUREE_BATTLE + 3
+	Partie:FireClient(joueur, { type = "battle", duree = DUREE_BATTLE })
+	local fin = os.clock() + DUREE_BATTLE + 3.5 -- (titre + 3, 2, 1)
 	while os.clock() < fin and joueur.Parent and joueur:GetAttribute("Role") == "Battle" do
 		task.wait(0.5)
 		local sc = scoresBattle[joueur]

@@ -5110,15 +5110,12 @@ local function lancerBattle(joueur: Player)
 	joueur:SetAttribute("Role", "Battle")
 	joueur.Team = EQUIPE_BATTLE
 	scoresBattle[joueur] = { total = 0, meilleur = 0 }
-	Partie:FireClient(joueur, { type = "battle", duree = DUREE_BATTLE })
-	task.wait(2) -- le petit titre
-	if not joueur.Parent then
-		scoresBattle[joueur] = nil
-		return
-	end
+	-- Directement sur la ligne de départ (pas de passage par le garage) :
+	-- le titre « DRIFT BATTLE » s'affiche pendant le 3, 2, 1
 	RetirerKart:Invoke(joueur)
 	PlacerKart:Invoke(joueur, true, true) -- départ court : juste 3, 2, 1
-	local fin = os.clock() + DUREE_BATTLE + 3
+	Partie:FireClient(joueur, { type = "battle", duree = DUREE_BATTLE })
+	local fin = os.clock() + DUREE_BATTLE + 3.5 -- (titre + 3, 2, 1)
 	while os.clock() < fin and joueur.Parent and joueur:GetAttribute("Role") == "Battle" do
 		task.wait(0.5)
 		local sc = scoresBattle[joueur]
@@ -9213,7 +9210,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 		local t = os.clock() - depart.debut
 		-- (départ court du Drift Battle : pas de survol, feux plus rapides)
 		local pas = if depart.court then 0.7 else 1
-		local tCompte = (t - (if depart.court then 0.3 else DUREE_ANIM_DEPART)) / pas -- 0 = début du compte à rebours
+		-- (départ court : on laisse 1 s au titre « DRIFT BATTLE », le kart est déjà sur la ligne)
+		local tCompte = (t - (if depart.court then 1.1 else DUREE_ANIM_DEPART)) / pas -- 0 = début du compte à rebours
 		if tCompte >= 0 and depart.etape == 0 then
 			depart.etape = 1
 			afficherBandes(false)
@@ -12344,7 +12342,7 @@ Partie.OnClientEvent:Connect(function(info)
 		-- Le petit titre de 2 secondes
 		montrerCarte("DÉFI SOLO", "🔥 DRIFT BATTLE",
 			("%d secondes pour faire le plus de points de drift !"):format(info.duree or 60),
-			Color3.fromRGB(255, 90, 170), 2)
+			Color3.fromRGB(255, 90, 170), 0.9) -- (juste avant le 3, 2, 1)
 	elseif info.type == "finBattle" then
 		montrerCarte(if info.nouveauRecord then "🏆 NOUVEAU RECORD !" else ("Ton record : %d pts"):format(info.record or 0),
 			("🔥 %d POINTS"):format(info.total or 0),

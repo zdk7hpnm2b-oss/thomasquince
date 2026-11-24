@@ -2566,7 +2566,7 @@ Partie.OnClientEvent:Connect(function(info)
 		-- Le petit titre de 2 secondes
 		montrerCarte("DÉFI SOLO", "🔥 DRIFT BATTLE",
 			("%d secondes pour faire le plus de points de drift !"):format(info.duree or 60),
-			Color3.fromRGB(255, 90, 170), 2)
+			Color3.fromRGB(255, 90, 170), 0.9) -- (juste avant le 3, 2, 1)
 	elseif info.type == "finBattle" then
 		montrerCarte(if info.nouveauRecord then "🏆 NOUVEAU RECORD !" else ("Ton record : %d pts"):format(info.record or 0),
 			("🔥 %d POINTS"):format(info.total or 0),

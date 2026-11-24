@@ -1049,7 +1049,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 		local t = os.clock() - depart.debut
 		-- (départ court du Drift Battle : pas de survol, feux plus rapides)
 		local pas = if depart.court then 0.7 else 1
-		local tCompte = (t - (if depart.court then 0.3 else DUREE_ANIM_DEPART)) / pas -- 0 = début du compte à rebours
+		-- (départ court : on laisse 1 s au titre « DRIFT BATTLE », le kart est déjà sur la ligne)
+		local tCompte = (t - (if depart.court then 1.1 else DUREE_ANIM_DEPART)) / pas -- 0 = début du compte à rebours
 		if tCompte >= 0 and depart.etape == 0 then
 			depart.etape = 1
 			afficherBandes(false)
