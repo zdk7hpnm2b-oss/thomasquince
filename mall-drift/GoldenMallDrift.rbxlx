@@ -11806,6 +11806,33 @@ if Voyage then
 	end)
 end
 
+-- PAS DE « SALON » : au lobby (et dans la place tout-en-un), le menu est la base.
+-- Pas de bouton ✕ pour le fermer, et dès qu'on n'est plus au volant (fin de partie,
+-- sortie du kart…), il revient tout seul. On ne se retrouve jamais à pied au garage.
+local MENU_PERMANENT = EN_LOBBY or TYPE == "ToutEnUn"
+if MENU_PERMANENT then
+	boutonFermerMenu.Visible = false
+end
+local derniereFermeture = 0
+fondMenu:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not fondMenu.Visible then
+		derniereFermeture = os.clock()
+	end
+end)
+task.spawn(function()
+	while MENU_PERMANENT do
+		task.wait(0.5)
+		local h = joueur.Character and joueur.Character:FindFirstChildOfClass("Humanoid")
+		local aPied = not (h and h.SeatPart)
+		local occupe = joueur:GetAttribute("Role") ~= nil or joueur:GetAttribute("EnSalle") or joueur:GetAttribute("MenuGarage")
+			or joueur:GetAttribute("EnTuto") or ecranVoyage.Visible
+		-- (on laisse 5 s après un choix de mode : le temps que le kart arrive)
+		if aPied and not occupe and not fondMenu.Visible and os.clock() - derniereFermeture > 5 then
+			ouvrirMenu(true)
+		end
+	end
+end)
+
 -- Dès qu'on arrive dans le jeu (et au retour d'une partie) : le menu s'ouvre
 -- directement, avec la partie qui se joue en fond
 task.spawn(function()
