@@ -291,6 +291,10 @@ local driftAppuye = false
 local driftAppuyeAvant = false
 local vitesseRotation = 0
 local tempsBoost = 0
+local poussee = 0 -- vitesse ajoutée d'un coup quand le boost se déclenche
+local secousseImpact = 0 -- secousse de caméra (choc, boost), qui retombe toute seule
+local vitessePrecCam = 0
+local accelLisse = 0
 local forceBoost = 1 -- puissance du boost en cours (selon les étoiles du drift)
 local derniereVitesse = 0
 local etaitMouille = false
@@ -390,6 +394,8 @@ local function terminerDrift(reussi: boolean)
 			local poursuivi = joueur:GetAttribute("Poursuivi") == true or joueur:GetAttribute("Role") == "Fugitif"
 			local multiplicateur = if poursuivi then (Config.Score.BoostEvasion or 1.5) else 1
 			tempsBoost = reglageBoost.Duree * (if poursuivi then 1.2 else 1)
+			poussee = 6 + etoiles * 3 -- (coup de pied, plus fort avec les étoiles)
+			secousseImpact = math.max(secousseImpact, 0.25)
 			joueur:SetAttribute("TutoBoost", os.clock()) -- (pour le tuto)
 			forceBoost = reglageBoost.Force * multiplicateur
 			message(if poursuivi then ("🚨 BOOST D'ÉVASION %s !"):format(string.rep("★", etoiles)) else ("BOOST %s !"):format(string.rep("★", etoiles)),
@@ -652,9 +658,15 @@ local function mettreAJourCamera(dt: number)
 	end
 
 	local vitesse = vel.Magnitude
-	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.04
+	-- Recul à l'accélération / rapprochement au freinage (lissé)
+	local accel = (vitesse - vitessePrecCam) / math.max(dt, 1 / 240)
+	vitessePrecCam = vitesse
+	accelLisse += (math.clamp(accel, -60, 60) - accelLisse) * math.clamp(dt * 3, 0, 1)
+	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.06 + math.clamp(accelLisse * (reglages.ReculAcceleration or 0.06), -1.5, 3)
 	local pivot = ch.Position + Vector3.new(0, 2.5, 0)
-	local voulu = ch.Position - directionCamera * distance + Vector3.new(0, reglages.Hauteur, 0)
+	-- À grande vitesse la caméra descend un peu (on se sent plus près du sol, plus rapide)
+	local hauteur = reglages.Hauteur - math.clamp(vitesse, 0, 70) * 0.012
+	local voulu = ch.Position - directionCamera * distance + Vector3.new(0, hauteur, 0)
 	-- Si un mur est entre le kart et la caméra, on rapproche la caméra
 	rayonCamera.FilterDescendantsInstances = { kart.modele, joueur.Character }
 	local obstacle = workspace:Raycast(pivot, voulu - pivot, rayonCamera)
@@ -663,8 +675,13 @@ local function mettreAJourCamera(dt: number)
 	end
 	-- Réalisme : la caméra penche un peu dans les drifts et tremble pendant le boost
 	local glisseCam = vel:Dot(Vector3.new(-directionCamera.Z, 0, directionCamera.X))
-	local roulis = math.clamp(-glisseCam * 0.003, -0.07, 0.07)
-	local secousse = if tempsBoost > 0 then Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * 0.18 else Vector3.zero
+	local roulis = math.clamp(-glisseCam * (reglages.RoulisDrift or 0.005), -0.12, 0.12)
+	-- Tremblements : un peu à pleine vitesse, plus au boost, beaucoup aux chocs
+	secousseImpact = math.max(secousseImpact - dt * 1.8, 0)
+	local force = math.clamp((vitesse - 40) / 30, 0, 1) * (reglages.TremblementVitesse or 0.05)
+		+ (if tempsBoost > 0 then (reglages.TremblementBoost or 0.3) else 0)
+		+ secousseImpact * 0.9
+	local secousse = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * force
 	camera.CFrame = CFrame.lookAt(voulu + secousse, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, roulis)
 end
 
@@ -1092,7 +1109,14 @@ RunService.Heartbeat:Connect(function(dt: number)
 	elseif math.sign(gaz) ~= math.sign(vAvant) and math.abs(vAvant) > 1 then
 		taux = s.Freinage
 	else
-		taux = s.Acceleration * (tempsBoost > 0 and 2 or 1)
+		-- Départ nerveux, qui s'adoucit près de la vitesse max (plus de sensations)
+		local ratio = math.clamp(math.abs(vAvant) / math.max(vMax, 1), 0, 1)
+		taux = s.Acceleration * (1.5 - 0.8 * ratio) * (tempsBoost > 0 and 2 or 1)
+	end
+	-- Coup de pied du boost : une vraie poussée au moment où il se déclenche
+	if poussee > 0 and auSol then
+		vAvant += poussee
+		poussee = 0
 	end
 	if mouille then
 		taux *= Config.Mouille.Acceleration
@@ -1148,6 +1172,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local angleGlisse = math.deg(math.atan2(math.abs(vCote), math.max(math.abs(vAvant), 0.01)))
 	local enDrift = auSol and vitesse > Config.Score.VitesseMin and angleGlisse > Config.Score.AngleMin
 
+	-- Choc : la caméra tremble selon la violence du choc
+	if derniereVitesse - vitesse > Config.Score.SeuilChoc * 0.6 then
+		secousseImpact = math.max(secousseImpact, math.clamp((derniereVitesse - vitesse) / 30, 0.3, 1))
+	end
 	-- Choc contre un mur pendant un drift = drift perdu
 	if drift.actif and derniereVitesse - vitesse > Config.Score.SeuilChoc then
 		terminerDrift(false)
@@ -1257,8 +1285,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 
 	-- Sensation de vitesse : le champ de vision s'élargit quand on va vite
 	local fovBase = if modeCamera == "gopro" then Config.Camera.ChampGoPro else 70
-	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (tempsBoost > 0 and 6 or 0)
-	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
+	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (if tempsBoost > 0 then (Config.Camera.ChampBoost or 14) else 0)
+	-- Le champ de vision s'ouvre VITE (effet « coup de boost ») et se referme doucement
+	local vitesseFov = if fovCible > camera.FieldOfView then 9 else 3
+	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * vitesseFov, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
 

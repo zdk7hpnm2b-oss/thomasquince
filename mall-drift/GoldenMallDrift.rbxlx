@@ -845,6 +845,33 @@ Config.Boutique = {
 }
 Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
 
+-- 🖼️ ICÔNES du menu : les images PNG sont dans le dossier « icones » du projet.
+-- Importe-les dans Studio (Affichage > Gestionnaire de ressources > Importation groupée),
+-- clic droit sur chaque image > « Copier l'ID », et colle le numéro ici.
+-- Tant que c'est 0, l'emoji s'affiche à la place.
+Config.Icones = {
+	Garage = 0, Roue = 0, Magasin = 0, Tuto = 0,
+	Entrainement = 0, EnLigne = 0, Battle = 0,
+	Cadeau = 0, Serie = 0, Amis = 0, Notif = 0, Groupe = 0,
+	Pieces = 0, VIP = 0,
+}
+-- L'emoji remplacé par chaque icône
+Config.IconeDeLEmoji = {
+	["🔧"] = "Garage", ["🎡"] = "Roue", ["🛒"] = "Magasin", ["📖"] = "Tuto",
+	["🏁"] = "Entrainement", ["🌐"] = "EnLigne", ["🔥"] = "Battle",
+	["🎁"] = "Cadeau", ["📅"] = "Serie", ["👥"] = "Amis", ["🔔"] = "Notif", ["👪"] = "Groupe",
+	["💰"] = "Pieces", ["👑"] = "VIP",
+}
+-- Renvoie l'image Roblox d'une icône (ou nil s'il faut garder l'emoji)
+function Config.ImageIcone(emojiOuNom: string): string?
+	local nom = Config.IconeDeLEmoji[emojiOuNom] or emojiOuNom
+	local id = Config.Icones[nom]
+	if type(id) == "number" and id > 0 then
+		return "rbxassetid://" .. id
+	end
+	return nil
+end
+
 -- 🎁 CADEAUX GRATUITS (ce qui fait revenir les joueurs chaque jour)
 Config.Cadeaux = {
 	-- Cadeaux de temps de jeu (à chaque partie) : plus on reste, plus c'est gros
@@ -1124,8 +1151,14 @@ Config.Camera = {
 	ChampGoPro = 100, -- grand angle de la GoPro (degrés)
 	Distance = 13, -- distance derrière le kart
 	Hauteur = 5.5, -- hauteur au-dessus du kart
-	Souplesse = 5, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
-	SuiviGlisse = 0.35, -- 0 = regarde où pointe le kart, 1 = regarde où il glisse
+	Souplesse = 4, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
+	SuiviGlisse = 0.5, -- 0 = regarde où pointe le kart, 1 = regarde où il glisse (on voit bien l'angle du drift)
+	-- SENSATIONS : la caméra vit avec le kart
+	ReculAcceleration = 0.06, -- la caméra recule quand on accélère fort (et avance au freinage)
+	RoulisDrift = 0.005, -- la caméra penche dans les drifts
+	TremblementVitesse = 0.05, -- petit tremblement à pleine vitesse
+	TremblementBoost = 0.3, -- tremblement pendant le boost
+	ChampBoost = 14, -- le champ de vision « s'ouvre » au boost (effet de vitesse)
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)
@@ -6598,7 +6631,7 @@ dispo.Padding = UDim.new(0, 8)
 dispo.SortOrder = Enum.SortOrder.LayoutOrder
 dispo.Parent = colonne
 
-local function carte(ordre: number, icone: string, titre: string): (TextButton, TextLabel, Frame)
+local function carte(ordre: number, icone: string, titre: string, couleur: Color3?): (TextButton, TextLabel, Frame)
 	local b = Instance.new("TextButton")
 	b.LayoutOrder = ordre
 	b.Size = UDim2.new(1, 0, 0, 60)
@@ -6616,7 +6649,17 @@ local function carte(ordre: number, icone: string, titre: string): (TextButton, 
 	local fondIcone = Instance.new("Frame")
 	fondIcone.Size = UDim2.fromOffset(44, 44)
 	fondIcone.Position = UDim2.new(0, 8, 0.5, -22)
-	fondIcone.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
+	fondIcone.BackgroundColor3 = Color3.new(1, 1, 1)
+	local teinte = couleur or Color3.fromRGB(120, 120, 140)
+	local degradeIcone = Instance.new("UIGradient") -- pastille colorée, style bonbon
+	degradeIcone.Color = ColorSequence.new(teinte:Lerp(Color3.new(1, 1, 1), 0.35), teinte:Lerp(Color3.new(0, 0, 0), 0.15))
+	degradeIcone.Rotation = 90
+	degradeIcone.Parent = fondIcone
+	local contourIcone = Instance.new("UIStroke")
+	contourIcone.Color = Color3.new(1, 1, 1)
+	contourIcone.Transparency = 0.55
+	contourIcone.Thickness = 2
+	contourIcone.Parent = fondIcone
 	fondIcone.ZIndex = 24
 	fondIcone.Parent = b
 	coins(fondIcone, 4)
@@ -6624,6 +6667,17 @@ local function carte(ordre: number, icone: string, titre: string): (TextButton, 
 	i.TextXAlignment = Enum.TextXAlignment.Center
 	i.Text = icone
 	i.ZIndex = 25
+	local image = Config.ImageIcone(icone)
+	if image then
+		i.Visible = false
+		local img = Instance.new("ImageLabel")
+		img.Size = UDim2.new(1, -14, 1, -14)
+		img.Position = UDim2.fromOffset(7, 7)
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.ZIndex = 25
+		img.Parent = fondIcone
+	end
 	local t = texte(b, UDim2.new(1, -70, 0, 22), UDim2.new(0, 62, 0, 9), Color3.new(1, 1, 1))
 	t.FontFace = POLICE
 	t.Text = titre
@@ -6662,13 +6716,13 @@ local function carte(ordre: number, icone: string, titre: string): (TextButton, 
 	return b, sous, pastille
 end
 
-local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit")
-local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour")
-local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis")
+local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit", Color3.fromRGB(170, 70, 255))
+local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour", Color3.fromRGB(0, 200, 170))
+local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis", Color3.fromRGB(50, 140, 255))
 sousAmis.Text = ("Jouez ensemble : +%d 💰 chacun"):format(Config.Cadeaux.BonusAmi or 150)
-local carteNotif, sousNotif = carte(4, "🔔", "M'avertir")
+local carteNotif, sousNotif = carte(4, "🔔", "M'avertir", Color3.fromRGB(255, 190, 0))
 sousNotif.Text = "Nouveautés, événements, cadeaux"
-local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe")
+local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe", Color3.fromRGB(40, 210, 100))
 sousGroupe.Text = ("+%d 💰 une seule fois"):format(Config.Cadeaux.BonusGroupe or 500)
 carteGroupe.Visible = false
 
@@ -8357,6 +8411,10 @@ local driftAppuye = false
 local driftAppuyeAvant = false
 local vitesseRotation = 0
 local tempsBoost = 0
+local poussee = 0 -- vitesse ajoutée d'un coup quand le boost se déclenche
+local secousseImpact = 0 -- secousse de caméra (choc, boost), qui retombe toute seule
+local vitessePrecCam = 0
+local accelLisse = 0
 local forceBoost = 1 -- puissance du boost en cours (selon les étoiles du drift)
 local derniereVitesse = 0
 local etaitMouille = false
@@ -8456,6 +8514,8 @@ local function terminerDrift(reussi: boolean)
 			local poursuivi = joueur:GetAttribute("Poursuivi") == true or joueur:GetAttribute("Role") == "Fugitif"
 			local multiplicateur = if poursuivi then (Config.Score.BoostEvasion or 1.5) else 1
 			tempsBoost = reglageBoost.Duree * (if poursuivi then 1.2 else 1)
+			poussee = 6 + etoiles * 3 -- (coup de pied, plus fort avec les étoiles)
+			secousseImpact = math.max(secousseImpact, 0.25)
 			joueur:SetAttribute("TutoBoost", os.clock()) -- (pour le tuto)
 			forceBoost = reglageBoost.Force * multiplicateur
 			message(if poursuivi then ("🚨 BOOST D'ÉVASION %s !"):format(string.rep("★", etoiles)) else ("BOOST %s !"):format(string.rep("★", etoiles)),
@@ -8718,9 +8778,15 @@ local function mettreAJourCamera(dt: number)
 	end
 
 	local vitesse = vel.Magnitude
-	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.04
+	-- Recul à l'accélération / rapprochement au freinage (lissé)
+	local accel = (vitesse - vitessePrecCam) / math.max(dt, 1 / 240)
+	vitessePrecCam = vitesse
+	accelLisse += (math.clamp(accel, -60, 60) - accelLisse) * math.clamp(dt * 3, 0, 1)
+	local distance = reglages.Distance + math.clamp(vitesse, 0, 70) * 0.06 + math.clamp(accelLisse * (reglages.ReculAcceleration or 0.06), -1.5, 3)
 	local pivot = ch.Position + Vector3.new(0, 2.5, 0)
-	local voulu = ch.Position - directionCamera * distance + Vector3.new(0, reglages.Hauteur, 0)
+	-- À grande vitesse la caméra descend un peu (on se sent plus près du sol, plus rapide)
+	local hauteur = reglages.Hauteur - math.clamp(vitesse, 0, 70) * 0.012
+	local voulu = ch.Position - directionCamera * distance + Vector3.new(0, hauteur, 0)
 	-- Si un mur est entre le kart et la caméra, on rapproche la caméra
 	rayonCamera.FilterDescendantsInstances = { kart.modele, joueur.Character }
 	local obstacle = workspace:Raycast(pivot, voulu - pivot, rayonCamera)
@@ -8729,8 +8795,13 @@ local function mettreAJourCamera(dt: number)
 	end
 	-- Réalisme : la caméra penche un peu dans les drifts et tremble pendant le boost
 	local glisseCam = vel:Dot(Vector3.new(-directionCamera.Z, 0, directionCamera.X))
-	local roulis = math.clamp(-glisseCam * 0.003, -0.07, 0.07)
-	local secousse = if tempsBoost > 0 then Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * 0.18 else Vector3.zero
+	local roulis = math.clamp(-glisseCam * (reglages.RoulisDrift or 0.005), -0.12, 0.12)
+	-- Tremblements : un peu à pleine vitesse, plus au boost, beaucoup aux chocs
+	secousseImpact = math.max(secousseImpact - dt * 1.8, 0)
+	local force = math.clamp((vitesse - 40) / 30, 0, 1) * (reglages.TremblementVitesse or 0.05)
+		+ (if tempsBoost > 0 then (reglages.TremblementBoost or 0.3) else 0)
+		+ secousseImpact * 0.9
+	local secousse = Vector3.new(math.random() - 0.5, math.random() - 0.5, 0) * force
 	camera.CFrame = CFrame.lookAt(voulu + secousse, ch.Position + directionCamera * 6 + Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, roulis)
 end
 
@@ -9158,7 +9229,14 @@ RunService.Heartbeat:Connect(function(dt: number)
 	elseif math.sign(gaz) ~= math.sign(vAvant) and math.abs(vAvant) > 1 then
 		taux = s.Freinage
 	else
-		taux = s.Acceleration * (tempsBoost > 0 and 2 or 1)
+		-- Départ nerveux, qui s'adoucit près de la vitesse max (plus de sensations)
+		local ratio = math.clamp(math.abs(vAvant) / math.max(vMax, 1), 0, 1)
+		taux = s.Acceleration * (1.5 - 0.8 * ratio) * (tempsBoost > 0 and 2 or 1)
+	end
+	-- Coup de pied du boost : une vraie poussée au moment où il se déclenche
+	if poussee > 0 and auSol then
+		vAvant += poussee
+		poussee = 0
 	end
 	if mouille then
 		taux *= Config.Mouille.Acceleration
@@ -9214,6 +9292,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local angleGlisse = math.deg(math.atan2(math.abs(vCote), math.max(math.abs(vAvant), 0.01)))
 	local enDrift = auSol and vitesse > Config.Score.VitesseMin and angleGlisse > Config.Score.AngleMin
 
+	-- Choc : la caméra tremble selon la violence du choc
+	if derniereVitesse - vitesse > Config.Score.SeuilChoc * 0.6 then
+		secousseImpact = math.max(secousseImpact, math.clamp((derniereVitesse - vitesse) / 30, 0.3, 1))
+	end
 	-- Choc contre un mur pendant un drift = drift perdu
 	if drift.actif and derniereVitesse - vitesse > Config.Score.SeuilChoc then
 		terminerDrift(false)
@@ -9323,8 +9405,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 
 	-- Sensation de vitesse : le champ de vision s'élargit quand on va vite
 	local fovBase = if modeCamera == "gopro" then Config.Camera.ChampGoPro else 70
-	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (tempsBoost > 0 and 6 or 0)
-	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * 5, 0, 1)
+	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (if tempsBoost > 0 then (Config.Camera.ChampBoost or 14) else 0)
+	-- Le champ de vision s'ouvre VITE (effet « coup de boost ») et se referme doucement
+	local vitesseFov = if fovCible > camera.FieldOfView then 9 else 3
+	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * vitesseFov, 0, 1)
 
 	vitesseLabel.Text = ("%d km/h"):format(math.floor(vitesse + 0.5))
 
@@ -10050,10 +10134,39 @@ local function carteMode(icone: string, titre: string, description: string, coul
 		barre.Parent = b
 	end
 	local decalage = if principal then 26 else 64
-	local i = texte(b, UDim2.new(0, 36, 0, 36), UDim2.new(0, 16, 0.5, -18), Color3.new(1, 1, 1))
+	-- Pastille d'icône bien colorée (style bonbon : dégradé clair → vif, contour blanc)
+	local pastille = Instance.new("Frame")
+	pastille.Size = UDim2.fromOffset(if petit then 38 else 44, if petit then 38 else 44)
+	pastille.Position = UDim2.new(0, 12, 0.5, if petit then -19 else -22)
+	pastille.BackgroundColor3 = Color3.new(1, 1, 1)
+	pastille.Visible = not principal
+	pastille.ZIndex = 23
+	pastille.Parent = b
+	Instance.new("UICorner", pastille).CornerRadius = UDim.new(0, 10)
+	local degradePastille = Instance.new("UIGradient")
+	degradePastille.Color = ColorSequence.new(couleur:Lerp(Color3.new(1, 1, 1), 0.35), couleur:Lerp(Color3.new(0, 0, 0), 0.15))
+	degradePastille.Rotation = 90
+	degradePastille.Parent = pastille
+	local contourPastille = Instance.new("UIStroke")
+	contourPastille.Color = Color3.new(1, 1, 1)
+	contourPastille.Transparency = 0.55
+	contourPastille.Thickness = 2
+	contourPastille.Parent = pastille
+	local i = texte(pastille, UDim2.new(1, -12, 1, -12), UDim2.fromOffset(6, 6), Color3.new(1, 1, 1))
 	i.Text = icone
-	i.ZIndex = 23
-	i.Visible = not principal
+	i.ZIndex = 24
+	-- Vraie icône (image) si elle est réglée dans Config.Icones
+	local image = Config.ImageIcone(icone)
+	if image then
+		i.Visible = false
+		local img = Instance.new("ImageLabel")
+		img.Size = UDim2.new(1, -12, 1, -12)
+		img.Position = UDim2.fromOffset(6, 6)
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.ZIndex = 24
+		img.Parent = pastille
+	end
 	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 else 24), UDim2.new(0, decalage, 0, if principal then 14 else 9), Color3.new(1, 1, 1))
 	t.Text = titre
 	t.FontFace = POLICE_COURSE
@@ -10122,9 +10235,9 @@ local dispoModes = Instance.new("UIListLayout")
 dispoModes.Padding = UDim.new(0, 6)
 dispoModes.SortOrder = Enum.SortOrder.LayoutOrder
 dispoModes.Parent = listeModes
-local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(80, 220, 120), false, listeModes, true)
-local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(90, 150, 255), false, listeModes, true)
-local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 90, 170), false, listeModes, true)
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(40, 220, 110), false, listeModes, true)
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(50, 140, 255), false, listeModes, true)
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 60, 130), false, listeModes, true)
 local HAUTEUR_MODES = 3 * 54 + 2 * 6 + 2
 local modesOuverts = false
 local function ouvrirModes(ouvert: boolean)
@@ -10137,10 +10250,10 @@ carteJouer.Activated:Connect(function()
 end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
-local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 205, 70))
-local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 200, 40))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(255, 205, 70))
-local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(150, 200, 255))
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 130, 20))
+local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 195, 0))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(240, 50, 200))
+local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(0, 200, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
 carteLobby.Visible = false

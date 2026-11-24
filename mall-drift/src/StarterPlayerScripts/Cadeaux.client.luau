@@ -65,7 +65,7 @@ dispo.Padding = UDim.new(0, 8)
 dispo.SortOrder = Enum.SortOrder.LayoutOrder
 dispo.Parent = colonne
 
-local function carte(ordre: number, icone: string, titre: string): (TextButton, TextLabel, Frame)
+local function carte(ordre: number, icone: string, titre: string, couleur: Color3?): (TextButton, TextLabel, Frame)
 	local b = Instance.new("TextButton")
 	b.LayoutOrder = ordre
 	b.Size = UDim2.new(1, 0, 0, 60)
@@ -83,7 +83,17 @@ local function carte(ordre: number, icone: string, titre: string): (TextButton, 
 	local fondIcone = Instance.new("Frame")
 	fondIcone.Size = UDim2.fromOffset(44, 44)
 	fondIcone.Position = UDim2.new(0, 8, 0.5, -22)
-	fondIcone.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
+	fondIcone.BackgroundColor3 = Color3.new(1, 1, 1)
+	local teinte = couleur or Color3.fromRGB(120, 120, 140)
+	local degradeIcone = Instance.new("UIGradient") -- pastille colorée, style bonbon
+	degradeIcone.Color = ColorSequence.new(teinte:Lerp(Color3.new(1, 1, 1), 0.35), teinte:Lerp(Color3.new(0, 0, 0), 0.15))
+	degradeIcone.Rotation = 90
+	degradeIcone.Parent = fondIcone
+	local contourIcone = Instance.new("UIStroke")
+	contourIcone.Color = Color3.new(1, 1, 1)
+	contourIcone.Transparency = 0.55
+	contourIcone.Thickness = 2
+	contourIcone.Parent = fondIcone
 	fondIcone.ZIndex = 24
 	fondIcone.Parent = b
 	coins(fondIcone, 4)
@@ -91,6 +101,17 @@ local function carte(ordre: number, icone: string, titre: string): (TextButton, 
 	i.TextXAlignment = Enum.TextXAlignment.Center
 	i.Text = icone
 	i.ZIndex = 25
+	local image = Config.ImageIcone(icone)
+	if image then
+		i.Visible = false
+		local img = Instance.new("ImageLabel")
+		img.Size = UDim2.new(1, -14, 1, -14)
+		img.Position = UDim2.fromOffset(7, 7)
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.ZIndex = 25
+		img.Parent = fondIcone
+	end
 	local t = texte(b, UDim2.new(1, -70, 0, 22), UDim2.new(0, 62, 0, 9), Color3.new(1, 1, 1))
 	t.FontFace = POLICE
 	t.Text = titre
@@ -129,13 +150,13 @@ local function carte(ordre: number, icone: string, titre: string): (TextButton, 
 	return b, sous, pastille
 end
 
-local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit")
-local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour")
-local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis")
+local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit", Color3.fromRGB(170, 70, 255))
+local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour", Color3.fromRGB(0, 200, 170))
+local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis", Color3.fromRGB(50, 140, 255))
 sousAmis.Text = ("Jouez ensemble : +%d 💰 chacun"):format(Config.Cadeaux.BonusAmi or 150)
-local carteNotif, sousNotif = carte(4, "🔔", "M'avertir")
+local carteNotif, sousNotif = carte(4, "🔔", "M'avertir", Color3.fromRGB(255, 190, 0))
 sousNotif.Text = "Nouveautés, événements, cadeaux"
-local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe")
+local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe", Color3.fromRGB(40, 210, 100))
 sousGroupe.Text = ("+%d 💰 une seule fois"):format(Config.Cadeaux.BonusGroupe or 500)
 carteGroupe.Visible = false
 

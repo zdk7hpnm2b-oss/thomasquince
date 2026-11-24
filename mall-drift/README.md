@@ -316,3 +316,10 @@ mall-drift/
 - **Rythme** : une petite mise à jour par semaine (nouvelle traînée, nouvel événement) + notification « M'avertir ».
 - **Groupe Roblox** : crée-le, mets son numéro dans `Config.Cadeaux.GroupeId` (bonus de 500 💰 pour le rejoindre).
 - **Pubs Roblox** : quand le jeu est stable, un petit budget en pub « Sponsor » sur le jour de la mise à jour.
+
+## 🖼️ Icônes du menu
+
+Le dossier `icones/` contient 14 icônes PNG blanches (Lucide, licence ISC : usage commercial autorisé).
+1. Dans Studio : **Affichage > Gestionnaire de ressources**, bouton **Importation groupée**, choisis les 14 PNG.
+2. Clic droit sur chaque image > **Copier l'ID**, et colle le numéro dans `Config.Icones` (KartConfig).
+3. Tant qu'un numéro est à 0, l'emoji s'affiche à la place. Les icônes sont posées sur des pastilles colorées.

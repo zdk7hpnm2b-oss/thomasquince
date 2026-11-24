@@ -439,10 +439,39 @@ local function carteMode(icone: string, titre: string, description: string, coul
 		barre.Parent = b
 	end
 	local decalage = if principal then 26 else 64
-	local i = texte(b, UDim2.new(0, 36, 0, 36), UDim2.new(0, 16, 0.5, -18), Color3.new(1, 1, 1))
+	-- Pastille d'icône bien colorée (style bonbon : dégradé clair → vif, contour blanc)
+	local pastille = Instance.new("Frame")
+	pastille.Size = UDim2.fromOffset(if petit then 38 else 44, if petit then 38 else 44)
+	pastille.Position = UDim2.new(0, 12, 0.5, if petit then -19 else -22)
+	pastille.BackgroundColor3 = Color3.new(1, 1, 1)
+	pastille.Visible = not principal
+	pastille.ZIndex = 23
+	pastille.Parent = b
+	Instance.new("UICorner", pastille).CornerRadius = UDim.new(0, 10)
+	local degradePastille = Instance.new("UIGradient")
+	degradePastille.Color = ColorSequence.new(couleur:Lerp(Color3.new(1, 1, 1), 0.35), couleur:Lerp(Color3.new(0, 0, 0), 0.15))
+	degradePastille.Rotation = 90
+	degradePastille.Parent = pastille
+	local contourPastille = Instance.new("UIStroke")
+	contourPastille.Color = Color3.new(1, 1, 1)
+	contourPastille.Transparency = 0.55
+	contourPastille.Thickness = 2
+	contourPastille.Parent = pastille
+	local i = texte(pastille, UDim2.new(1, -12, 1, -12), UDim2.fromOffset(6, 6), Color3.new(1, 1, 1))
 	i.Text = icone
-	i.ZIndex = 23
-	i.Visible = not principal
+	i.ZIndex = 24
+	-- Vraie icône (image) si elle est réglée dans Config.Icones
+	local image = Config.ImageIcone(icone)
+	if image then
+		i.Visible = false
+		local img = Instance.new("ImageLabel")
+		img.Size = UDim2.new(1, -12, 1, -12)
+		img.Position = UDim2.fromOffset(6, 6)
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.ZIndex = 24
+		img.Parent = pastille
+	end
 	local t = texte(b, UDim2.new(1, -decalage - 70, 0, if principal then 40 else 24), UDim2.new(0, decalage, 0, if principal then 14 else 9), Color3.new(1, 1, 1))
 	t.Text = titre
 	t.FontFace = POLICE_COURSE
@@ -511,9 +540,9 @@ local dispoModes = Instance.new("UIListLayout")
 dispoModes.Padding = UDim.new(0, 6)
 dispoModes.SortOrder = Enum.SortOrder.LayoutOrder
 dispoModes.Parent = listeModes
-local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(80, 220, 120), false, listeModes, true)
-local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(90, 150, 255), false, listeModes, true)
-local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 90, 170), false, listeModes, true)
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(40, 220, 110), false, listeModes, true)
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(50, 140, 255), false, listeModes, true)
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 60, 130), false, listeModes, true)
 local HAUTEUR_MODES = 3 * 54 + 2 * 6 + 2
 local modesOuverts = false
 local function ouvrirModes(ouvert: boolean)
@@ -526,10 +555,10 @@ carteJouer.Activated:Connect(function()
 end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
-local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 205, 70))
-local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 200, 40))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(255, 205, 70))
-local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(150, 200, 255))
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 130, 20))
+local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 195, 0))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(240, 50, 200))
+local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(0, 200, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
 carteLobby.Visible = false

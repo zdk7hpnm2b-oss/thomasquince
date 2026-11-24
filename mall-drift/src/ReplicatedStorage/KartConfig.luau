@@ -192,6 +192,33 @@ Config.Boutique = {
 }
 Config.CategoriesBoutique = { "Offres", "Traînées", "Roue", "Pièces" }
 
+-- 🖼️ ICÔNES du menu : les images PNG sont dans le dossier « icones » du projet.
+-- Importe-les dans Studio (Affichage > Gestionnaire de ressources > Importation groupée),
+-- clic droit sur chaque image > « Copier l'ID », et colle le numéro ici.
+-- Tant que c'est 0, l'emoji s'affiche à la place.
+Config.Icones = {
+	Garage = 0, Roue = 0, Magasin = 0, Tuto = 0,
+	Entrainement = 0, EnLigne = 0, Battle = 0,
+	Cadeau = 0, Serie = 0, Amis = 0, Notif = 0, Groupe = 0,
+	Pieces = 0, VIP = 0,
+}
+-- L'emoji remplacé par chaque icône
+Config.IconeDeLEmoji = {
+	["🔧"] = "Garage", ["🎡"] = "Roue", ["🛒"] = "Magasin", ["📖"] = "Tuto",
+	["🏁"] = "Entrainement", ["🌐"] = "EnLigne", ["🔥"] = "Battle",
+	["🎁"] = "Cadeau", ["📅"] = "Serie", ["👥"] = "Amis", ["🔔"] = "Notif", ["👪"] = "Groupe",
+	["💰"] = "Pieces", ["👑"] = "VIP",
+}
+-- Renvoie l'image Roblox d'une icône (ou nil s'il faut garder l'emoji)
+function Config.ImageIcone(emojiOuNom: string): string?
+	local nom = Config.IconeDeLEmoji[emojiOuNom] or emojiOuNom
+	local id = Config.Icones[nom]
+	if type(id) == "number" and id > 0 then
+		return "rbxassetid://" .. id
+	end
+	return nil
+end
+
 -- 🎁 CADEAUX GRATUITS (ce qui fait revenir les joueurs chaque jour)
 Config.Cadeaux = {
 	-- Cadeaux de temps de jeu (à chaque partie) : plus on reste, plus c'est gros
@@ -471,8 +498,14 @@ Config.Camera = {
 	ChampGoPro = 100, -- grand angle de la GoPro (degrés)
 	Distance = 13, -- distance derrière le kart
 	Hauteur = 5.5, -- hauteur au-dessus du kart
-	Souplesse = 5, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
-	SuiviGlisse = 0.35, -- 0 = regarde où pointe le kart, 1 = regarde où il glisse
+	Souplesse = 4, -- plus c'est haut, plus la caméra suit vite (bas = plus "cinéma")
+	SuiviGlisse = 0.5, -- 0 = regarde où pointe le kart, 1 = regarde où il glisse (on voit bien l'angle du drift)
+	-- SENSATIONS : la caméra vit avec le kart
+	ReculAcceleration = 0.06, -- la caméra recule quand on accélère fort (et avance au freinage)
+	RoulisDrift = 0.005, -- la caméra penche dans les drifts
+	TremblementVitesse = 0.05, -- petit tremblement à pleine vitesse
+	TremblementBoost = 0.3, -- tremblement pendant le boost
+	ChampBoost = 14, -- le champ de vision « s'ouvre » au boost (effet de vitesse)
 }
 
 function Config.AppliquerAmbiance(nuit: boolean)
