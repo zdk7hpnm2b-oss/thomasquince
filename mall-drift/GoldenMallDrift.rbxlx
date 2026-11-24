@@ -5748,10 +5748,21 @@ local random = Random.new()
 local dossierGardes = Instance.new("Folder")
 dossierGardes.Name = "Securite"
 dossierGardes.Parent = workspace
--- Pendant une manche en ligne : pas d'agents de sécurité (que des vraies personnes)
-workspace:GetAttributeChangedSignal("MancheEnCours"):Connect(function()
-	dossierGardes.Parent = if workspace:GetAttribute("MancheEnCours") then game:GetService("ServerStorage") else workspace
-	if dossierGardes.Parent == workspace then
+-- Pas d'agents de sécurité pendant une manche en ligne (que des vraies personnes)
+-- ni pendant un DRIFT BATTLE (un défi de drift pur, sans police)
+local function majPresenceGardes()
+	local cacher = workspace:GetAttribute("MancheEnCours") == true
+	for _, j in ipairs(Players:GetPlayers()) do
+		if j:GetAttribute("Role") == "Battle" then
+			cacher = true
+		end
+	end
+	local parent = if cacher then game:GetService("ServerStorage") else workspace
+	if dossierGardes.Parent == parent then
+		return
+	end
+	dossierGardes.Parent = parent
+	if parent == workspace then
 		-- (de retour : le serveur reprend le contrôle des gardes)
 		for _, d in ipairs(dossierGardes:GetDescendants()) do
 			if d:IsA("BasePart") and d.Name == "HumanoidRootPart" then
@@ -5761,7 +5772,18 @@ workspace:GetAttributeChangedSignal("MancheEnCours"):Connect(function()
 			end
 		end
 	end
+end
+workspace:GetAttributeChangedSignal("MancheEnCours"):Connect(majPresenceGardes)
+local function suivreRole(j: Player)
+	j:GetAttributeChangedSignal("Role"):Connect(majPresenceGardes)
+end
+Players.PlayerAdded:Connect(suivreRole)
+Players.PlayerRemoving:Connect(function()
+	task.defer(majPresenceGardes)
 end)
+for _, j in ipairs(Players:GetPlayers()) do
+	suivreRole(j)
+end
 
 -- Animations Roblox par défaut (R15)
 local ANIMATIONS = {
