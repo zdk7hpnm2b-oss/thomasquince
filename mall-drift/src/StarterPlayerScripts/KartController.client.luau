@@ -167,9 +167,9 @@ piecesLabel.TextXAlignment = Enum.TextXAlignment.Left
 piecesLabel.TextColor3 = Color3.fromRGB(255, 220, 90)
 piecesLabel.Text = "💰 0"
 
-local scoreLabel = label("Score", hud, UDim2.new(0, 320, 0, 40), UDim2.new(1, -336, 0, 56))
+local scoreLabel = label("Score", hud, UDim2.new(0, 250, 0, 40), UDim2.new(1, -266, 0, 56)) -- (étroit : ne touche pas le chrono)
 scoreLabel.TextXAlignment = Enum.TextXAlignment.Right
-local meilleurLabel = label("Meilleur", hud, UDim2.new(0, 320, 0, 22), UDim2.new(1, -336, 0, 98))
+local meilleurLabel = label("Meilleur", hud, UDim2.new(0, 250, 0, 22), UDim2.new(1, -266, 0, 98))
 meilleurLabel.TextXAlignment = Enum.TextXAlignment.Right
 meilleurLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
 
@@ -179,7 +179,7 @@ vitesseLabel.TextXAlignment = Enum.TextXAlignment.Left
 local aide = label("Aide", hud, UDim2.new(1, -32, 0, 18), UDim2.new(0, 16, 1, -30))
 aide.TextXAlignment = Enum.TextXAlignment.Left
 aide.TextTransparency = 0.25
-aide.Text = "Maj : DRIFT  ·  V : caméra  ·  N : jour/nuit  ·  R : redresser  ·  Espace : descendre  ·  Garage VIP : personnaliser ton kart"
+aide.Text = "Maj : drift  ·  V : caméra  ·  R : redresser  ·  P : photo  ·  MENU en haut à droite"
 
 -- Le compteur de drift (au centre, en bas)
 local blocDrift = Instance.new("Frame")
@@ -502,7 +502,7 @@ local dernierRestePolice = -1
 local blocFeux = Instance.new("Frame")
 blocFeux.AnchorPoint = Vector2.new(0.5, 0)
 blocFeux.Size = UDim2.new(0, 330, 0, 120)
-blocFeux.Position = UDim2.new(0.5, 0, 0.1, 0)
+blocFeux.Position = UDim2.new(0.5, 0, 0.135, 0) -- (sous les barres du haut et les cœurs)
 blocFeux.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 blocFeux.BackgroundTransparency = 0.15
 blocFeux.Visible = false

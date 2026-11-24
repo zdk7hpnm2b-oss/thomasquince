@@ -73,7 +73,7 @@ gui.Parent = joueur.PlayerGui
 
 local panneau = Instance.new("Frame")
 panneau.AnchorPoint = Vector2.new(0.5, 0)
-panneau.Size = UDim2.new(0, 480, 0, 78)
+panneau.Size = UDim2.new(0, 420, 0, 78)
 panneau.Position = UDim2.new(0.5, 0, 0, 54)
 panneau.BackgroundColor3 = Color3.fromRGB(14, 14, 18)
 panneau.BackgroundTransparency = 0.15
@@ -90,7 +90,8 @@ local texteTemps = texte(panneau, UDim2.new(0.42, 0, 0, 44), UDim2.new(0.29, 0, 
 local texteEcart = texte(panneau, UDim2.new(0.42, 0, 0, 20), UDim2.new(0.29, 0, 0, 52), Color3.new(1, 1, 1))
 local texteMeilleur = texte(panneau, UDim2.new(0.27, 0, 0, 20), UDim2.new(0.72, -12, 0, 14), Color3.fromRGB(200, 200, 210))
 local texteRecord = texte(panneau, UDim2.new(0.27, 0, 0, 16), UDim2.new(0.72, -12, 0, 40), Color3.fromRGB(160, 160, 175))
-local grandTexte = texte(gui, UDim2.new(0.7, 0, 0, 64), UDim2.new(0.15, 0, 0.36, 0), VERT)
+-- (juste sous le panneau du chrono : ne croise ni les chiffres du départ, ni les messages de drift)
+local grandTexte = texte(gui, UDim2.new(0.6, 0, 0, 48), UDim2.new(0.2, 0, 0, 140), VERT)
 grandTexte.TextTransparency = 1
 
 local function montrerGrand(t: string, couleur: Color3, duree: number)
@@ -322,7 +323,7 @@ if Chrono then
 			texteEcart.Text = ""
 			texteRecord.Text = if course.record then ("Record : %s"):format(formatTemps(course.record)) else "Pas encore de record"
 			texteMeilleur.Text = "Meilleur : —"
-			montrerGrand("⏱ COURSE CHRONO", OR, 1.1)
+			panneau.Visible = false
 			-- Départ lancé : on place aussi le kart de notre côté (on en a le contrôle)
 			task.delay(1.3, function()
 				local c = course
@@ -375,6 +376,8 @@ if Chrono then
 				flecheBord.Visible = true
 			end
 		end
+		-- Pendant le 3, 2, 1 : le panneau est caché (les feux de départ sont à cet endroit)
+		panneau.Visible = maintenant >= c.depart
 		if maintenant < c.depart then
 			texteTemps.Text = "PRÊT ?"
 			texteTour.Text = ("TOUR 1/%d"):format(c.tours)

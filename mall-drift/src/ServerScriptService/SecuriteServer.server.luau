@@ -400,7 +400,7 @@ local function mettreAJourKarts()
 		local chassis = (kart :: Model).PrimaryPart
 		local protege = (kart:GetAttribute("ProtegeJusqua") or 0) > workspace:GetServerTimeNow()
 		-- Les joueurs d'une manche en ligne : ce sont les vrais joueurs qui font la police
-		if proprietaire and proprietaire:GetAttribute("Role") ~= nil then
+		if proprietaire and (proprietaire:GetAttribute("Role") ~= nil or proprietaire:GetAttribute("EnTuto")) then
 			protege = true
 		end
 		if proprietaire and siege and chassis and not protege and siege.Occupant and siege.Occupant.Parent == proprietaire.Character then

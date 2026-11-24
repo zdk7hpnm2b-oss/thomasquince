@@ -71,7 +71,7 @@ local function grandMessage(texte: string, couleur: Color3, duree: number)
 	grandMessageActuel = l
 	l.AnchorPoint = Vector2.new(0.5, 0.5)
 	l.Size = UDim2.new(0.8, 0, 0, 70)
-	l.Position = UDim2.fromScale(0.5, 0.42) -- (sous les messages de drift)
+	l.Position = UDim2.fromScale(0.5, 0.6) -- (sous le centre : ne croise pas les messages de drift)
 	l.BackgroundTransparency = 1
 	l.TextColor3 = couleur
 	l.Font = Enum.Font.FredokaOne
@@ -193,7 +193,7 @@ end
 local function policierLePlusProche(moi: Vector3): number
 	local meilleur = math.huge
 	local monRole = joueur:GetAttribute("Role")
-	if monRole == "Police" or monRole == "Battle" or monRole == "Chrono" then
+	if monRole == "Police" or monRole == "Battle" or monRole == "Chrono" or joueur:GetAttribute("EnTuto") then
 		return meilleur
 	end
 	local securite = workspace:FindFirstChild("Securite")

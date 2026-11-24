@@ -2062,7 +2062,7 @@ majMenu()
 ouvrirMenu = function(ouvert: boolean)
 	local dejaOuvert = fondMenu.Visible
 	fondMenu.Visible = ouvert
-	barre.Visible = not ouvert -- (la barre d'état du haut passerait par-dessus le menu)
+	barre.Visible = not ouvert and joueur:GetAttribute("Role") ~= "Chrono" -- (la barre d'état passerait par-dessus le menu / le chrono)
 	for _, page in ipairs(pagesListe) do
 		page.Visible = false -- (magasin, roue, aperçu…)
 	end
@@ -2211,6 +2211,11 @@ if MENU_PERMANENT then
 	boutonFermerMenu.Visible = false
 end
 local derniereFermeture = 0
+local aPiedDepuis: number? = nil
+-- Pendant une course chrono, la barre d'état du haut ne sert à rien (et gênerait le chrono)
+joueur:GetAttributeChangedSignal("Role"):Connect(function()
+	barre.Visible = not fondMenu.Visible and joueur:GetAttribute("Role") ~= "Chrono"
+end)
 fondMenu:GetPropertyChangedSignal("Visible"):Connect(function()
 	if not fondMenu.Visible then
 		derniereFermeture = os.clock()
@@ -2223,8 +2228,14 @@ task.spawn(function()
 		local aPied = not (h and h.SeatPart)
 		local occupe = joueur:GetAttribute("Role") ~= nil or joueur:GetAttribute("EnSalle") or joueur:GetAttribute("MenuGarage")
 			or joueur:GetAttribute("EnTuto") or ecranVoyage.Visible
-		-- (on laisse 5 s après un choix de mode : le temps que le kart arrive)
-		if aPied and not occupe and not fondMenu.Visible and os.clock() - derniereFermeture > 5 then
+		-- (on laisse 5 s après un choix de mode : le temps que le kart arrive ; et 5,5 s à pied
+		--  après une course : le temps de voir les résultats)
+		if aPied and not occupe then
+			aPiedDepuis = aPiedDepuis or os.clock()
+		else
+			aPiedDepuis = nil
+		end
+		if aPied and not occupe and not fondMenu.Visible and os.clock() - derniereFermeture > 5 and aPiedDepuis and os.clock() - aPiedDepuis > 5.5 then
 			ouvrirMenu(true)
 		end
 	end
