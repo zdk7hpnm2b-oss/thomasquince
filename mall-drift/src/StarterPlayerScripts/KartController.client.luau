@@ -48,7 +48,7 @@ local function label(nom: string, parent: Instance, taille: UDim2, position: UDi
 	l.Position = position
 	l.BackgroundTransparency = 1
 	l.TextColor3 = Color3.new(1, 1, 1)
-	l.Font = Enum.Font.GothamBlack
+	l.Font = Enum.Font.FredokaOne
 	l.TextScaled = texteTaille == nil
 	if texteTaille then
 		l.TextSize = texteTaille
@@ -494,7 +494,7 @@ chiffreDepart.AnchorPoint = Vector2.new(0.5, 0.5)
 chiffreDepart.Size = UDim2.new(0, 500, 0, 130)
 chiffreDepart.Position = UDim2.fromScale(0.5, 0.48)
 chiffreDepart.BackgroundTransparency = 1
-chiffreDepart.Font = Enum.Font.GothamBlack
+chiffreDepart.Font = Enum.Font.FredokaOne
 chiffreDepart.TextScaled = true
 chiffreDepart.TextColor3 = Color3.new(1, 1, 1)
 chiffreDepart.Text = ""
@@ -747,7 +747,7 @@ boutonConduire.Size = UDim2.new(0, 260, 0, 64)
 boutonConduire.Position = UDim2.new(0.5, 0, 1, -40)
 boutonConduire.BackgroundColor3 = Color3.fromRGB(255, 190, 40)
 boutonConduire.TextColor3 = Color3.fromRGB(25, 25, 30)
-boutonConduire.Font = Enum.Font.GothamBlack
+boutonConduire.Font = Enum.Font.FredokaOne
 boutonConduire.TextScaled = true
 boutonConduire.Text = "🏎️ CONDUIRE  (F)"
 boutonConduire.ZIndex = 8

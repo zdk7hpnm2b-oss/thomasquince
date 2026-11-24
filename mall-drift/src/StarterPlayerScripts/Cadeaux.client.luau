@@ -24,7 +24,7 @@ local joueur = Players.LocalPlayer
 local hud = joueur:WaitForChild("PlayerGui"):WaitForChild("PartieHUD")
 local menu = hud:WaitForChild("Menu") :: Frame
 
-local POLICE = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local POLICE = Font.fromEnum(Enum.Font.FredokaOne)
 local ROUGE = Color3.fromRGB(225, 30, 45)
 local VERT = Color3.fromRGB(50, 170, 90)
 
@@ -40,7 +40,7 @@ local function texte(parent: Instance, taille: UDim2, position: UDim2, couleur: 
 	t.Position = position
 	t.BackgroundTransparency = 1
 	t.TextColor3 = couleur
-	t.Font = police or Enum.Font.GothamBold
+	t.Font = police or Enum.Font.FredokaOne
 	t.TextScaled = true
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 24
@@ -153,9 +153,9 @@ end
 local carteCadeau, sousCadeau, pastilleCadeau = carte(1, "🎁", "Cadeau gratuit", Color3.fromRGB(170, 70, 255))
 local carteSerie, sousSerie, pastilleSerie = carte(2, "📅", "Série du jour", Color3.fromRGB(0, 200, 170))
 local carteAmis, sousAmis = carte(3, "👥", "Inviter des amis", Color3.fromRGB(50, 140, 255))
-sousAmis.Text = ("Jouez ensemble : +%d 💰 chacun"):format(Config.Cadeaux.BonusAmi or 150)
+sousAmis.Text = ("+%d pièces chacun"):format(Config.Cadeaux.BonusAmi or 150)
 local carteNotif, sousNotif = carte(4, "🔔", "M'avertir", Color3.fromRGB(255, 190, 0))
-sousNotif.Text = "Nouveautés, événements, cadeaux"
+sousNotif.Text = "Ne rate aucune mise à jour"
 local carteGroupe, sousGroupe, pastilleGroupe = carte(5, "👪", "Rejoins le groupe", Color3.fromRGB(40, 210, 100))
 sousGroupe.Text = ("+%d 💰 une seule fois"):format(Config.Cadeaux.BonusGroupe or 500)
 carteGroupe.Visible = false
@@ -203,7 +203,7 @@ fermer.Size = UDim2.fromOffset(150, 46)
 fermer.Position = UDim2.new(1, -10, 0, 8)
 fermer.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
 fermer.TextColor3 = Color3.new(1, 1, 1)
-fermer.Font = Enum.Font.GothamBlack
+fermer.Font = Enum.Font.FredokaOne
 fermer.TextSize = 20
 fermer.Text = "← RETOUR"
 fermer.ZIndex = 42
@@ -240,7 +240,7 @@ local function remplir()
 		return
 	end
 	if vue == "temps" then
-		titrePanneau.Text = "🎁 CADEAUX DE TEMPS DE JEU"
+		titrePanneau.Text = "CADEAUX"
 		dispoListe.CellSize = UDim2.new(1, 0, 0, 70)
 		for i, c in ipairs(etat.temps or {}) do
 			local b = Instance.new("TextButton")
@@ -270,7 +270,7 @@ local function remplir()
 			end
 		end
 	else
-		titrePanneau.Text = ("📅 SÉRIE DU JOUR · JOUR %d"):format(etat.serieJour or 1)
+		titrePanneau.Text = ("SÉRIE · JOUR %d"):format(etat.serieJour or 1)
 		dispoListe.CellSize = UDim2.new(0.25, -6, 0, 170)
 		for i, c in ipairs(Config.Cadeaux.Serie or {}) do
 			local aujourdhui = i == etat.serieJour
@@ -292,7 +292,7 @@ local function remplir()
 			ic.TextXAlignment = Enum.TextXAlignment.Center
 			ic.Text = if passe then "✔" elseif c.Tours then "🎡" else "💰"
 			ic.ZIndex = 43
-			local t = texte(b, UDim2.new(1, -10, 0, 36), UDim2.new(0, 5, 0, 74), Color3.fromRGB(230, 230, 235), Enum.Font.GothamBold)
+			local t = texte(b, UDim2.new(1, -10, 0, 36), UDim2.new(0, 5, 0, 74), Color3.fromRGB(230, 230, 235), Enum.Font.FredokaOne)
 			t.TextXAlignment = Enum.TextXAlignment.Center
 			t.TextWrapped = true
 			t.Text = Config.TexteCadeau(c)
@@ -395,7 +395,7 @@ task.spawn(function()
 					end
 				end
 				pastilleCadeau.Visible = pret
-				sousCadeau.Text = if pret then "🎁 Récupère ton cadeau !" elseif prochain then ("Prochain dans %s"):format(formatTemps(prochain.reste)) else "Tout récupéré, bravo !"
+				sousCadeau.Text = if pret then "Prêt à récupérer !" elseif prochain then ("Prochain dans %s"):format(formatTemps(prochain.reste)) else "Tout récupéré, bravo !"
 				pastilleSerie.Visible = etat.seriePrete == true
 				sousSerie.Text = if etat.seriePrete then ("Jour %d · cadeau prêt !"):format(etat.serieJour or 1) else ("Jour %d · reviens demain"):format(etat.serieJour or 1)
 				carteGroupe.Visible = etat.groupe == true

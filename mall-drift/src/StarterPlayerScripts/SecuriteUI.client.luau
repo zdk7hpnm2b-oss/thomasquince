@@ -51,7 +51,7 @@ barre.Position = UDim2.new(0.5, 0, 0, 52)
 barre.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
 barre.BackgroundTransparency = 0.25
 barre.TextColor3 = Color3.fromRGB(255, 80, 80)
-barre.Font = Enum.Font.GothamBlack
+barre.Font = Enum.Font.FredokaOne
 barre.TextScaled = true
 barre.Visible = false
 barre.Parent = gui
@@ -74,7 +74,7 @@ local function grandMessage(texte: string, couleur: Color3, duree: number)
 	l.Position = UDim2.fromScale(0.5, 0.42) -- (sous les messages de drift)
 	l.BackgroundTransparency = 1
 	l.TextColor3 = couleur
-	l.Font = Enum.Font.GothamBlack
+	l.Font = Enum.Font.FredokaOne
 	l.TextScaled = true
 	l.Text = texte
 	l.ZIndex = 5

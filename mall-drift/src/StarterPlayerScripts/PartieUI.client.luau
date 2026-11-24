@@ -45,7 +45,7 @@ local function texte(parent: Instance, taille: UDim2, position: UDim2, couleur: 
 	t.Position = position
 	t.BackgroundTransparency = 1
 	t.TextColor3 = couleur
-	t.Font = police or Enum.Font.GothamBlack
+	t.Font = police or Enum.Font.FredokaOne
 	t.TextScaled = true
 	t.Text = ""
 	local c = Instance.new("UIStroke")
@@ -87,7 +87,7 @@ listeFil.Padding = UDim.new(0, 4)
 listeFil.Parent = fil
 
 local function ajouterAuFil(message: string, couleur: Color3)
-	local l = texte(fil, UDim2.new(1, 0, 0, 26), UDim2.new(), couleur, Enum.Font.GothamBold)
+	local l = texte(fil, UDim2.new(1, 0, 0, 26), UDim2.new(), couleur, Enum.Font.FredokaOne)
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.Text = message
 	task.delay(6, function()
@@ -114,7 +114,7 @@ bordCarte.Thickness = 4
 bordCarte.Parent = carte
 local echelleCarte = Instance.new("UIScale")
 echelleCarte.Parent = carte
-local petitTitre = texte(carte, UDim2.new(1, -30, 0, 34), UDim2.new(0, 15, 0, 18), Color3.fromRGB(200, 200, 210), Enum.Font.GothamBold)
+local petitTitre = texte(carte, UDim2.new(1, -30, 0, 34), UDim2.new(0, 15, 0, 18), Color3.fromRGB(200, 200, 210), Enum.Font.FredokaOne)
 local grandTitre = texte(carte, UDim2.new(1, -30, 0, 90), UDim2.new(0, 15, 0, 60), Color3.new(1, 1, 1))
 local sousTitre = texte(carte, UDim2.new(1, -40, 0, 60), UDim2.new(0, 20, 0, 170), Color3.fromRGB(230, 230, 235), Enum.Font.GothamMedium)
 
@@ -177,7 +177,7 @@ local function montrerClassement(titre: string, classement, duree: number)
 		if i > 8 then
 			break
 		end
-		local l = texte(lignesTableau, UDim2.new(1, 0, 0, 26), UDim2.new(), if ligne.nom == joueur.DisplayName then Color3.fromRGB(255, 230, 120) else Color3.new(1, 1, 1), Enum.Font.GothamBold)
+		local l = texte(lignesTableau, UDim2.new(1, 0, 0, 26), UDim2.new(), if ligne.nom == joueur.DisplayName then Color3.fromRGB(255, 230, 120) else Color3.new(1, 1, 1), Enum.Font.FredokaOne)
 		l.LayoutOrder = i
 		l.TextXAlignment = Enum.TextXAlignment.Left
 		l.Text = ("%s %d. %s   ·   %d pts   ·   meilleur drift %d"):format(medailles[i] or "  ", i, ligne.nom, ligne.total, ligne.meilleur)
@@ -209,7 +209,7 @@ titrePage.Text = "GOLDEN MALL DRIFT"
 local sousTitrePage = texte(page, UDim2.new(0.8, 0, 0, 40), UDim2.new(0.1, 0, 0.12, 78), Color3.new(1, 1, 1))
 sousTitrePage.Text = "🚓 POLICE  vs  FUGITIFS 🏃"
 local comptePage = texte(page, UDim2.new(0.6, 0, 0, 46), UDim2.new(0.2, 0, 0.72, 0), Color3.fromRGB(255, 215, 80))
-local listePage = texte(page, UDim2.new(0.7, 0, 0, 30), UDim2.new(0.15, 0, 0.8, 0), Color3.fromRGB(220, 220, 230), Enum.Font.GothamBold)
+local listePage = texte(page, UDim2.new(0.7, 0, 0, 30), UDim2.new(0.15, 0, 0.8, 0), Color3.fromRGB(220, 220, 230), Enum.Font.FredokaOne)
 local aidePage = texte(page, UDim2.new(0.7, 0, 0, 24), UDim2.new(0.15, 0, 0.86, 0), Color3.fromRGB(180, 180, 190), Enum.Font.GothamMedium)
 aidePage.Text = "Le tirage au sort décide de ton équipe. Les fugitifs partent au sud, la police au nord !"
 
@@ -275,7 +275,7 @@ local function creerEcranChargement(parent: Instance): (Frame, TextLabel)
 	t1.Size = UDim2.new(0.8, 0, 0, 70)
 	t1.Position = UDim2.fromScale(0.5, 0.42)
 	t1.BackgroundTransparency = 1
-	t1.Font = Enum.Font.GothamBlack
+	t1.Font = Enum.Font.FredokaOne
 	t1.TextScaled = true
 	t1.TextColor3 = Color3.fromRGB(255, 205, 70)
 	t1.Text = "GOLDEN MALL DRIFT"
@@ -286,7 +286,7 @@ local function creerEcranChargement(parent: Instance): (Frame, TextLabel)
 	t2.Size = UDim2.new(0.7, 0, 0, 36)
 	t2.Position = UDim2.fromScale(0.5, 0.54)
 	t2.BackgroundTransparency = 1
-	t2.Font = Enum.Font.GothamBold
+	t2.Font = Enum.Font.FredokaOne
 	t2.TextScaled = true
 	t2.TextColor3 = Color3.new(1, 1, 1)
 	t2.Text = "Chargement…"
@@ -319,7 +319,7 @@ boutonMenu.Name = "BoutonMenu"
 boutonMenu.AnchorPoint = Vector2.new(1, 0) -- en haut à droite, sous le score (en bas, il y a les boutons tactiles)
 boutonMenu.Size = UDim2.new(0, 170, 0, 46)
 boutonMenu.Position = UDim2.new(1, -16, 0, 128)
-boutonMenu.Font = Enum.Font.GothamBlack
+boutonMenu.Font = Enum.Font.FredokaOne
 boutonMenu.TextScaled = true
 boutonMenu.TextColor3 = Color3.new(1, 1, 1)
 boutonMenu.BackgroundColor3 = VIOLET
@@ -372,7 +372,7 @@ end
 camera:GetPropertyChangedSignal("ViewportSize"):Connect(ajusterColonne)
 ajusterColonne()
 
-local POLICE_COURSE = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local POLICE_COURSE = Font.fromEnum(Enum.Font.FredokaOne)
 local ROUGE_MENU = Color3.fromRGB(225, 30, 45)
 
 -- Le titre : GOLDEN MALL en blanc, DRIFT en rouge
@@ -383,19 +383,20 @@ titreMenu.FontFace = POLICE_COURSE
 titreMenu.TextXAlignment = Enum.TextXAlignment.Left
 titreMenu.ZIndex = 22
 local slogan = texte(colonne, UDim2.new(1, 0, 0, 26), UDim2.new(0, 0, 0.1, 82), Color3.new(1, 1, 1))
-slogan.Text = "Vitesse. Drift. Évasion."
+slogan.Text = ""
+slogan.Visible = false
 slogan.FontFace = POLICE_COURSE
 slogan.TextXAlignment = Enum.TextXAlignment.Left
 slogan.ZIndex = 22
-local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 18), UDim2.new(0, 0, 0.1, 112), Color3.fromRGB(215, 215, 222), Enum.Font.GothamMedium)
-sousTitreMenu.Text = "Drifte dans le plus grand mall de " .. Config.Lieu .. " et sème la police."
+local sousTitreMenu = texte(colonne, UDim2.new(1, 0, 0, 22), UDim2.new(0, 0, 0.1, 80), Color3.fromRGB(215, 215, 222), Enum.Font.GothamMedium)
+sousTitreMenu.Text = "Le plus grand mall de " .. Config.Lieu
 sousTitreMenu.TextXAlignment = Enum.TextXAlignment.Left
 sousTitreMenu.ZIndex = 22
 
 local listeBoutons = Instance.new("Frame")
 listeBoutons.Size = UDim2.new(1, 0, 0, 0)
 listeBoutons.AutomaticSize = Enum.AutomaticSize.Y
-listeBoutons.Position = UDim2.new(0, 0, 0.1, 152)
+listeBoutons.Position = UDim2.new(0, 0, 0.1, 124)
 listeBoutons.BackgroundTransparency = 1
 listeBoutons.ZIndex = 21
 listeBoutons.Parent = colonne
@@ -428,6 +429,15 @@ local function carteMode(icone: string, titre: string, description: string, coul
 	bord.Transparency = if principal then 0.3 else 0.4
 	bord.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bord.Parent = b
+	-- Relief : un bord épais en bas, plus foncé (comme un vrai bouton de jeu)
+	local relief = Instance.new("Frame")
+	relief.AnchorPoint = Vector2.new(0, 1)
+	relief.Size = UDim2.new(1, 0, 0, 5)
+	relief.Position = UDim2.new(0, 0, 1, 0)
+	relief.BackgroundColor3 = if principal then Color3.fromRGB(140, 10, 25) else couleur:Lerp(Color3.new(0, 0, 0), 0.35)
+	relief.BorderSizePixel = 0
+	relief.ZIndex = 23
+	relief.Parent = b
 	-- Petite barre de couleur à gauche (couleur du mode)
 	if not principal then
 		local barre = Instance.new("Frame")
@@ -524,7 +534,7 @@ local function carteMode(icone: string, titre: string, description: string, coul
 end
 
 -- JOUER : ouvre / ferme la liste des 3 modes juste en dessous
-local carteJouer, _, descJouer = carteMode("", "JOUER", "Choisis ton mode : entraînement, en ligne ou Drift Battle", ROUGE_MENU, true)
+local carteJouer, _, descJouer = carteMode("", "JOUER", "Choisis ton mode", ROUGE_MENU, true)
 local listeModes = Instance.new("Frame")
 ordreMenu += 1
 listeModes.LayoutOrder = ordreMenu
@@ -540,25 +550,25 @@ local dispoModes = Instance.new("UIListLayout")
 dispoModes.Padding = UDim.new(0, 6)
 dispoModes.SortOrder = Enum.SortOrder.LayoutOrder
 dispoModes.Parent = listeModes
-local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre, la police du mall te poursuit", Color3.fromRGB(40, 220, 110), false, listeModes, true)
-local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "JOUER EN LIGNE", "Police contre Fugitifs avec de vrais joueurs", Color3.fromRGB(50, 140, 255), false, listeModes, true)
-local carteBattle = carteMode("🔥", "DRIFT BATTLE", "Défi solo : 1 minute pour le meilleur score", Color3.fromRGB(255, 60, 130), false, listeModes, true)
+local carteEntrainement = carteMode("🏁", "ENTRAÎNEMENT", "Drift libre", Color3.fromRGB(40, 220, 110), false, listeModes, true)
+local carteEnLigne, titreEnLigne, descEnLigne = carteMode("🌐", "EN LIGNE", "Police contre Fugitifs", Color3.fromRGB(50, 140, 255), false, listeModes, true)
+local carteBattle = carteMode("🔥", "DRIFT BATTLE", "1 minute, meilleur score", Color3.fromRGB(255, 60, 130), false, listeModes, true)
 local HAUTEUR_MODES = 3 * 54 + 2 * 6 + 2
 local modesOuverts = false
 local function ouvrirModes(ouvert: boolean)
 	modesOuverts = ouvert
 	TweenService:Create(listeModes, TweenInfo.new(0.3, Enum.EasingStyle.Quint), { Size = UDim2.new(1, -24, 0, if ouvert then HAUTEUR_MODES else 0) }):Play()
-	descJouer.Text = if ouvert then "▼ Choisis ton mode ci-dessous" else "Choisis ton mode : entraînement, en ligne ou Drift Battle"
+	descJouer.Text = if ouvert then "Choisis ton mode" else "Choisis ton mode"
 end
 carteJouer.Activated:Connect(function()
 	ouvrirModes(not modesOuverts)
 end)
 
 local carteLobby = carteMode("", "RETOUR AU LOBBY", "Change de mode ou personnalise ton kart", ROUGE_MENU, true)
-local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart : couleurs, peintures, néons…", Color3.fromRGB(255, 130, 20))
-local carteRoue = carteMode("🎡", "ROUE DU JOUR", "Un tour GRATUIT chaque jour : pièces, traînées, jackpot !", Color3.fromRGB(255, 195, 0))
-local carteMagasin = carteMode("🛒", "MAGASIN", "Kart exclusif, traînées, Pass VIP, packs…", Color3.fromRGB(240, 50, 200))
-local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter en 3 étapes, sur la piste", Color3.fromRGB(0, 200, 230))
+local carteGarage = carteMode("🔧", "GARAGE", "Personnalise ton kart", Color3.fromRGB(255, 130, 20))
+local carteRoue = carteMode("🎡", "ROUE DU JOUR", "1 tour gratuit par jour", Color3.fromRGB(255, 195, 0))
+local carteMagasin = carteMode("🛒", "MAGASIN", "Karts, traînées, packs", Color3.fromRGB(240, 50, 200))
+local carteTuto = carteMode("📖", "TUTO", "Apprends à drifter", Color3.fromRGB(0, 200, 230))
 -- Dans une place de jeu (entraînement, partie, défi) : « retour au lobby » à la place de JOUER
 -- (le menu d'accueil est le même partout : JOUER marche aussi depuis un mode de jeu)
 carteLobby.Visible = false
@@ -606,9 +616,9 @@ etiquettePromo.Size = UDim2.new(0, 150, 0, 22)
 etiquettePromo.Position = UDim2.new(0, 22, 0, 14)
 etiquettePromo.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
 etiquettePromo.TextColor3 = Color3.new(1, 1, 1)
-etiquettePromo.Font = Enum.Font.GothamBold
+etiquettePromo.Font = Enum.Font.FredokaOne
 etiquettePromo.TextScaled = true
-etiquettePromo.Text = "✦ ÉDITION EXCLUSIVE"
+etiquettePromo.Text = "EXCLUSIF"
 etiquettePromo.ZIndex = 23
 etiquettePromo.Parent = cartePromo
 Instance.new("UICorner", etiquettePromo).CornerRadius = UDim.new(0, 4)
@@ -647,7 +657,7 @@ task.spawn(function()
 end)
 
 -- En haut à droite : pièces et niveau
-local piecesMenu = texte(fondMenu, UDim2.new(0, 300, 0, 26), UDim2.new(1, -400, 0, 74), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+local piecesMenu = texte(fondMenu, UDim2.new(0, 300, 0, 26), UDim2.new(1, -400, 0, 74), Color3.fromRGB(255, 220, 90), Enum.Font.FredokaOne)
 piecesMenu.TextXAlignment = Enum.TextXAlignment.Right
 piecesMenu.ZIndex = 22
 piecesMenu.Text = "💰 0 pièces"
@@ -659,7 +669,7 @@ boutonFermerMenu.Size = UDim2.new(0, 54, 0, 54)
 boutonFermerMenu.Position = UDim2.new(1, -24, 0, 60)
 boutonFermerMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 boutonFermerMenu.TextColor3 = Color3.new(1, 1, 1)
-boutonFermerMenu.Font = Enum.Font.GothamBlack
+boutonFermerMenu.Font = Enum.Font.FredokaOne
 boutonFermerMenu.TextScaled = true
 boutonFermerMenu.Text = "✕"
 boutonFermerMenu.ZIndex = 22
@@ -769,7 +779,7 @@ local function fenetre(nom: string, titreFenetre: string, _largeur: number, _hau
 	filigrane.Position = UDim2.new(1, 40, 1, 30)
 	filigrane.BackgroundTransparency = 1
 	filigrane.Text = string.upper((titreFenetre:gsub("^[^%w]+ ", "")))
-	filigrane.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	filigrane.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	filigrane.TextScaled = true
 	filigrane.TextColor3 = Color3.new(1, 1, 1)
 	filigrane.TextTransparency = 0.95
@@ -818,7 +828,7 @@ local function fenetre(nom: string, titreFenetre: string, _largeur: number, _hau
 	soulignement.Parent = f
 	local t = texte(f, UDim2.new(1, -220, 0, 50), UDim2.new(0, 20, 0, 6), Color3.new(1, 1, 1))
 	t.Text = titreFenetre
-	t.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	t.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.ZIndex = 31
 	local fermer = Instance.new("TextButton")
@@ -827,7 +837,7 @@ local function fenetre(nom: string, titreFenetre: string, _largeur: number, _hau
 	fermer.Position = UDim2.new(1, -10, 0, 8)
 	fermer.BackgroundColor3 = Color3.fromRGB(34, 34, 42)
 	fermer.TextColor3 = Color3.new(1, 1, 1)
-	fermer.Font = Enum.Font.GothamBlack
+	fermer.Font = Enum.Font.FredokaOne
 	fermer.TextScaled = true
 	fermer.Text = "← RETOUR"
 	fermer.ZIndex = 33
@@ -885,8 +895,8 @@ local function apparaitre(f: Frame)
 	end
 end
 
-local panneauMagasin = fenetre("Magasin", "🛒 MAGASIN", 560, 520, Color3.fromRGB(225, 30, 45))
-local soldeMagasin = texte(panneauMagasin, UDim2.new(0, 220, 0, 28), UDim2.new(1, -400, 0, 16), Color3.fromRGB(255, 220, 90), Enum.Font.GothamBold)
+local panneauMagasin = fenetre("Magasin", "MAGASIN", 560, 520, Color3.fromRGB(225, 30, 45))
+local soldeMagasin = texte(panneauMagasin, UDim2.new(0, 220, 0, 28), UDim2.new(1, -400, 0, 16), Color3.fromRGB(255, 220, 90), Enum.Font.FredokaOne)
 soldeMagasin.TextXAlignment = Enum.TextXAlignment.Right
 soldeMagasin.ZIndex = 31
 
@@ -1008,7 +1018,7 @@ for ordre, offre in ipairs(Config.Boutique or {}) do
 	local gauche = if offre.Categorie == "Traînées" then 82 else 16
 	local n = texte(b, UDim2.new(1, -gauche - 160, 0, if grande then 34 else 26), UDim2.new(0, gauche, 0, if grande then 16 else 12), Color3.new(1, 1, 1))
 	n.Text = offre.Nom
-	n.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	n.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	n.TextXAlignment = Enum.TextXAlignment.Left
 	n.ZIndex = 33
 	local dsc = texte(b, UDim2.new(1, -gauche - 160, 0, if grande then 40 else 30), UDim2.new(0, gauche, 0, if grande then 56 else 42), Color3.fromRGB(200, 200, 210), Enum.Font.GothamMedium)
@@ -1023,7 +1033,7 @@ for ordre, offre in ipairs(Config.Boutique or {}) do
 	prix.Position = UDim2.new(1, -12, 0.5, 0)
 	prix.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 	prix.TextColor3 = Color3.new(1, 1, 1)
-	prix.Font = Enum.Font.GothamBlack
+	prix.Font = Enum.Font.FredokaOne
 	prix.TextScaled = true
 	prix.Text = offre.PrixAffiche
 	prix.ZIndex = 33
@@ -1078,14 +1088,14 @@ local function montrerCategorie(cat: string)
 	end
 	listeMagasin.CanvasPosition = Vector2.zero
 end
-local ICONES_CATEGORIES = { Offres = "⭐ OFFRES", ["Traînées"] = "🌈 TRAÎNÉES", Roue = "🎡 ROUE", ["Pièces"] = "💰 PIÈCES" }
+local ICONES_CATEGORIES = { Offres = "OFFRES", ["Traînées"] = "TRAÎNÉES", Roue = "ROUE", ["Pièces"] = "PIÈCES" }
 for i, cat in ipairs(Config.CategoriesBoutique or {}) do
 	local o = Instance.new("TextButton")
 	o.LayoutOrder = i
 	o.Size = UDim2.new(1 / #Config.CategoriesBoutique, -6, 1, 0)
 	o.BackgroundColor3 = Color3.fromRGB(34, 34, 40)
 	o.TextColor3 = Color3.new(1, 1, 1)
-	o.Font = Enum.Font.GothamBlack
+	o.Font = Enum.Font.FredokaOne
 	o.TextScaled = true
 	o.Text = ICONES_CATEGORIES[cat] or cat
 	o.ZIndex = 32
@@ -1122,7 +1132,7 @@ end
 -- de l'objet, qui tourne en 3D, et le gros bouton ACHETER.
 do
 	local KartBuilderApercu = require(ReplicatedStorage:WaitForChild("KartBuilder"))
-	local pageApercu = fenetre("Apercu", "👀 APERÇU", 0, 0, Color3.fromRGB(225, 30, 45))
+	local pageApercu = fenetre("Apercu", "APERÇU", 0, 0, Color3.fromRGB(225, 30, 45))
 	pageApercu.ZIndex = 35
 
 	-- La scène 3D (à gauche)
@@ -1167,14 +1177,14 @@ do
 	grosseIcone.Position = UDim2.fromScale(0.5, 0.5)
 	grosseIcone.BackgroundTransparency = 1
 	grosseIcone.TextScaled = true
-	grosseIcone.Font = Enum.Font.GothamBlack
+	grosseIcone.Font = Enum.Font.FredokaOne
 	grosseIcone.Visible = false
 	grosseIcone.ZIndex = 33
 	grosseIcone.Parent = scene
 
 	-- Les infos (à droite)
 	local nomApercu = texte(pageApercu, UDim2.new(0.38, 0, 0, 50), UDim2.new(0.62, 0, 0, 100), Color3.new(1, 1, 1))
-	nomApercu.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	nomApercu.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	nomApercu.TextXAlignment = Enum.TextXAlignment.Left
 	nomApercu.ZIndex = 32
 	local descApercu = texte(pageApercu, UDim2.new(0.38, 0, 0, 90), UDim2.new(0.62, 0, 0, 160), Color3.fromRGB(215, 215, 222), Enum.Font.GothamMedium)
@@ -1187,7 +1197,7 @@ do
 	boutonAcheter.Position = UDim2.new(0.62, 0, 0, 280)
 	boutonAcheter.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 	boutonAcheter.TextColor3 = Color3.new(1, 1, 1)
-	boutonAcheter.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+	boutonAcheter.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 	boutonAcheter.TextScaled = true
 	boutonAcheter.ZIndex = 33
 	boutonAcheter.Parent = pageApercu
@@ -1295,7 +1305,7 @@ do
 ---------------------------------------------------------------------
 -- 🎡 LA ROUE DU JOUR
 ---------------------------------------------------------------------
-local panneauRoue = fenetre("RoueDuJour", "🎡 ROUE DU JOUR", 560, 600, Color3.fromRGB(255, 200, 40))
+local panneauRoue = fenetre("RoueDuJour", "ROUE DU JOUR", 560, 600, Color3.fromRGB(255, 200, 40))
 do -- (bloc de la roue : ses variables restent ici)
 local TAILLE_ROUE = 430
 local N = #Config.Roue
@@ -1364,7 +1374,7 @@ for i, case in ipairs(Config.Roue) do
 	nom.Position = UDim2.new(0.5, 0, 0, 36)
 	nom.BackgroundTransparency = 1
 	nom.TextColor3 = Color3.new(1, 1, 1)
-	nom.Font = Enum.Font.GothamBlack
+	nom.Font = Enum.Font.FredokaOne
 	nom.TextScaled = true
 	nom.Text = case.Nom
 	nom.ZIndex = 50
@@ -1396,7 +1406,7 @@ boutonTourner.Size = UDim2.fromOffset(130, 130)
 boutonTourner.Position = UDim2.fromScale(0.5, 0.5)
 boutonTourner.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 boutonTourner.TextColor3 = Color3.new(1, 1, 1)
-boutonTourner.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+boutonTourner.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 boutonTourner.TextScaled = true
 boutonTourner.Text = "TOURNER"
 boutonTourner.ZIndex = 60
@@ -1421,7 +1431,7 @@ fleche.Size = UDim2.fromOffset(50, 50)
 fleche.Position = UDim2.new(0.5, 0, 0, -34)
 fleche.BackgroundTransparency = 1
 fleche.TextColor3 = Color3.fromRGB(255, 255, 255)
-fleche.Font = Enum.Font.GothamBlack
+fleche.Font = Enum.Font.FredokaOne
 fleche.TextScaled = true
 fleche.Text = "▼"
 fleche.ZIndex = 70
@@ -1431,10 +1441,10 @@ contourFleche.Thickness = 3
 contourFleche.Color = Color3.fromRGB(225, 30, 45)
 contourFleche.Parent = fleche
 
-local infoRoue = texte(panneauRoue, UDim2.new(0.42, 0, 0, 34), UDim2.new(0.58, 0, 0.3, 0), Color3.new(1, 1, 1), Enum.Font.GothamBold)
+local infoRoue = texte(panneauRoue, UDim2.new(0.42, 0, 0, 34), UDim2.new(0.58, 0, 0.3, 0), Color3.new(1, 1, 1), Enum.Font.FredokaOne)
 infoRoue.ZIndex = 31
 local resultatRoue = texte(panneauRoue, UDim2.new(0.42, 0, 0, 60), UDim2.new(0.58, 0, 0.3, 48), Color3.fromRGB(255, 215, 80))
-resultatRoue.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+resultatRoue.FontFace = Font.fromEnum(Enum.Font.FredokaOne)
 resultatRoue.ZIndex = 31
 -- Les chances de chaque cadeau (obligatoire sur Roblox pour les tours achetés)
 local totalPoids = 0
@@ -1455,7 +1465,7 @@ boutonAcheterTours.Size = UDim2.new(0, 320, 0, 52)
 boutonAcheterTours.Position = UDim2.new(0.58, 0, 0.3, 130)
 boutonAcheterTours.BackgroundColor3 = Color3.fromRGB(225, 30, 45)
 boutonAcheterTours.TextColor3 = Color3.new(1, 1, 1)
-boutonAcheterTours.Font = Enum.Font.GothamBold
+boutonAcheterTours.Font = Enum.Font.FredokaOne
 boutonAcheterTours.TextScaled = true
 boutonAcheterTours.Text = "🛒 Acheter des tours en plus"
 boutonAcheterTours.ZIndex = 31
@@ -1577,7 +1587,7 @@ pastilleRoue.Size = UDim2.fromOffset(22, 22)
 pastilleRoue.Position = UDim2.new(0, 48, 0, 14)
 pastilleRoue.BackgroundColor3 = Color3.fromRGB(235, 40, 50)
 pastilleRoue.TextColor3 = Color3.new(1, 1, 1)
-pastilleRoue.Font = Enum.Font.GothamBlack
+pastilleRoue.Font = Enum.Font.FredokaOne
 pastilleRoue.TextScaled = true
 pastilleRoue.Text = "!"
 pastilleRoue.ZIndex = 26
@@ -1615,7 +1625,7 @@ badgeDirect.Size = UDim2.new(1, 0, 0, 36)
 badgeDirect.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 badgeDirect.BackgroundTransparency = 0.2
 badgeDirect.TextColor3 = Color3.new(1, 1, 1)
-badgeDirect.Font = Enum.Font.GothamBlack
+badgeDirect.Font = Enum.Font.FredokaOne
 badgeDirect.TextScaled = true
 badgeDirect.Visible = false
 badgeDirect.ZIndex = 22
@@ -1856,10 +1866,10 @@ local function majMenu()
 	if enManche then
 		fondMenu.Visible = false
 	end
-	titreEnLigne.Text = if prete then "QUITTER LA FILE" else "JOUER EN LIGNE"
+	titreEnLigne.Text = if prete then "QUITTER LA FILE" else "EN LIGNE"
 	descEnLigne.Text = if prete
-		then "Tu es dans la file d'attente de Police contre Fugitifs. Clique pour la quitter."
-		else "Police contre Fugitifs avec de vrais joueurs. Tirage au sort des équipes !"
+		then "Dans la file… (clique pour quitter)"
+		else "Police contre Fugitifs"
 	boutonMenu.Text = if prete or preteBattle then "☰ MENU · ✅ EN FILE" else "☰ MENU"
 	boutonMenu.Size = UDim2.new(0, if prete or preteBattle then 260 else 170, 0, 46)
 end
@@ -2012,12 +2022,7 @@ end
 -- directement, avec la partie qui se joue en fond
 task.spawn(function()
 	if EN_LOBBY or TYPE == "ToutEnUn" then -- (dans les modes de jeu : bouton ☰ MENU)
-		while not joueur:GetAttribute("IntroFinie") do
-			task.wait(0.2)
-		end
-		local perso = joueur.Character or joueur.CharacterAdded:Wait()
-		perso:WaitForChild("HumanoidRootPart", 10)
-		task.wait(0.3)
+		-- Le menu s'affiche TOUT DE SUITE (on ne voit jamais le lobby ni le garage avant)
 		ouvrirMenu(true)
 		local donnees = TeleportService:GetLocalPlayerTeleportData()
 		if EN_LOBBY and type(donnees) == "table" and donnees.fileAuto and Voyage and not joueur:GetAttribute("Pret") then
@@ -2066,7 +2071,7 @@ boutonOK.Size = UDim2.new(0, 160, 0, 40)
 boutonOK.Position = UDim2.new(0.5, 0, 1, -12)
 boutonOK.BackgroundColor3 = Color3.fromRGB(110, 60, 220)
 boutonOK.TextColor3 = Color3.new(1, 1, 1)
-boutonOK.Font = Enum.Font.GothamBlack
+boutonOK.Font = Enum.Font.FredokaOne
 boutonOK.TextScaled = true
 boutonOK.Text = "OK"
 boutonOK.ZIndex = 42
@@ -2077,7 +2082,7 @@ boutonOK.Activated:Connect(function()
 end)
 
 local function ligneMondial(ordre: number, txt: string, couleur: Color3)
-	local l = texte(lignesMondial, UDim2.new(1, 0, 0, 26), UDim2.new(), couleur, Enum.Font.GothamBold)
+	local l = texte(lignesMondial, UDim2.new(1, 0, 0, 26), UDim2.new(), couleur, Enum.Font.FredokaOne)
 	l.LayoutOrder = ordre
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.Text = txt
@@ -2123,7 +2128,7 @@ do
 ---------------------------------------------------------------------
 -- ❤️ LES VIES (Police contre Fugitifs) + le choix RÉAPPARAÎTRE / ⚡ VENGEANCE
 ---------------------------------------------------------------------
-local POLICE_GRAS = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local POLICE_GRAS = Font.fromEnum(Enum.Font.FredokaOne)
 local MarketplaceVies = game:GetService("MarketplaceService")
 
 -- Les cœurs en haut de l'écran pendant la manche
@@ -2134,7 +2139,7 @@ coeurs.Position = UDim2.new(0.5, 0, 0, 54) -- (sous la barre d'état du haut)
 coeurs.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 coeurs.BackgroundTransparency = 0.3
 coeurs.TextColor3 = Color3.new(1, 1, 1)
-coeurs.Font = Enum.Font.GothamBlack
+coeurs.Font = Enum.Font.FredokaOne
 coeurs.TextScaled = true
 coeurs.Visible = false
 coeurs.ZIndex = 6
@@ -2176,7 +2181,7 @@ ecranChoix.Parent = gui
 local titreChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 64), UDim2.new(0.1, 0, 0.18, 0), Color3.new(1, 1, 1))
 titreChoix.FontFace = POLICE_GRAS
 titreChoix.ZIndex = 46
-local sousChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.18, 72), Color3.fromRGB(255, 200, 200), Enum.Font.GothamBold)
+local sousChoix = texte(ecranChoix, UDim2.new(0.8, 0, 0, 30), UDim2.new(0.1, 0, 0.18, 72), Color3.fromRGB(255, 200, 200), Enum.Font.FredokaOne)
 sousChoix.ZIndex = 46
 local coeursChoix = texte(ecranChoix, UDim2.new(0.4, 0, 0, 44), UDim2.new(0.3, 0, 0.18, 112), Color3.new(1, 1, 1))
 coeursChoix.ZIndex = 46
@@ -2205,7 +2210,7 @@ local function grosBouton(icone: string, titre: string, sous: string, couleur: C
 	t.Text = titre
 	t.FontFace = POLICE_GRAS
 	t.ZIndex = 47
-	local s = texte(b, UDim2.new(1, -20, 0, 34), UDim2.new(0, 10, 0, 122), Color3.fromRGB(240, 240, 245), Enum.Font.GothamBold)
+	local s = texte(b, UDim2.new(1, -20, 0, 34), UDim2.new(0, 10, 0, 122), Color3.fromRGB(240, 240, 245), Enum.Font.FredokaOne)
 	s.Text = sous
 	s.TextWrapped = true
 	s.ZIndex = 47
@@ -2339,7 +2344,7 @@ local function flecheSpectateur(t: string, x: number, sens: number)
 	b.Position = UDim2.new(x, if x == 0 then 6 else -54, 0, 6)
 	b.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 	b.TextColor3 = Color3.new(1, 1, 1)
-	b.Font = Enum.Font.GothamBlack
+	b.Font = Enum.Font.FredokaOne
 	b.TextSize = 22
 	b.Text = t
 	b.ZIndex = 9

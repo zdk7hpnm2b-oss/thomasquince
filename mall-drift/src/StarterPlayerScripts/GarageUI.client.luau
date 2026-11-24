@@ -159,7 +159,7 @@ local function etiquette(parent: Instance, texte: string, taille: UDim2, positio
 	l.Size = taille
 	l.Position = position
 	l.BackgroundTransparency = 1
-	l.Font = police or Enum.Font.GothamBlack
+	l.Font = police or Enum.Font.FredokaOne
 	l.TextScaled = true
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.TextColor3 = couleur
@@ -193,7 +193,7 @@ local function bouton(parent: Instance, texte: string, couleur: Color3, taille: 
 	end
 	b.BackgroundColor3 = couleur
 	b.TextColor3 = Color3.new(1, 1, 1)
-	b.Font = Enum.Font.GothamBlack
+	b.Font = Enum.Font.FredokaOne
 	b.TextScaled = true
 	b.Text = texte
 	b.AutoButtonColor = true
@@ -249,7 +249,7 @@ end)
 
 etiquette(panneau, "Garage", UDim2.new(0.5, 0, 0, 16), UDim2.new(0, 18, 0, 16), GRIS_TEXTE, Enum.Font.GothamMedium)
 local titre = etiquette(panneau, "PERSONNALISER", UDim2.new(1, -90, 0, 40), UDim2.new(0, 18, 0, 32), Color3.new(1, 1, 1))
-titre.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic) -- gras italique, style course
+titre.FontFace = Font.fromEnum(Enum.Font.FredokaOne) -- gras italique, style course
 local sousTitre = etiquette(panneau, "", UDim2.new(0.6, 0, 0, 18), UDim2.new(0, 18, 0, 76), Color3.fromRGB(230, 230, 235))
 local soldePieces = etiquette(panneau, "💰 0", UDim2.new(0.35, 0, 0, 18), UDim2.new(0.65, -18, 0, 76), OR)
 soldePieces.TextXAlignment = Enum.TextXAlignment.Right
@@ -329,7 +329,7 @@ for i, e in ipairs(kartsTries) do
 	animer(b)
 	local nomSlot = etiquette(b, "", UDim2.new(1, -8, 0.48, 0), UDim2.new(0, 4, 0.08, 0), Color3.new(1, 1, 1))
 	nomSlot.TextXAlignment = Enum.TextXAlignment.Center
-	local infoSlot = etiquette(b, "", UDim2.new(1, -8, 0.3, 0), UDim2.new(0, 4, 0.58, 0), GRIS_TEXTE, Enum.Font.GothamBold)
+	local infoSlot = etiquette(b, "", UDim2.new(1, -8, 0.3, 0), UDim2.new(0, 4, 0.58, 0), GRIS_TEXTE, Enum.Font.FredokaOne)
 	infoSlot.TextXAlignment = Enum.TextXAlignment.Center
 	local souligne = Instance.new("Frame")
 	souligne.AnchorPoint = Vector2.new(0, 1)
@@ -415,7 +415,7 @@ local function rangeeOnglets(y: number, hauteur: number, noms: { string }, sombr
 		b.LayoutOrder = i
 		b.TextColor3 = Color3.fromRGB(225, 225, 230)
 		if sombre then
-			b.Font = Enum.Font.GothamBold
+			b.Font = Enum.Font.FredokaOne
 		end
 		boutons[i] = b
 	end
@@ -460,7 +460,7 @@ local function suivant(): number
 end
 
 local function section(parent: Instance, nom: string, couleur: Color3?): TextLabel
-	local l = etiquette(parent, nom, UDim2.new(1, 0, 0, 18), UDim2.new(), couleur or Color3.fromRGB(205, 205, 212), Enum.Font.GothamBlack)
+	local l = etiquette(parent, nom, UDim2.new(1, 0, 0, 18), UDim2.new(), couleur or Color3.fromRGB(205, 205, 212), Enum.Font.FredokaOne)
 	l.LayoutOrder = suivant()
 	return l
 end
@@ -516,7 +516,7 @@ local function caseCouleur(parent: Instance, ordreCase: number, couleur: Color3)
 	prix.Position = UDim2.new(0.5, 0, 1, -4)
 	prix.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
 	prix.BackgroundTransparency = 0.25
-	prix.Font = Enum.Font.GothamBlack
+	prix.Font = Enum.Font.FredokaOne
 	prix.TextScaled = true
 	prix.TextColor3 = Color3.new(1, 1, 1)
 	prix.Text = ""
@@ -830,7 +830,7 @@ coins(barreStatut, 5)
 statut.Size = UDim2.new(1, -24, 0.56, 0)
 statut.Position = UDim2.new(0, 12, 0.22, 0)
 statut.BackgroundTransparency = 1
-statut.Font = Enum.Font.GothamBold
+statut.Font = Enum.Font.FredokaOne
 statut.TextScaled = true
 statut.TextXAlignment = Enum.TextXAlignment.Left
 statut.TextColor3 = Color3.fromRGB(220, 220, 230)
@@ -1024,7 +1024,7 @@ local function montrerBanniere()
 	t1.Size = UDim2.new(1, -20, 0, 56)
 	t1.Position = UDim2.new(0, 10, 0, 8)
 	t1.BackgroundTransparency = 1
-	t1.Font = Enum.Font.GothamBlack
+	t1.Font = Enum.Font.FredokaOne
 	t1.TextScaled = true
 	t1.TextColor3 = OR
 	t1.Text = "★ GARAGE VIP ★"
@@ -1033,7 +1033,7 @@ local function montrerBanniere()
 	t2.Size = UDim2.new(1, -20, 0, 28)
 	t2.Position = UDim2.new(0, 10, 0, 70)
 	t2.BackgroundTransparency = 1
-	t2.Font = Enum.Font.GothamBold
+	t2.Font = Enum.Font.FredokaOne
 	t2.TextScaled = true
 	t2.TextColor3 = Color3.fromRGB(220, 220, 230)
 	t2.Text = "Borne violette : E = personnaliser  ·  F = prendre ton kart"

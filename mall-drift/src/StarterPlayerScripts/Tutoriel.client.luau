@@ -28,7 +28,7 @@ local TACTILE = UserInputService.TouchEnabled and not UserInputService.KeyboardE
 local ROUGE = Color3.fromRGB(225, 30, 45)
 local VERT = Color3.fromRGB(70, 230, 120)
 local OR = Color3.fromRGB(255, 205, 80)
-local POLICE_TITRE = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Italic)
+local POLICE_TITRE = Font.fromEnum(Enum.Font.FredokaOne)
 
 local function enfoncee(touches: { Enum.KeyCode }): boolean
 	if UserInputService:GetFocusedTextBox() then
@@ -65,7 +65,7 @@ local function texte(parent: Instance, taille: UDim2, position: UDim2, couleur: 
 	t.Position = position
 	t.BackgroundTransparency = 1
 	t.TextColor3 = couleur
-	t.Font = police or Enum.Font.GothamBlack
+	t.Font = police or Enum.Font.FredokaOne
 	t.TextScaled = true
 	t.TextXAlignment = Enum.TextXAlignment.Left
 	t.Text = ""
@@ -113,7 +113,7 @@ for i = 1, 3 do
 	p.Position = UDim2.new(1, -18 - (4 - i) * 32, 0, 14)
 	p.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
 	p.TextColor3 = Color3.new(1, 1, 1)
-	p.Font = Enum.Font.GothamBlack
+	p.Font = Enum.Font.FredokaOne
 	p.TextScaled = true
 	p.Text = tostring(i)
 	p.Parent = carte
@@ -125,7 +125,7 @@ for i = 1, 3 do
 	pastilles[i] = p
 end
 
-local surtitre = texte(carte, UDim2.new(0.6, 0, 0, 16), UDim2.new(0, 30, 0, 14), Color3.fromRGB(255, 120, 130), Enum.Font.GothamBold)
+local surtitre = texte(carte, UDim2.new(0.6, 0, 0, 16), UDim2.new(0, 30, 0, 14), Color3.fromRGB(255, 120, 130), Enum.Font.FredokaOne)
 local titre = texte(carte, UDim2.new(1, -150, 0, 38), UDim2.new(0, 30, 0, 32), Color3.new(1, 1, 1))
 titre.FontFace = POLICE_TITRE
 local consigne = texte(carte, UDim2.new(1, -60, 0, 18), UDim2.new(0, 30, 0, 74), Color3.fromRGB(205, 205, 215), Enum.Font.GothamMedium)
@@ -163,7 +163,7 @@ lueur.Transparency = NumberSequence.new({
 	NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(0.55, 0), NumberSequenceKeypoint.new(1, 0),
 })
 lueur.Parent = barre
-local pourcentage = texte(carte, UDim2.new(0, 60, 0, 14), UDim2.new(0, 30, 0, 122), Color3.fromRGB(170, 170, 180), Enum.Font.GothamBold)
+local pourcentage = texte(carte, UDim2.new(0, 60, 0, 14), UDim2.new(0, 30, 0, 122), Color3.fromRGB(170, 170, 180), Enum.Font.FredokaOne)
 
 local boutonPasser = Instance.new("TextButton")
 boutonPasser.AnchorPoint = Vector2.new(1, 1)
@@ -171,7 +171,7 @@ boutonPasser.Size = UDim2.new(0, 120, 0, 16)
 boutonPasser.Position = UDim2.new(0.5, 0, 1, -12)
 boutonPasser.BackgroundTransparency = 1
 boutonPasser.TextColor3 = Color3.fromRGB(150, 150, 160)
-boutonPasser.Font = Enum.Font.GothamBold
+boutonPasser.Font = Enum.Font.FredokaOne
 boutonPasser.TextScaled = true
 boutonPasser.TextXAlignment = Enum.TextXAlignment.Right
 boutonPasser.Text = "Passer le tuto ✕"
