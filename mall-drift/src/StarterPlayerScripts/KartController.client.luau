@@ -389,17 +389,31 @@ local function terminerDrift(reussi: boolean)
 		local titre = titres[math.min(etoiles, 3)]
 		message(("%s %s  +%d"):format(titre, etoiles > 0 and texteEtoiles(etoiles) or "", points), couleurs[math.min(etoiles, 3)], 1.8)
 		-- Un beau drift = un BOOST (plus il y a d'étoiles, plus il est fort)
-		local reglageBoost = Config.Score.BoostEtoiles and Config.Score.BoostEtoiles[math.min(etoiles, 3)]
+		-- BOOST PROGRESSIF : plus le drift est puissant, plus le boost est long et fort
+		local bp = Config.Score.BoostProgressif or {}
+		local puissance = math.clamp(points / Config.Score.Etoiles[3], 0.05, bp.PuissanceMax or 2)
+		local reglageBoost = {
+			Duree = (bp.DureeMin or 0.5) + (bp.DureeParPuissance or 1.9) * puissance,
+			Force = (bp.ForceMin or 0.4) + (bp.ForceParPuissance or 1) * puissance,
+		}
 		if reglageBoost then
 			-- La police te poursuit ? Boost d'évasion !
 			local poursuivi = joueur:GetAttribute("Poursuivi") == true or joueur:GetAttribute("Role") == "Fugitif"
 			local multiplicateur = if poursuivi then (Config.Score.BoostEvasion or 1.5) else 1
 			tempsBoost = reglageBoost.Duree * (if poursuivi then 1.2 else 1)
-			poussee = 6 + etoiles * 3 -- (coup de pied, plus fort avec les étoiles)
-			secousseImpact = math.max(secousseImpact, 0.25)
+			poussee = (bp.PousseeMin or 4) + (bp.PousseeParPuissance or 10) * puissance -- (coup de pied, selon la puissance)
+			-- Flammes et lumière plus grosses avec un boost puissant
+			local taille = 0.6 + 0.6 * puissance
+			for _, f in ipairs(kart.flammes or {}) do
+				(f :: ParticleEmitter).Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, taille), NumberSequenceKeypoint.new(1, 0.1) })
+			end
+			for _, l in ipairs(kart.lumieresBoost or {}) do
+				(l :: PointLight).Brightness = 2 + 2 * puissance
+			end
+			secousseImpact = math.max(secousseImpact, 0.12 + 0.2 * puissance) -- (secousse selon la puissance)
 			joueur:SetAttribute("TutoBoost", os.clock()) -- (pour le tuto)
 			forceBoost = reglageBoost.Force * multiplicateur
-			message(if poursuivi then ("🚨 BOOST D'ÉVASION %s !"):format(string.rep("★", etoiles)) else ("BOOST %s !"):format(string.rep("★", etoiles)),
+			message(if poursuivi then ("🚨 BOOST D'ÉVASION x%.1f !"):format(forceBoost) else ("BOOST x%.1f %s"):format(forceBoost, string.rep("🔥", math.clamp(math.ceil(puissance * 1.5), 1, 3))),
 				if poursuivi then Color3.fromRGB(255, 140, 60) else Color3.fromRGB(120, 255, 140), 0.9)
 		end
 		majScore()
@@ -1310,7 +1324,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 
 	-- Sensation de vitesse : le champ de vision s'élargit quand on va vite
 	local fovBase = if modeCamera == "gopro" then Config.Camera.ChampGoPro else 70
-	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (if tempsBoost > 0 then (Config.Camera.ChampBoost or 14) else 0)
+	local fovCible = fovBase + math.clamp(vitesse, 0, 80) * (if modeCamera == "gopro" then 0.12 else 0.3) + (if tempsBoost > 0 then (Config.Camera.ChampBoost or 14) * math.clamp(forceBoost / 1.4, 0.5, 1.6) else 0)
 	-- Le champ de vision s'ouvre VITE (effet « coup de boost ») et se referme doucement
 	local vitesseFov = if fovCible > camera.FieldOfView then 9 else 3
 	camera.FieldOfView += (fovCible - camera.FieldOfView) * math.clamp(dt * vitesseFov, 0, 1)

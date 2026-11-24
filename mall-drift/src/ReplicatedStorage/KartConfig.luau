@@ -473,6 +473,15 @@ Config.Score = {
 		[2] = { Duree = 1.4, Force = 1 },
 		[3] = { Duree = 2.2, Force = 1.4 },
 	},
+	-- BOOST PROGRESSIF : chaque drift réussi donne un boost, de plus en plus gros selon
+	-- la puissance du drift. Puissance = points du drift / points des 3 étoiles
+	-- (1 = drift 3 étoiles ; un drift énorme peut aller jusqu'à PuissanceMax).
+	BoostProgressif = {
+		PuissanceMax = 2,
+		DureeMin = 0.5, DureeParPuissance = 1.9, -- durée (s) = 0,5 + 1,9 x puissance
+		ForceMin = 0.4, ForceParPuissance = 1.0, -- force = 0,4 + 1,0 x puissance (x le Boost du kart)
+		PousseeMin = 4, PousseeParPuissance = 10, -- coup de pied au déclenchement
+	},
 	BoostEvasion = 1.5, -- si la police te poursuit, le boost est multiplié par 1,5
 	MaxParDrift = 8000, -- sécurité anti-triche côté serveur
 }
