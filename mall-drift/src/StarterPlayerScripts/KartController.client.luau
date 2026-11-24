@@ -292,6 +292,7 @@ local driftAppuyeAvant = false
 local vitesseRotation = 0
 local tempsBoost = 0
 local poussee = 0 -- vitesse ajoutée d'un coup quand le boost se déclenche
+local volantLisse = 0 -- le volant monte en douceur (au clavier, sinon le kart braque d'un coup)
 local secousseImpact = 0 -- secousse de caméra (choc, boost), qui retombe toute seule
 local vitessePrecCam = 0
 local accelLisse = 0
@@ -1027,6 +1028,9 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if math.abs(volantDirect) > math.abs(volant) then
 		volant = volantDirect
 	end
+	-- Volant progressif : on braque vite, on revient au centre un peu plus vite encore
+	local vitesseVolant = if math.abs(volant) > math.abs(volantLisse) then 9 else 12
+	volantLisse += (volant - volantLisse) * math.clamp(dt * vitesseVolant, 0, 1)
 	if depart then
 		local t = os.clock() - depart.debut
 		-- (départ court du Drift Battle : pas de survol, feux plus rapides)
@@ -1103,6 +1107,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 	-- 1) Accélérer / freiner
 	local vMax = s.VitesseMax + (if tempsBoost > 0 then s.Boost * forceBoost else 0)
 	local cible = if gaz >= 0 then gaz * vMax else gaz * s.VitesseMax * 0.5
+	-- Power slide : en drift avec l'accélérateur, le kart garde presque toute sa vitesse
+	if driftAppuye and gaz > 0.3 then
+		cible = math.max(cible, vMax * 0.92)
+	end
 	local taux
 	if math.abs(gaz) < 0.05 then
 		taux = s.Freinage * 0.25 -- roue libre
@@ -1139,8 +1147,17 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if mouille then
 		adherence *= Config.Mouille.Adherence
 	end
+	-- Contre-braquage : braquer à l'opposé de la glisse la rattrape plus vite (comme un vrai drift)
+	if driftAppuye and math.abs(vCote) > 4 and math.sign(volant) == math.sign(vCote) and math.abs(volant) > 0.3 then
+		adherence *= 2.2
+	end
 	if auSol then
 		vCote *= math.exp(-adherence * dt)
+	end
+	-- Drift contrôlé : l'angle de glisse ne dépasse pas ~50° (pas de toupie involontaire)
+	local glisseMax = math.abs(vAvant) * 1.2
+	if auSol and math.abs(vCote) > glisseMax and math.abs(vAvant) > 8 then
+		vCote = math.sign(vCote) * (glisseMax + (math.abs(vCote) - glisseMax) * math.exp(-6 * dt))
 	end
 
 	-- 3) Tourner (en drift, on tourne beaucoup plus : 360 possibles !)
@@ -1149,9 +1166,13 @@ RunService.Heartbeat:Connect(function(dt: number)
 		facteur = math.max(facteur, 0.7) -- on peut tourner sur place en drift
 	end
 	local puissance = s.Rotation * (if driftAppuye then s.RotationDrift else 1)
+	-- Stabilité : à pleine vitesse (hors drift), on braque un peu moins
+	if not driftAppuye then
+		puissance *= 1 - 0.3 * math.clamp(math.abs(vAvant) / s.VitesseMax, 0, 1)
+	end
 	local sens = if vAvant < -1 then -1 else 1
-	local rotationCible = -volant * puissance * facteur * sens
-	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 8, 0, 1)
+	local rotationCible = -volantLisse * puissance * facteur * sens
+	vitesseRotation += (rotationCible - vitesseRotation) * math.clamp(dt * 10, 0, 1)
 
 	local nouvelleVitesse = avantPente * vAvant + droitePente * vCote + normaleSol * vSol
 	-- Tapis roulant : il t'emporte au moins à sa vitesse, dans son sens
@@ -1174,6 +1195,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 
 	-- Choc : la caméra tremble selon la violence du choc
 	if derniereVitesse - vitesse > Config.Score.SeuilChoc * 0.6 then
+		-- Petit rebond vers l'arrière au lieu de rester collé au mur
+		if auSol and math.abs(gaz) > 0.2 then
+			ch.AssemblyLinearVelocity = ch.AssemblyLinearVelocity - avant * math.clamp((derniereVitesse - vitesse) * 0.25, 3, 10)
+		end
 		secousseImpact = math.max(secousseImpact, math.clamp((derniereVitesse - vitesse) / 30, 0.3, 1))
 	end
 	-- Choc contre un mur pendant un drift = drift perdu

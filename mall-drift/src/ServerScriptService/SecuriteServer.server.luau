@@ -449,7 +449,7 @@ local function allerVers(g: Garde, destination: Vector3)
 		or maintenant > g.prochainCalcul
 		or (g.destinationChemin and (g.destinationChemin - destination).Magnitude > 12)
 	if doitRecalculer then
-		g.prochainCalcul = maintenant + 0.6
+		g.prochainCalcul = maintenant + (if g.etat == "poursuite" then 0.35 else 0.6) -- (chemin recalculé plus souvent en poursuite)
 		g.destinationChemin = destination
 		local chemin = PathfindingService:CreatePath({ AgentRadius = 2.5, AgentHeight = 5, AgentCanJump = false, WaypointSpacing = 6 })
 		local ok = pcall(function()
@@ -733,7 +733,7 @@ end
 local function cerveau(g: Garde)
 	g.hum.WalkSpeed = R.VitessePatrouille
 	while g.modele.Parent and g.hum.Health > 0 do
-		task.wait(0.15)
+		task.wait(if g.etat == "poursuite" then 0.08 else 0.15) -- (réagit plus vite en poursuite)
 		local maintenant = os.clock()
 
 		if g.etat == "glisse" then
@@ -787,12 +787,22 @@ local function cerveau(g: Garde)
 				end
 				-- Tant qu'il te voit (ou que la radio le guide), il sait où tu es
 				-- et vise un peu devant toi pour te couper la route
-				if maintenant - g.derniereVue < R.Radio then
-					local vitesseKart = aplat(k.chassis.AssemblyLinearVelocity)
-					g.dernierePos = k.chassis.Position + vitesseKart * 0.35
-				end
 				local ecart = k.chassis.Position - g.racine.Position
-				if aplat(ecart).Magnitude < R.DistanceArrestation and math.abs(ecart.Y) < 6 then
+				local distance = aplat(ecart).Magnitude
+				if maintenant - g.derniereVue < R.Radio then
+					-- Interception : loin, il vise là où tu SERAS (pour te couper la route) ;
+					-- tout près, il fonce droit sur ton kart pour te toucher
+					local vitesseKart = aplat(k.chassis.AssemblyLinearVelocity)
+					local anticipation = if distance < 14 then 0 else math.clamp(distance / math.max(R.VitessePoursuite, 1), 0.2, 1.1)
+					g.dernierePos = k.chassis.Position + vitesseKart * anticipation
+				end
+				-- Rattrapage quand il est loin, sprint dans les derniers mètres
+				local bonus = math.clamp((distance - 25) * 0.25, 0, R.Rattrapage or 12)
+				if distance < 16 then
+					bonus = R.Sprint or 8
+				end
+				g.hum.WalkSpeed = R.VitessePoursuite + bonus
+				if distance < R.DistanceArrestation and math.abs(ecart.Y) < 6 then
 					arreter(g, k.joueur)
 				elseif maintenant - g.derniereVue > R.TempsPourSemer then
 					finirPoursuite(g, "recherche")
